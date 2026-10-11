@@ -176,6 +176,20 @@ func _on_pie_choice(callback: Callable) -> void:
 ## The furniture or Sim under the cursor, if any.
 func _pick_at(screen_pos: Vector2) -> Object:
 	var cam := rig.camera
+	# Other Sims win over the objects they're sitting at: test their on-screen
+	# silhouette (feet to head, about a shoulder-width wide) first.
+	for other in lot.sims:
+		if other == sim or not other.visible or cam.is_position_behind(other.global_position):
+			continue
+		var feet := cam.unproject_position(other.global_position)
+		var head := cam.unproject_position(other.global_position + Vector3(0, 1.8, 0))
+		var half := (cam.unproject_position(other.global_position + cam.global_basis.x * 0.35) - feet).length()
+		var top := minf(feet.y, head.y)
+		var bottom := maxf(feet.y, head.y)
+		var t := clampf(inverse_lerp(bottom, top, screen_pos.y), 0.0, 1.0)
+		var axis_x := lerpf(feet.x, head.x, t)
+		if screen_pos.y >= top and screen_pos.y <= bottom and absf(screen_pos.x - axis_x) <= half:
+			return other
 	var origin := cam.project_ray_origin(screen_pos)
 	var q := PhysicsRayQueryParameters3D.create(origin, origin + cam.project_ray_normal(screen_pos) * 500.0)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
