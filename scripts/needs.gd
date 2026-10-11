@@ -27,6 +27,8 @@ const LOW := 30.0
 const CRITICAL := 15.0
 
 var values := {}
+## Last rate of change per need, in points per game hour (for the trend arrows).
+var trend := {}
 
 
 func _init() -> void:
@@ -55,6 +57,7 @@ func tick(minutes: float, rates: Dictionary = {}, decay_mult: Dictionary = {}) -
 		return
 	for n in ORDER:
 		var rate: float = rates.get(n, -DECAY_PER_HOUR[n] * decay_mult.get(n, 1.0))
+		trend[n] = rate
 		values[n] = clampf(values[n] + rate * minutes / 60.0, 0.0, 100.0)
 	changed.emit()
 

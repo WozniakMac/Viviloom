@@ -75,3 +75,19 @@ func _process(delta: float) -> void:
 func _apply() -> void:
 	rotation = Vector3(pitch, yaw, 0.0)
 	camera.position = Vector3(0.0, 0.0, distance)
+
+
+## Jumps straight to a view of `focus` (no easing).
+func frame(focus: Vector3, p_yaw: float, p_pitch: float, p_distance: float) -> void:
+	position = focus
+	yaw = p_yaw
+	pitch = p_pitch
+	distance = p_distance
+	_target_distance = p_distance
+	_apply()
+
+
+## Turns player camera controls off or on (e.g. while typing in Create a Sim).
+func set_locked(locked: bool) -> void:
+	set_process(not locked)
+	set_process_unhandled_input(not locked)

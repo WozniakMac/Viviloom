@@ -45,3 +45,9 @@ names, art and text in OpenSims are original.
   recurring moodlets, skill and decay modifiers, favourite activities), skills 0–10
   boosted by the matching emotion, paintings that earn money, a portrait card with mood
   plate and moodlet tooltips, needs/skills/traits tabs, and a plumbob over the Sim.
+- Step 6: Create a Sim (studio backdrop, hexagon trait slots with conflicts, colour
+  swatches, rotate, green tick) and a UI pass to match the reference layout and style:
+  light blue-white panels, live circular portrait with a vertical mood plate, round
+  moodlets and queue icons with progress rings, speed pill with clock, icon tab bar for
+  Needs / Skills / Simology with trend arrows on need bars, white pill pie menu,
+  notification cards, and a build catalogue with rendered thumbnails and stat tooltips.

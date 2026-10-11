@@ -16,12 +16,49 @@ const INFO := {
 	"easel": ["Easel", 350],
 	"chess": ["Chess Table", 400],
 }
+## Build-mode catalogue sections: [id, label]; "all" lists everything.
+const CATEGORIES := [["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"]]
+const CATEGORY_OF := {
+	"bed": "bedroom", "fridge": "kitchen", "toilet": "bathroom", "shower": "bathroom",
+	"tv": "fun", "desk": "fun", "chess": "hobby", "easel": "hobby", "bookshelf": "hobby",
+}
+const DESCRIPTIONS := {
+	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
+	"fridge": "Keeps food cold and ideas fresh. Snacks or a proper home-cooked meal.",
+	"toilet": "Does exactly what you'd hope.",
+	"shower": "A quick rinse or a long think, your choice.",
+	"tv": "Hours of fun, and cooking shows for the ambitious.",
+	"desk": "A desk with a computer for chatting and gaming.",
+	"bookshelf": "Browse for inspiration or study for the brain.",
+	"easel": "Paint, improve, sell. Repeat.",
+	"chess": "Practise chess and sharpen your logic.",
+}
 const WALL_PRICE := 14
 const DOOR_PRICE := 150
 
 const WHITE := Color(0.93, 0.93, 0.9)
 const WOOD := Color(0.55, 0.38, 0.24)
 const DARK := Color(0.12, 0.12, 0.14)
+
+
+## Tooltip text for the catalogue: name, price, description and what it's good for.
+static func describe(kind: String) -> String:
+	var f := create(kind)
+	var helps := {}
+	var skills := {}
+	for i in f.interactions:
+		for n in i.rates:
+			if i.rates[n] > 0.0:
+				helps[Needs.LABELS[n]] = true
+		if i.skill != "":
+			skills[Skills.label(i.skill)] = true
+	f.free()
+	var text: String = "%s\n§ %d\n%s" % [INFO[kind][0], INFO[kind][1], DESCRIPTIONS[kind]]
+	if not helps.is_empty():
+		text += "\nNeeds: " + ", ".join(PackedStringArray(helps.keys()))
+	if not skills.is_empty():
+		text += "\nSkills: " + ", ".join(PackedStringArray(skills.keys()))
+	return text
 
 
 static func create(kind: String) -> Furniture:

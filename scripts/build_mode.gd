@@ -31,6 +31,11 @@ var _wall_preview: MeshInstance3D
 var _edge_marker: MeshInstance3D
 var _ui: CanvasLayer
 var _tool_buttons := {}
+var _category_buttons := {}
+var _tiles := {}
+var _tiles_box: HFlowContainer
+var _funds_label: Label
+var _thumbs: Thumbnails
 
 
 func _ready() -> void:
@@ -70,6 +75,7 @@ func set_tool(t: Tool) -> void:
 	tool = t
 	for k in _tool_buttons:
 		(_tool_buttons[k] as Button).button_pressed = (k == t)
+		(_tool_buttons[k] as Button).queue_redraw()
 	_refresh_overlays(null)
 
 
@@ -78,7 +84,7 @@ func start_place(kind: String) -> void:
 	set_tool(Tool.PLACE)
 	var price: int = Catalog.INFO[kind][1]
 	if price > funds:
-		notice.emit("Not enough funds for the %s." % Catalog.INFO[kind][0])
+		notice.emit("Not enough Simoleons for the %s." % Catalog.INFO[kind][0])
 		return
 	var f := Catalog.create(kind)
 	lot.add_child(f)
@@ -334,55 +340,149 @@ func _set_visible(v: bool) -> void:
 func _build_ui() -> void:
 	_ui = CanvasLayer.new()
 	add_child(_ui)
-	var panel := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.13, 0.2, 0.92)
-	style.set_corner_radius_all(10)
-	style.set_content_margin_all(10)
-	panel.add_theme_stylebox_override("panel", style)
-	panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	panel.position.y = -16
-	_ui.add_child(panel)
+	var root := Control.new()
+	root.theme = UiTheme.get_theme()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui.add_child(root)
 
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	panel.add_child(vbox)
-
+	# Tools along the top centre.
+	var tools_pill := PanelContainer.new()
+	tools_pill.add_theme_stylebox_override("panel", UiTheme.panel_style(28, 6))
+	tools_pill.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	tools_pill.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	tools_pill.position = Vector2(-120, 14)
+	root.add_child(tools_pill)
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 6)
-	vbox.add_child(tools)
+	tools_pill.add_child(tools)
 	var tool_defs := [
-		[Tool.MOVE, "Move", "Pick up an object; click to put it down. R / , . rotate, Delete sells"],
-		[Tool.WALL, "Wall", "Drag along the grid to build walls ($%d each)" % Catalog.WALL_PRICE],
-		[Tool.DOOR, "Door", "Click a wall to add a door ($%d)" % Catalog.DOOR_PRICE],
-		[Tool.DELETE, "Sell", "Click an object or a wall to remove it for a refund"],
+		[Tool.MOVE, "move", "Move objects: click to pick up, click to put down. R rotates, Delete sells."],
+		[Tool.WALL, "wall", "Wall tool: drag along the grid (§%d per segment)" % Catalog.WALL_PRICE],
+		[Tool.DOOR, "door", "Door tool: click a wall to add a door (§%d)" % Catalog.DOOR_PRICE],
+		[Tool.DELETE, "sell", "Sledgehammer: click an object or wall to sell it"],
 	]
 	for d in tool_defs:
-		var b := Button.new()
-		b.text = d[1]
-		b.tooltip_text = d[2]
+		var b := IconButton.make(d[1], 46, d[2])
 		b.toggle_mode = true
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(80, 32)
 		b.pressed.connect(set_tool.bind(d[0]))
 		tools.add_child(b)
 		_tool_buttons[d[0]] = b
 
-	var items := HBoxContainer.new()
-	items.add_theme_constant_override("separation", 6)
-	vbox.add_child(items)
-	for kind in Catalog.KINDS:
-		var b := Button.new()
-		b.text = "%s\n$%d" % [Catalog.INFO[kind][0], Catalog.INFO[kind][1]]
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(110, 48)
-		b.pressed.connect(start_place.bind(kind))
-		items.add_child(b)
+	# Catalogue along the bottom: sections on the left, object tiles to the right.
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UiTheme.panel_style(14, 10))
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	panel.offset_left = 16
+	panel.offset_right = -16
+	panel.offset_bottom = -16
+	root.add_child(panel)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	panel.add_child(row)
 
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", 4)
+	left.custom_minimum_size = Vector2(240, 0)
+	row.add_child(left)
+	var title := UiTheme.title(Label.new(), 18)
+	title.text = "Buy"
+	left.add_child(title)
+	var cats := GridContainer.new()
+	cats.columns = 2
+	cats.add_theme_constant_override("h_separation", 4)
+	cats.add_theme_constant_override("v_separation", 4)
+	left.add_child(cats)
+	for c in Catalog.CATEGORIES:
+		var b := Button.new()
+		b.text = c[1]
+		b.toggle_mode = true
+		b.focus_mode = Control.FOCUS_NONE
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.add_theme_font_size_override("font_size", 13)
+		b.custom_minimum_size = Vector2(118, 0)
+		b.pressed.connect(_show_category.bind(c[0]))
+		cats.add_child(b)
+		_category_buttons[c[0]] = b
+	_funds_label = UiTheme.title(Label.new(), 17)
+	_funds_label.add_theme_color_override("font_color", UiTheme.GREEN_DARK)
+	left.add_child(_funds_label)
+	funds_changed.connect(func(f: int): _funds_label.text = Hud.money(f))
+	_funds_label.text = Hud.money(funds)
+
+	var right := VBoxContainer.new()
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.add_theme_constant_override("separation", 8)
+	row.add_child(right)
+	_tiles_box = HFlowContainer.new()
+	_tiles_box.add_theme_constant_override("h_separation", 8)
+	_tiles_box.add_theme_constant_override("v_separation", 8)
+	right.add_child(_tiles_box)
+	for kind in Catalog.KINDS:
+		_tiles[kind] = _make_tile(kind)
+		_tiles_box.add_child(_tiles[kind])
 	var help := Label.new()
-	help.text = "Right-click or Esc: cancel   R: rotate   Delete: sell held object   F1: back to live mode"
-	help.add_theme_font_size_override("font_size", 12)
-	help.modulate = Color(1, 1, 1, 0.7)
-	vbox.add_child(help)
+	help.text = "Click an item to place it.  Right-click / Esc: cancel   R or , .: rotate   Delete: sell held object   F1: back to Live"
+	help.add_theme_font_size_override("font_size", 13)
+	help.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+	right.add_child(help)
+	_show_category("all")
+
+	_thumbs = Thumbnails.new()
+	add_child(_thumbs)
+	_thumbs.ready_for.connect(func(kind: String, tex: Texture2D):
+		(_tiles[kind].get_meta("image") as TextureRect).texture = tex)
+	_thumbs.render_all.call_deferred(Catalog.KINDS)
+
+
+## A catalogue card: thumbnail, name and price; hover shows details.
+func _make_tile(kind: String) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(112, 128)
+	b.tooltip_text = Catalog.describe(kind)
+	var normal := UiTheme.pill(Color.WHITE, UiTheme.PANEL_EDGE, 10)
+	b.add_theme_stylebox_override("normal", normal)
+	b.add_theme_stylebox_override("hover", UiTheme.pill(UiTheme.HOVER, UiTheme.ACCENT, 10))
+	b.add_theme_stylebox_override("pressed", UiTheme.pill(UiTheme.HOVER, UiTheme.GREEN, 10))
+	b.pressed.connect(start_place.bind(kind))
+	var v := VBoxContainer.new()
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 6
+	v.offset_right = -6
+	v.offset_top = 4
+	v.offset_bottom = -4
+	v.add_theme_constant_override("separation", 0)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(v)
+	var img := TextureRect.new()
+	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	img.custom_minimum_size = Vector2(80, 80)
+	img.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	img.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(img)
+	var name_label := Label.new()
+	name_label.text = Catalog.INFO[kind][0]
+	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.clip_text = true
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(name_label)
+	var price := Label.new()
+	price.text = "§ %d" % Catalog.INFO[kind][1]
+	price.add_theme_font_size_override("font_size", 12)
+	price.add_theme_color_override("font_color", UiTheme.GREEN_DARK)
+	price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	price.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(price)
+	b.set_meta("image", img)
+	return b
+
+
+func _show_category(cat: String) -> void:
+	for c in _category_buttons:
+		(_category_buttons[c] as Button).button_pressed = c == cat
+	for kind in _tiles:
+		(_tiles[kind] as Control).visible = cat == "all" or Catalog.CATEGORY_OF[kind] == cat

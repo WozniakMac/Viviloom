@@ -4,6 +4,9 @@ extends Node3D
 ## Dev flags (after `--`): `--screenshot=<path>` saves a frame after a short scripted
 ## scenario and quits; `--scenario=<menu|sleep|walk>` picks the scenario.
 
+## Where the Create a Sim studio is built, well away from the lot.
+const CAS_STUDIO := Vector3(400, 0, 400)
+
 var lot: Lot
 var sim: Sim
 var rig: CameraRig
@@ -11,6 +14,9 @@ var hud: Hud
 var build: BuildMode
 var _marker: MeshInstance3D
 var _marker_time := 0.0
+var _cas: CreateASim
+var _studio: Node3D
+var _home_position := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -56,6 +62,8 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _cas != null:
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match (event as InputEventKey).keycode:
 			KEY_F1:
@@ -246,6 +254,41 @@ func _check_dev_args() -> void:
 		_run_scenario(scenario, shot)
 	elif scenario == "trace":
 		_trace()
+	elif scenario != "skip_cas":
+		open_create_a_sim()
+
+
+## Shows Create a Sim over a paused game: the Sim stands in a studio away from
+## the lot, centred between the panels.
+func open_create_a_sim() -> void:
+	Clock.set_speed(0)
+	hud.visible = false
+	sim.set_selected(false)
+	_home_position = sim.global_position
+	_studio = CreateASim.make_studio(CAS_STUDIO)
+	add_child(_studio)
+	sim.global_position = CAS_STUDIO
+	# Turned slightly towards the camera, which looks along -Z.
+	sim.rotation.y = PI - 0.25
+	rig.set_locked(true)
+	rig.frame(CAS_STUDIO + Vector3(0, 0.95, 0), 0.0, deg_to_rad(-6.0), 4.6)
+	_cas = CreateASim.new()
+	_cas.name = "CreateASim"
+	add_child(_cas)
+	_cas.setup(sim)
+	_cas.finished.connect(_on_cas_finished)
+
+
+func _on_cas_finished() -> void:
+	_cas = null
+	_studio.queue_free()
+	sim.global_position = _home_position
+	hud.visible = true
+	hud.refresh_identity()
+	sim.set_selected(true)
+	rig.set_locked(false)
+	rig.frame(lot.center(), deg_to_rad(35.0), deg_to_rad(-50.0), 22.0)
+	Clock.set_speed(1)
 
 
 ## Headless smoke run: queue a few actions and log what the Sim does.
@@ -288,6 +331,10 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_interaction(books, books.interactions[1])
 			hud._show_page(1)
 			await get_tree().create_timer(6.0).timeout
+		"cas":
+			open_create_a_sim()
+			_cas.randomize_sim()
+			await get_tree().create_timer(1.0).timeout
 		"build":
 			build.enter()
 			build.set_tool(BuildMode.Tool.WALL)

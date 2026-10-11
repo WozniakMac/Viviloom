@@ -37,6 +37,7 @@ class SimAction:
 @export var shirt_color := Color(0.22, 0.47, 0.82)
 @export var pants_color := Color(0.18, 0.2, 0.28)
 @export var skin_color := Color(0.87, 0.69, 0.55)
+@export var hair_color := Color(0.25, 0.16, 0.1)
 @export var walk_speed := 2.0
 
 var lot: Lot
@@ -65,12 +66,25 @@ var _arm_l: Node3D
 var _arm_r: Node3D
 var _selection_ring: MeshInstance3D
 var _plumbob: MeshInstance3D
+## Materials by part ("shirt", "pants", "skin", "hair") so the look can change later.
+var _materials := {}
 
 
 func _ready() -> void:
 	_build_visual()
 	skills.leveled_up.connect(func(s: String, l: int):
 		announced.emit("%s reached %s level %d!" % [sim_name, Skills.label(s), l]))
+
+
+## Recolours one part of the Sim: "shirt", "pants", "skin" or "hair".
+func set_part_color(part: String, c: Color) -> void:
+	match part:
+		"shirt": shirt_color = c
+		"pants": pants_color = c
+		"skin": skin_color = c
+		"hair": hair_color = c
+	if _materials.has(part):
+		(_materials[part] as StandardMaterial3D).albedo_color = c
 
 
 ## Replaces the Sim's traits and their lasting moodlets.
@@ -315,7 +329,7 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 	if i.earns > 0 and finished:
 		var amount := i.earns + i.earns_per_level * lvl
 		earned.emit(amount)
-		announced.emit("%s sold their work for $%d." % [sim_name, amount])
+		announced.emit("%s sold their painting for §%d." % [sim_name, amount])
 
 
 func _end_perform(a: SimAction, finished := false) -> void:
@@ -420,6 +434,7 @@ func _build_visual() -> void:
 	var shirt := _mat(shirt_color)
 	var pants := _mat(pants_color)
 	var skin := _mat(skin_color)
+	_materials = {"shirt": shirt, "pants": pants, "skin": skin, "hair": _mat(hair_color)}
 
 	_leg_l = _limb(Vector3(-0.1, 0.9, 0), 0.085, 0.9, pants)
 	_leg_r = _limb(Vector3(0.1, 0.9, 0), 0.085, 0.9, pants)
@@ -452,8 +467,15 @@ func _build_visual() -> void:
 	hair_mesh.is_hemisphere = true
 	hair.mesh = hair_mesh
 	hair.position = Vector3(0, 1.69, 0.015)
-	hair.material_override = _mat(Color(0.25, 0.16, 0.1))
+	hair.material_override = _materials["hair"]
 	_body.add_child(hair)
+
+	# Face: eyes, brows and a mouth (the front of the head is -Z).
+	for x in [-0.052, 0.052]:
+		_face_part(SphereMesh.new(), Vector3(0.034, 0.03, 0.02), Vector3(x, 1.685, -0.128), Color(0.97, 0.97, 0.95))
+		_face_part(SphereMesh.new(), Vector3(0.018, 0.02, 0.012), Vector3(x, 1.685, -0.139), Color(0.12, 0.08, 0.06))
+		_face_part(BoxMesh.new(), Vector3(0.045, 0.01, 0.01), Vector3(x, 1.722, -0.13), Color(0.0, 0.0, 0.0), "hair")
+	_face_part(BoxMesh.new(), Vector3(0.06, 0.012, 0.01), Vector3(0, 1.59, -0.13), Color(0.6, 0.25, 0.25))
 
 	# Nose, so facing direction is readable from the camera.
 	var nose := MeshInstance3D.new()
@@ -498,10 +520,26 @@ func _build_visual() -> void:
 		piece.position.y = 0.1 * half if half > 0.0 else -0.065
 		piece.material_override = gem_mat
 		piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# Layer 2 keeps the plumbob out of the portrait camera.
+		piece.layers = 2
 		_plumbob.add_child(piece)
 	_plumbob.top_level = true
 	_plumbob.visible = false
 	add_child(_plumbob)
+
+
+## Adds a small face feature; `part` makes it follow that part's colour.
+func _face_part(mesh: PrimitiveMesh, scale_: Vector3, pos: Vector3, color: Color, part := "") -> void:
+	if mesh is SphereMesh:
+		(mesh as SphereMesh).radius = 0.5
+		(mesh as SphereMesh).height = 1.0
+	var m := MeshInstance3D.new()
+	m.mesh = mesh
+	m.scale = scale_
+	m.position = pos
+	m.material_override = _materials[part] if part != "" else _mat(color)
+	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_body.add_child(m)
 
 
 func _limb(pivot_pos: Vector3, radius: float, length: float, mat: Material) -> Node3D:

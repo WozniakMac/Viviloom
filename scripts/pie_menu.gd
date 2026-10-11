@@ -1,11 +1,11 @@
 class_name PieMenu
 extends Control
-## A radial menu of interaction choices that opens around the cursor.
-## Clicking outside the options closes it.
+## Interaction choices as white pills arranged in a ring around the cursor, with the
+## object's name in the middle. Clicking outside the options closes it.
 
 signal chosen(index: int)
 
-const RADIUS := 110.0
+const RADIUS := 105.0
 
 var _items: Array[Control] = []
 
@@ -19,29 +19,49 @@ func _ready() -> void:
 func open(at: Vector2, title: String, options: Array[String]) -> void:
 	_clear()
 	var vp := get_viewport_rect().size
-	at = Vector2(clampf(at.x, RADIUS + 110, vp.x - RADIUS - 110), clampf(at.y, RADIUS + 100, vp.y - RADIUS - 40))
+	at = Vector2(clampf(at.x, RADIUS + 120, vp.x - RADIUS - 120), clampf(at.y, RADIUS + 60, vp.y - RADIUS - 60))
 
-	var center := _make_label(title)
+	var center := Label.new()
+	center.text = title
+	center.add_theme_font_size_override("font_size", 15)
+	center.add_theme_color_override("font_color", Color.WHITE)
+	center.add_theme_color_override("font_outline_color", Color(0.05, 0.12, 0.3, 0.85))
+	center.add_theme_constant_override("outline_size", 5)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_place(center, at)
 
 	var n := options.size()
 	for i in n:
-		# Start at the top and go clockwise.
+		# Start at the top and go clockwise; two options sit left and right.
 		var angle := -PI * 0.5 + TAU * i / maxi(n, 1)
 		if n == 2:
 			angle = PI if i == 0 else 0.0
-		elif n == 1:
-			angle = -PI * 0.5
 		var b := Button.new()
 		b.text = options[i]
 		b.focus_mode = Control.FOCUS_NONE
 		b.add_theme_font_size_override("font_size", 15)
-		var normal := _style(Color(0.13, 0.2, 0.33, 0.95))
+		var normal := UiTheme.pill(Color(1, 1, 1, 0.97), UiTheme.PANEL_EDGE, 18)
+		normal.shadow_color = Color(0.05, 0.12, 0.3, 0.3)
+		normal.shadow_size = 4
+		normal.shadow_offset = Vector2(0, 2)
 		b.add_theme_stylebox_override("normal", normal)
-		b.add_theme_stylebox_override("hover", _style(Color(0.22, 0.42, 0.7, 0.98)))
-		b.add_theme_stylebox_override("pressed", _style(Color(0.3, 0.55, 0.85, 1.0)))
+		var hover := normal.duplicate() as StyleBoxFlat
+		hover.bg_color = UiTheme.HOVER
+		hover.border_color = UiTheme.ACCENT
+		hover.set_border_width_all(2)
+		b.add_theme_stylebox_override("hover", hover)
+		var pressed := hover.duplicate() as StyleBoxFlat
+		pressed.bg_color = UiTheme.ACCENT
+		b.add_theme_stylebox_override("pressed", pressed)
 		b.pressed.connect(_on_pressed.bind(i))
-		_place(b, at + Vector2(cos(angle), sin(angle)) * RADIUS)
+		_place(b, at + Vector2(cos(angle), sin(angle)) * Vector2(RADIUS * 1.25, RADIUS))
+		# Pop in from the centre.
+		var target := b.position
+		b.position = at - b.size * 0.5
+		b.modulate.a = 0.0
+		var tw := b.create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(b, "position", target, 0.16)
+		tw.tween_property(b, "modulate:a", 1.0, 0.12)
 	visible = true
 
 
@@ -66,29 +86,6 @@ func _place(c: Control, center_pos: Vector2) -> void:
 	_items.append(c)
 	c.reset_size()
 	c.position = center_pos - c.size * 0.5
-
-
-func _make_label(text: String) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", 17)
-	l.add_theme_color_override("font_outline_color", Color.BLACK)
-	l.add_theme_constant_override("outline_size", 5)
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return l
-
-
-func _style(color: Color) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color = color
-	s.set_corner_radius_all(18)
-	s.content_margin_left = 16
-	s.content_margin_right = 16
-	s.content_margin_top = 8
-	s.content_margin_bottom = 8
-	s.border_color = Color(1, 1, 1, 0.5)
-	s.set_border_width_all(1)
-	return s
 
 
 func _clear() -> void:
