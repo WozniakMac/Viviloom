@@ -19,6 +19,7 @@ var _studio: Node3D
 var _home_position := Vector3.ZERO
 var visitors: Visitors
 var work: Work
+var daylight: Daylight
 var aspirations: AspirationTracker
 
 
@@ -135,6 +136,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Opens the interaction pie menu for `f` at a screen position.
 func open_menu(f: Furniture, screen_pos: Vector2) -> void:
+	if f.interactions.is_empty():
+		return
 	var names: Array[String] = []
 	for i in f.interactions:
 		names.append(i.name)
@@ -277,6 +280,9 @@ func _place_house(layout := "cottage") -> void:
 	_place("chess", Vector2i(11, 8))
 	_place("toilet", Vector2i(4, 10), 2)
 	_place("shower", Vector2i(6, 10), 2)
+	_place("lamp", Vector2i(7, 3))
+	_place("lamp", Vector2i(14, 7))
+	_place("lamp", Vector2i(5, 9))
 
 
 ## A compact one-room home with a bathroom corner.
@@ -301,6 +307,8 @@ func _place_studio() -> void:
 	_place("desk", Vector2i(13, 8))
 	_place("toilet", Vector2i(6, 10), 2)
 	_place("shower", Vector2i(8, 10), 2)
+	_place("lamp", Vector2i(10, 5))
+	_place("lamp", Vector2i(15, 9))
 
 
 func _place_walls() -> void:
@@ -358,6 +366,13 @@ func _setup_environment() -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
 	add_child(sun)
+
+	daylight = Daylight.new()
+	daylight.name = "Daylight"
+	daylight.env = env
+	daylight.sky_mat = sky_mat
+	daylight.sun = sun
+	add_child(daylight)
 
 
 func _check_dev_args() -> void:
@@ -455,6 +470,10 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_go(lot.cell_to_world(Vector2i(10, 14)))
 			await get_tree().create_timer(2.5).timeout
 			open_menu(find_furniture("bed"), rig.camera.unproject_position(find_furniture("bed").global_position + Vector3.UP))
+		"night", "dusk":
+			Clock.total_minutes = (22.0 if scenario == "night" else 19.4) * 60.0
+			Clock.set_speed(0)
+			await get_tree().create_timer(1.0).timeout
 		"sleep":
 			Clock.set_speed(3)
 			sim.needs.set_value("energy", 30.0)

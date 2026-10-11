@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp"]
 
 ## Display name and price for the build-mode catalogue.
 const INFO := {
@@ -15,12 +15,13 @@ const INFO := {
 	"bookshelf": ["Bookshelf", 250],
 	"easel": ["Easel", 350],
 	"chess": ["Chess Table", 400],
+	"lamp": ["Floor Lamp", 120],
 }
 ## Build-mode catalogue sections: [id, label]; "all" lists everything.
 const CATEGORIES := [["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"]]
 const CATEGORY_OF := {
 	"bed": "bedroom", "fridge": "kitchen", "toilet": "bathroom", "shower": "bathroom",
-	"tv": "fun", "desk": "fun", "chess": "hobby", "easel": "hobby", "bookshelf": "hobby",
+	"tv": "fun", "desk": "fun", "chess": "hobby", "easel": "hobby", "bookshelf": "hobby", "lamp": "bedroom",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -32,6 +33,7 @@ const DESCRIPTIONS := {
 	"bookshelf": "Browse for inspiration or study for the brain.",
 	"easel": "Paint, improve, sell. Repeat.",
 	"chess": "Practise chess and sharpen your logic.",
+	"lamp": "A warm glow for the evenings. Switches on by itself at dusk.",
 }
 const WALL_PRICE := 14
 const DOOR_PRICE := 150
@@ -199,6 +201,33 @@ static func create(kind: String) -> Furniture:
 			f.interactions = [
 				Interaction.new("Practise Chess", {"fun": 30.0}, 120.0, "fun", "sit", true).practices("logic", 70.0).grants("chess_focus", "focused", 1, "Sharp Thinking", "Thinking several moves ahead.", 120.0),
 			]
+		"lamp":
+			f.display_name = "Floor Lamp"
+			f.height = 1.7
+			f.add_box(Vector3(0.35, 0.04, 0.35), Vector3(0, 0.02, 0), DARK)
+			f.add_box(Vector3(0.04, 1.45, 0.04), Vector3(0, 0.74, 0), DARK)
+			var shade_mesh := CylinderMesh.new()
+			shade_mesh.top_radius = 0.14
+			shade_mesh.bottom_radius = 0.24
+			shade_mesh.height = 0.3
+			var shade := MeshInstance3D.new()
+			shade.name = "Shade"
+			shade.mesh = shade_mesh
+			shade.position = Vector3(0, 1.5, 0)
+			var shade_mat := StandardMaterial3D.new()
+			shade_mat.albedo_color = Color(0.96, 0.9, 0.78)
+			shade.material_override = shade_mat
+			f.add_child(shade)
+			var glow := OmniLight3D.new()
+			glow.name = "Glow"
+			glow.position = Vector3(0, 1.4, 0)
+			glow.light_color = Color(1.0, 0.82, 0.6)
+			glow.light_energy = 1.6
+			glow.omni_range = 6.5
+			glow.shadow_enabled = false
+			glow.visible = false
+			f.add_child(glow)
+			f.add_to_group("lamps")
 		_:
 			push_error("Unknown furniture kind: %s" % kind)
 	f.price = INFO[kind][1]

@@ -23,6 +23,24 @@ var use_facing := Vector3(0, 0, 1)
 var user: Node3D = null
 
 
+func _ready() -> void:
+	if is_in_group("lamps"):
+		set_lit(Daylight.lit_now)
+
+
+## For lamps: turns the light and the glowing shade on or off.
+func set_lit(on: bool) -> void:
+	var glow := get_node_or_null("Glow") as OmniLight3D
+	if glow != null:
+		glow.visible = on
+	var shade := get_node_or_null("Shade") as MeshInstance3D
+	if shade != null:
+		var mat := shade.material_override as StandardMaterial3D
+		mat.emission_enabled = on
+		mat.emission = Color(1.0, 0.8, 0.5)
+		mat.emission_energy_multiplier = 1.4
+
+
 func rotated_footprint() -> Vector2i:
 	return footprint if rot_steps % 2 == 0 else Vector2i(footprint.y, footprint.x)
 

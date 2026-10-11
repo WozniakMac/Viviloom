@@ -603,6 +603,12 @@ func _build_sim_cluster() -> void:
 	_portrait_cam.far = 30.0
 	_portrait_cam.cull_mask = 1
 	vp.add_child(_portrait_cam)
+	# A soft fill light travels with the portrait camera so the face reads at night.
+	var fill := OmniLight3D.new()
+	fill.omni_range = 1.6
+	fill.light_energy = 0.7
+	fill.light_color = Color(1.0, 0.96, 0.9)
+	_portrait_cam.add_child(fill)
 	_portrait_cam.current = true
 	_portrait_rect = TextureRect.new()
 	_portrait_rect.texture = vp.get_texture()

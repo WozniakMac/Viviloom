@@ -21,6 +21,7 @@ func _ready() -> void:
 	_test_career_day()
 	_test_aspiration_goals()
 	_test_clear_build()
+	_test_daylight()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -282,3 +283,10 @@ func _test_clear_build() -> void:
 	_check(lot.walls.is_empty() and lot.furniture.is_empty(), "clearing removes walls and objects")
 	_check(lot.is_walkable(Vector2i(10, 10)) and lot.is_walkable(Vector2i(4, 4)), "cleared tiles are walkable again")
 	lot.free()
+
+
+func _test_daylight() -> void:
+	_check(Daylight.sun_height(13.0) > 0.9, "the sun is high around 1 PM")
+	_check(not Daylight.is_dark(18.5), "evenings stay light until sunset")
+	_check(Daylight.is_dark(22.0) and Daylight.is_dark(3.0), "nights are dark")
+	_check(Daylight.sun_height(20.0) < 0.05 and Daylight.sun_height(6.0) < 0.05, "sunrise and sunset sit on the horizon")
