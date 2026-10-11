@@ -231,6 +231,7 @@ static func create(kind: String) -> Furniture:
 		_:
 			push_error("Unknown furniture kind: %s" % kind)
 	f.price = INFO[kind][1]
+	_use_model(f, kind)
 	f.build_collider()
 	return f
 
@@ -239,3 +240,25 @@ static func _find_job() -> Interaction:
 	var i := Interaction.new("Find a Job", {}, 20.0, "", "sit", true)
 	i.opens_panel = "career"
 	return i
+
+
+## Swaps the placeholder boxes for the Blender model (tools/make_objects.py) when one
+## exists. Lamps keep their light; the model's shade becomes the glowing "Shade".
+static func _use_model(f: Furniture, kind: String) -> void:
+	var path := "res://assets/objects/%s.glb" % kind
+	if not ResourceLoader.exists(path):
+		return
+	for c in f.get_children():
+		if c is MeshInstance3D:
+			f.remove_child(c)
+			c.free()
+	var model := (load(path) as PackedScene).instantiate()
+	f.add_child(model)
+	var shade := model.find_child("Shade", true, false) as MeshInstance3D
+	if shade != null:
+		shade.get_parent().remove_child(shade)
+		shade.name = "Shade"
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.97, 0.9, 0.76)
+		shade.material_override = m
+		f.add_child(shade)
