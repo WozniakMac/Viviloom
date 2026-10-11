@@ -19,7 +19,7 @@ func _ready() -> void:
 func open(at: Vector2, title: String, options: Array[String]) -> void:
 	_clear()
 	var vp := get_viewport_rect().size
-	at = Vector2(clampf(at.x, RADIUS + 110, vp.x - RADIUS - 110), clampf(at.y, RADIUS + 40, vp.y - RADIUS - 40))
+	at = Vector2(clampf(at.x, RADIUS + 110, vp.x - RADIUS - 110), clampf(at.y, RADIUS + 100, vp.y - RADIUS - 40))
 
 	var center := _make_label(title)
 	_place(center, at)
@@ -28,7 +28,9 @@ func open(at: Vector2, title: String, options: Array[String]) -> void:
 	for i in n:
 		# Start at the top and go clockwise.
 		var angle := -PI * 0.5 + TAU * i / maxi(n, 1)
-		if n == 1:
+		if n == 2:
+			angle = PI if i == 0 else 0.0
+		elif n == 1:
 			angle = -PI * 0.5
 		var b := Button.new()
 		b.text = options[i]

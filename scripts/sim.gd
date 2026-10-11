@@ -84,6 +84,13 @@ func move_to(target: Vector3) -> bool:
 	return true
 
 
+## Drops every queued action (used when entering build mode).
+func clear_queue() -> void:
+	while not queue.is_empty():
+		cancel(queue.size() - 1)
+	stop()
+
+
 func stop() -> void:
 	path = PackedVector3Array()
 	_path_index = 0
@@ -192,7 +199,7 @@ func _start(a: SimAction) -> void:
 	var best := PackedVector3Array()
 	var best_len := INF
 	for s in f.world_spots():
-		if not lot.is_walkable(lot.world_to_cell(s)):
+		if not lot.is_walkable(lot.world_to_cell(s)) or lot.crosses_wall(s, f.global_position):
 			continue
 		var p := lot.find_path(global_position, s)
 		if p.is_empty():

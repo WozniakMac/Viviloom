@@ -12,6 +12,7 @@ var rot_steps := 0
 ## Top-left tile of the (rotated) footprint on the lot.
 var cell := Vector2i.ZERO
 var height := 1.0
+var price := 0
 var interactions: Array[Interaction] = []
 ## Local positions where a Sim stands to start using the object.
 var spots: Array[Vector3] = []
@@ -64,3 +65,9 @@ func build_collider() -> void:
 	shape.position = Vector3(0, height * 0.5, 0)
 	body.add_child(shape)
 	add_child(body)
+
+
+## See-through look while the object is being placed or moved.
+func set_ghost(ghost: bool) -> void:
+	for c in find_children("*", "MeshInstance3D", true, false):
+		(c as MeshInstance3D).transparency = 0.45 if ghost else 0.0

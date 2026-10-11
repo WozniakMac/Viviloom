@@ -4,6 +4,18 @@ extends RefCounted
 
 const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk"]
 
+## Display name and price for the build-mode catalogue.
+const INFO := {
+	"bed": ["Double Bed", 1100],
+	"fridge": ["Fridge", 800],
+	"toilet": ["Toilet", 300],
+	"shower": ["Shower", 650],
+	"tv": ["Television", 500],
+	"desk": ["Computer Desk", 450],
+}
+const WALL_PRICE := 14
+const DOOR_PRICE := 150
+
 const WHITE := Color(0.93, 0.93, 0.9)
 const WOOD := Color(0.55, 0.38, 0.24)
 const DARK := Color(0.12, 0.12, 0.14)
@@ -101,5 +113,6 @@ static func create(kind: String) -> Furniture:
 			]
 		_:
 			push_error("Unknown furniture kind: %s" % kind)
+	f.price = INFO[kind][1]
 	f.build_collider()
 	return f

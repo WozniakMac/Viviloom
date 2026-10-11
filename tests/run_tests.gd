@@ -1,19 +1,21 @@
-extends SceneTree
-## Headless logic tests. Run with:
-##   Godot_console.exe --headless --path . -s res://tests/run_tests.gd
+extends Node
+## Headless logic tests, run as a scene so autoloads exist:
+##   Godot_console.exe --headless --path . res://tests/run_tests.tscn
 
 var _failures := 0
 
 
-func _init() -> void:
+func _ready() -> void:
 	_test_path_avoids_obstacles()
 	_test_unreachable_goal()
 	_test_blocked_goal_snaps_to_neighbour()
 	_test_needs_decay()
 	_test_needs_activity_rates()
 	_test_autonomy_prefers_urgent_need()
+	_test_walls_and_doors()
+	_test_placement_rules()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
-	quit(1 if _failures > 0 else 0)
+	get_tree().quit(1 if _failures > 0 else 0)
 
 
 func _check(cond: bool, msg: String) -> void:
@@ -91,3 +93,52 @@ func _test_autonomy_prefers_urgent_need() -> void:
 	_check(Autonomy.score(needs, toilet) > Autonomy.score(needs, tv), "nearly empty bladder beats moderate fun")
 	needs.set_value("bladder", 95.0)
 	_check(Autonomy.score(needs, toilet) == 0.0, "satisfied needs are not advertised")
+
+
+func _test_walls_and_doors() -> void:
+	var lot := _make_lot()
+	# A full-width wall along line z = 8, splitting the lot in two.
+	for e in Lot.wall_run(Vector2i(0, 8), Vector2i(16, 8)):
+		lot.add_wall(e)
+	var a := lot.cell_to_world(Vector2i(3, 3))
+	var b := lot.cell_to_world(Vector2i(3, 12))
+	_check(lot.find_path(a, b).is_empty(), "a solid wall cuts the lot in two")
+	_check(lot.crosses_wall(a, b), "segment through the wall is detected")
+	lot.add_door(Vector3i(10, 8, 0))
+	var path := lot.find_path(a, b)
+	_check(not path.is_empty(), "a door makes the other side reachable")
+	var prev := a
+	var through_door := false
+	for p in path:
+		_check(not lot.crosses_wall(prev, p), "path segments never pass through walls")
+		if prev.z < 8.0 and p.z > 8.0:
+			var x := lerpf(prev.x, p.x, (8.0 - prev.z) / (p.z - prev.z))
+			through_door = x > 10.0 and x < 11.0
+		prev = p
+	_check(through_door, "path crosses the wall line at the door")
+	var box := _make_lot()
+	for r in [[Vector2i(2, 2), Vector2i(6, 2)], [Vector2i(2, 6), Vector2i(6, 6)], [Vector2i(2, 2), Vector2i(2, 6)], [Vector2i(6, 2), Vector2i(6, 6)]]:
+		for e in Lot.wall_run(r[0], r[1]):
+			box.add_wall(e)
+	box.add_door(Vector3i(3, 6, 0))
+	_check(box.is_indoors(Vector2i(4, 4)), "tiles inside four walls are indoors")
+	_check(not box.is_indoors(Vector2i(8, 8)), "tiles outside are not")
+	box.free()
+	lot.free()
+
+
+func _test_placement_rules() -> void:
+	var lot := _make_lot()
+	var bed := Furniture.new()
+	bed.footprint = Vector2i(2, 2)
+	_check(lot.can_place(bed, Vector2i(2, 2), 0), "free area accepts a bed")
+	lot.add_wall(Vector3i(3, 2, 1))
+	_check(not lot.can_place(bed, Vector2i(2, 2), 0), "objects cannot straddle a wall")
+	_check(not lot.can_place(bed, Vector2i(15, 2), 0), "objects must stay inside the lot")
+	lot.place_furniture(bed, Vector2i(6, 6), 0)
+	_check(not lot.is_walkable(Vector2i(7, 7)), "placed objects block their tiles")
+	_check(not lot.add_wall(Vector3i(7, 6, 1)), "walls cannot cut through an object")
+	lot.remove_furniture(bed)
+	_check(lot.is_walkable(Vector2i(7, 7)), "removing frees the tiles")
+	bed.free()
+	lot.free()

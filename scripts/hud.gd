@@ -15,6 +15,11 @@ var _notice: Label
 var _notice_time := 0.0
 var _speed_buttons: Array[Button] = []
 var _autonomy_button: Button
+var _hint: Label
+var _funds_label: Label
+var _mode_buttons: Array[Button] = []
+var _walls_button: Button
+var build: BuildMode
 
 
 func _ready() -> void:
@@ -23,10 +28,34 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	var hint := _outlined_label("Click ground: walk   Click object: interact   Click queued action: cancel   P/0-3: speed   WASD: pan   Q/E: rotate   Wheel: zoom")
-	hint.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	hint.position = Vector2(16, -36)
-	root.add_child(hint)
+	_hint = _outlined_label("Click ground: walk   Click object: interact   Click queued action: cancel   P/0-3: speed   F3: build   WASD: pan   Q/E: rotate   Wheel: zoom")
+	_hint.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_hint.position = Vector2(16, -36)
+	root.add_child(_hint)
+
+	var top_right := HBoxContainer.new()
+	top_right.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	top_right.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	top_right.position = Vector2(-16, 16)
+	top_right.add_theme_constant_override("separation", 6)
+	root.add_child(top_right)
+	_funds_label = _outlined_label("")
+	_funds_label.add_theme_font_size_override("font_size", 20)
+	top_right.add_child(_funds_label)
+	_walls_button = Button.new()
+	_walls_button.focus_mode = Control.FOCUS_NONE
+	_walls_button.tooltip_text = "Wall view (V)"
+	_walls_button.custom_minimum_size = Vector2(130, 32)
+	top_right.add_child(_walls_button)
+	for m in [["Live", "Live mode (F1)"], ["Build", "Build mode (F3)"]]:
+		var b := Button.new()
+		b.text = m[0]
+		b.tooltip_text = m[1]
+		b.toggle_mode = true
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(70, 32)
+		top_right.add_child(b)
+		_mode_buttons.append(b)
 
 	_queue_box = HBoxContainer.new()
 	_queue_box.position = Vector2(16, 16)
@@ -74,6 +103,32 @@ func _ready() -> void:
 	pie_menu = PieMenu.new()
 	pie_menu.name = "PieMenu"
 	root.add_child(pie_menu)
+
+
+func set_build(b: BuildMode, lot: Lot) -> void:
+	build = b
+	_mode_buttons[0].pressed.connect(build.exit)
+	_mode_buttons[1].pressed.connect(build.enter)
+	_walls_button.pressed.connect(func():
+		lot.wall_view = ((lot.wall_view + 1) % 3) as Lot.WallView
+		refresh_walls_button(lot))
+	build.funds_changed.connect(func(f: int): _funds_label.text = "$%s" % _thousands(f))
+	build.notice.connect(show_notice)
+	_funds_label.text = "$%s" % _thousands(build.funds)
+	refresh_walls_button(lot)
+
+
+func refresh_walls_button(lot: Lot) -> void:
+	_walls_button.text = ["Walls: Up", "Walls: Cutaway", "Walls: Down"][lot.wall_view]
+
+
+static func _thousands(n: int) -> String:
+	var s := str(absi(n))
+	var out := ""
+	while s.length() > 3:
+		out = "," + s.substr(s.length() - 3) + out
+		s = s.substr(0, s.length() - 3)
+	return ("-" if n < 0 else "") + s + out
 
 
 func set_sim(s: Sim) -> void:
@@ -136,6 +191,13 @@ func _process(delta: float) -> void:
 		_notice_time -= delta
 		_notice.modulate.a = clampf(_notice_time, 0.0, 1.0)
 	_clock_label.text = "%s  %s   Day %d" % [Clock.weekday_name(), Clock.time_string(), Clock.day()]
+	if build != null:
+		_mode_buttons[0].button_pressed = not build.active
+		_mode_buttons[1].button_pressed = build.active
+		_hint.visible = not build.active
+		_queue_box.visible = not build.active
+		if build.active and pie_menu.visible:
+			pie_menu.close()
 	if sim == null:
 		return
 	_name_label.text = "%s  ·  %s" % [sim.sim_name, sim.needs.mood()]

@@ -8,6 +8,7 @@ var lot: Lot
 var sim: Sim
 var rig: CameraRig
 var hud: Hud
+var build: BuildMode
 var _marker: MeshInstance3D
 var _marker_time := 0.0
 
@@ -40,10 +41,33 @@ func _ready() -> void:
 	hud.name = "Hud"
 	add_child(hud)
 	hud.set_sim(sim)
+
+	build = BuildMode.new()
+	build.name = "BuildMode"
+	build.lot = lot
+	build.sim = sim
+	build.camera = rig.camera
+	add_child(build)
+	hud.set_build(build, lot)
 	_check_dev_args()
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		match (event as InputEventKey).keycode:
+			KEY_F1:
+				build.exit()
+				return
+			KEY_F2, KEY_F3, KEY_B:
+				build.enter()
+				return
+			KEY_V:
+				lot.wall_view = ((lot.wall_view + 1) % 3) as Lot.WallView
+				hud.refresh_walls_button(lot)
+				return
+	if build.active:
+		build.handle_input(event)
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match (event as InputEventKey).keycode:
 			KEY_P, KEY_0, KEY_KP_0:
@@ -89,6 +113,9 @@ func _furniture_at(screen_pos: Vector2) -> Furniture:
 
 
 func _process(delta: float) -> void:
+	lot.update_walls(rig.camera.global_position, rig.global_position, delta)
+	var people: Array[Vector3] = [sim.global_position]
+	lot.update_doors(people, delta)
 	if _marker.visible:
 		_marker_time += delta
 		_marker.scale = Vector3.ONE * (1.0 + 0.15 * sin(_marker_time * 6.0))
@@ -130,8 +157,9 @@ func _build_marker() -> void:
 
 
 func _place_house() -> void:
-	# A floor slab for the house; walls arrive with build mode.
+	# A small starter house: floor, walls with two doors, and basic furniture.
 	lot.add_floor(Rect2i(3, 2, 15, 10), Color(0.62, 0.48, 0.34))
+	_place_walls()
 	_place("bed", Vector2i(4, 3))
 	_place("desk", Vector2i(8, 3))
 	_place("tv", Vector2i(12, 3))
@@ -141,6 +169,23 @@ func _place_house() -> void:
 	var hedge := Color(0.18, 0.38, 0.16)
 	lot.add_block(Rect2i(1, 16, 6, 1), 0.9, hedge, "HedgeFrontWest")
 	lot.add_block(Rect2i(15, 16, 7, 1), 0.9, hedge, "HedgeFrontEast")
+
+
+func _place_walls() -> void:
+	# Outer walls around the floor, plus a bathroom in the south-west corner.
+	var runs := [
+		[Vector2i(3, 2), Vector2i(18, 2)],
+		[Vector2i(3, 12), Vector2i(18, 12)],
+		[Vector2i(3, 2), Vector2i(3, 12)],
+		[Vector2i(18, 2), Vector2i(18, 12)],
+		[Vector2i(3, 8), Vector2i(8, 8)],
+		[Vector2i(8, 8), Vector2i(8, 12)],
+	]
+	for r in runs:
+		for e in Lot.wall_run(r[0], r[1]):
+			lot.add_wall(e)
+	lot.add_door(Vector3i(10, 12, 0))
+	lot.add_door(Vector3i(7, 8, 0))
 
 
 func _place(kind: String, at: Vector2i, rot := 0) -> Furniture:
@@ -225,6 +270,14 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_interaction(find_furniture("bed"), find_furniture("bed").interactions[0])
 			sim.queue_interaction(find_furniture("toilet"), find_furniture("toilet").interactions[0])
 			await get_tree().create_timer(2.5).timeout
+		"build":
+			build.enter()
+			build.set_tool(BuildMode.Tool.WALL)
+			for e in Lot.wall_run(Vector2i(12, 8), Vector2i(18, 8)):
+				lot.add_wall(e)
+			build.start_place("tv")
+			build._refresh_overlays(Vector3(15.0, 0.0, 10.0))
+			await get_tree().create_timer(1.0).timeout
 		_:
 			sim.queue_go(lot.cell_to_world(Vector2i(20, 8)))
 			await get_tree().create_timer(3.0).timeout
