@@ -179,6 +179,59 @@ func queue_go(target: Vector3) -> bool:
 	return _enqueue(a)
 
 
+## Everything about this Sim that a save game needs. Relationships are stored by
+## the other Sim's name.
+func to_dict() -> Dictionary:
+	var moods: Array = []
+	for m in emotions.moodlets:
+		# Trait and need moodlets are rebuilt from traits and needs on load.
+		if m.id.begins_with("trait_") or m.id.begins_with("need_"):
+			continue
+		moods.append([m.id, m.emotion, m.weight, m.label, m.description, m.remaining if m.remaining != INF else -1.0])
+	var rels := {}
+	for o in relationships:
+		if is_instance_valid(o):
+			rels[o.sim_name] = [relationships[o].x, relationships[o].y]
+	return {
+		"name": sim_name,
+		"colors": {"shirt": shirt_color.to_html(), "pants": pants_color.to_html(), "skin": skin_color.to_html(), "hair": hair_color.to_html()},
+		"traits": traits,
+		"aspiration": aspiration,
+		"needs": needs.values.duplicate(),
+		"skills": skills.xp.duplicate(),
+		"moodlets": moods,
+		"stats": stats.duplicate(),
+		"position": [global_position.x, global_position.z],
+		"relationships": rels,
+	}
+
+
+func from_dict(d: Dictionary, others: Array) -> void:
+	sim_name = d.get("name", sim_name)
+	for part in d.get("colors", {}):
+		set_part_color(part, Color.html(d["colors"][part]))
+	var t: Array[String] = []
+	for x in d.get("traits", []):
+		t.append(x)
+	set_traits(t)
+	aspiration = d.get("aspiration", aspiration)
+	for n in d.get("needs", {}):
+		needs.set_value(n, d["needs"][n])
+	for s in d.get("skills", {}):
+		skills.xp[s] = d["skills"][s]
+	for m in d.get("moodlets", []):
+		emotions.add(m[0], m[1], int(m[2]), m[3], m[4], INF if m[5] < 0.0 else m[5])
+	stats = d.get("stats", {}).duplicate()
+	var pos: Array = d.get("position", [global_position.x, global_position.z])
+	global_position = Vector3(pos[0], 0.0, pos[1])
+	relationships.clear()
+	for o in others:
+		if o != self and d.get("relationships", {}).has(o.sim_name):
+			var r: Array = d["relationships"][o.sim_name]
+			relationships[o] = Vector2(r[0], r[1])
+	relationships_changed.emit()
+
+
 func count_stat(stat: String, amount := 1) -> void:
 	stats[stat] = stats.get(stat, 0) + amount
 

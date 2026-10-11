@@ -21,6 +21,10 @@ var visitors: Visitors
 var work: Work
 var daylight: Daylight
 var aspirations: AspirationTracker
+## Which neighbourhood home is on the lot (its floor plan).
+var home_id := "cottage"
+var _menu: CanvasLayer
+var _menu_orbit := false
 
 
 func _ready() -> void:
@@ -85,11 +89,18 @@ func _ready() -> void:
 	add_child(aspirations)
 	aspirations.setup(sim, build, work)
 	hud.set_aspirations(aspirations)
+	hud.menu_requested.connect(func():
+		if _menu == null and _cas == null:
+			open_game_menu())
 	_check_dev_args()
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _cas != null:
+	if _cas != null or _menu != null:
+		return
+	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_ESCAPE and not build.active:
+		open_game_menu()
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match (event as InputEventKey).keycode:
@@ -212,6 +223,8 @@ func _furniture_at(screen_pos: Vector2) -> Furniture:
 
 
 func _process(delta: float) -> void:
+	if _menu_orbit:
+		rig.frame(lot.center(), rig.yaw + delta * 0.08, deg_to_rad(-32.0), 30.0)
 	lot.update_walls(rig.camera.global_position, rig.global_position, delta)
 	var people: Array[Vector3] = []
 	for s in lot.sims:
@@ -259,17 +272,15 @@ func _build_marker() -> void:
 
 ## Builds one of the neighbourhood's homes on the lot (see Neighbourhood.LOTS).
 func _place_house(layout := "cottage") -> void:
-	var hedge := Color(0.18, 0.38, 0.16)
-	lot.add_block(Rect2i(1, 16, 6, 1), 0.9, hedge, "HedgeFrontWest")
-	lot.add_block(Rect2i(15, 16, 7, 1), 0.9, hedge, "HedgeFrontEast")
+	home_id = layout
+	_place_grounds(layout)
 	match layout:
 		"studio":
 			_place_studio()
 			return
 		"empty":
 			return
-	# A small starter house: floor, walls with two doors, and basic furniture.
-	lot.add_floor(Rect2i(3, 2, 15, 10), Color(0.62, 0.48, 0.34))
+	# A small starter house: walls with two doors, and basic furniture.
 	_place_walls()
 	_place("bed", Vector2i(4, 3))
 	_place("desk", Vector2i(8, 3))
@@ -285,9 +296,21 @@ func _place_house(layout := "cottage") -> void:
 	_place("lamp", Vector2i(5, 9))
 
 
+## Hedges and the floor finish of a home; walls and objects come separately so a
+## saved game can put back its own.
+func _place_grounds(layout: String) -> void:
+	var hedge := Color(0.18, 0.38, 0.16)
+	lot.add_block(Rect2i(1, 16, 6, 1), 0.9, hedge, "HedgeFrontWest")
+	lot.add_block(Rect2i(15, 16, 7, 1), 0.9, hedge, "HedgeFrontEast")
+	match layout:
+		"cottage":
+			lot.add_floor(Rect2i(3, 2, 15, 10), Color(0.62, 0.48, 0.34))
+		"studio":
+			lot.add_floor(Rect2i(6, 4, 10, 7), Color(0.7, 0.6, 0.48))
+
+
 ## A compact one-room home with a bathroom corner.
 func _place_studio() -> void:
-	lot.add_floor(Rect2i(6, 4, 10, 7), Color(0.7, 0.6, 0.48))
 	var runs := [
 		[Vector2i(6, 4), Vector2i(16, 4)],
 		[Vector2i(6, 11), Vector2i(16, 11)],
@@ -387,8 +410,107 @@ func _check_dev_args() -> void:
 		_run_scenario(scenario, shot)
 	elif scenario == "trace":
 		_trace()
-	elif scenario != "skip_cas":
+	elif scenario == "saveload":
+		_save_load_check()
+	elif scenario == "new":
 		open_create_a_sim()
+	elif scenario != "skip_cas":
+		open_main_menu()
+
+
+# --- title screen, game menu, saving ---------------------------------------------
+
+## Title screen over a slowly orbiting camera.
+func open_main_menu() -> void:
+	Clock.set_speed(0)
+	hud.visible = false
+	sim.set_selected(false)
+	rig.set_locked(true)
+	_menu_orbit = true
+	var menu := MainMenu.new()
+	menu.name = "MainMenu"
+	add_child(menu)
+	menu.setup(SaveGame.exists())
+	_menu = menu
+	menu.play_pressed.connect(func():
+		_close_main_menu(menu)
+		load_game())
+	menu.new_game_pressed.connect(func():
+		_close_main_menu(menu)
+		open_create_a_sim())
+
+
+func _close_main_menu(menu: MainMenu) -> void:
+	_menu_orbit = false
+	_menu = null
+	menu.queue_free()
+
+
+func open_game_menu() -> void:
+	var m := GameMenu.new()
+	m.name = "GameMenu"
+	add_child(m)
+	_menu = m
+	m.closed.connect(func(): _menu = null)
+	m.save_pressed.connect(save_game)
+	m.load_pressed.connect(load_game)
+	m.main_menu_pressed.connect(func(): get_tree().reload_current_scene())
+	m.setup(SaveGame.exists())
+
+
+func save_game() -> void:
+	var walls: Array = []
+	for e in lot.walls:
+		walls.append([e.x, e.y, e.z, lot.doors.has(e)])
+	var objects: Array = []
+	for f in lot.furniture:
+		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps])
+	var data := {
+		"version": 1,
+		"minutes": Clock.total_minutes,
+		"funds": build.funds,
+		"home": home_id,
+		"walls": walls,
+		"objects": objects,
+		"sim": sim.to_dict(),
+		"neighbour": visitors.neighbour.to_dict(),
+		"work": work.to_dict(),
+		"aspiration": aspirations.to_dict(),
+	}
+	if SaveGame.write(data):
+		hud.show_notice("Game saved.", "OpenSims")
+	else:
+		hud.show_notice("Couldn't save the game.", "OpenSims")
+
+
+func load_game() -> void:
+	var d := SaveGame.read()
+	if d.is_empty():
+		hud.show_notice("No saved game found.", "OpenSims")
+		_enter_live()
+		return
+	Clock.total_minutes = d.get("minutes", Clock.total_minutes)
+	build.funds = int(d.get("funds", build.funds))
+	build.funds_changed.emit(build.funds)
+	sim.clear_queue()
+	lot.clear_build()
+	home_id = d.get("home", "cottage")
+	_place_grounds(home_id)
+	for w in d.get("walls", []):
+		var e := Vector3i(int(w[0]), int(w[1]), int(w[2]))
+		lot.add_wall(e)
+		if w[3]:
+			lot.add_door(e)
+	for o in d.get("objects", []):
+		if Catalog.INFO.has(o[0]):
+			_place(o[0], Vector2i(int(o[1]), int(o[2])), int(o[3]))
+	var everyone: Array = [sim, visitors.neighbour]
+	sim.from_dict(d.get("sim", {}), everyone)
+	visitors.neighbour.from_dict(d.get("neighbour", {}), everyone)
+	work.from_dict(d.get("work", {}))
+	aspirations.from_dict(d.get("aspiration", {}))
+	_enter_live(false)
+	hud.show_notice("Welcome back! Your game was loaded.", "OpenSims")
 
 
 ## Shows Create a Sim over a paused game: the Sim stands in a studio away from
@@ -438,14 +560,39 @@ func _on_home_chosen(lot_id: String, price: int) -> void:
 	_enter_live()
 
 
-func _enter_live() -> void:
+func _enter_live(fresh := true) -> void:
 	hud.visible = true
 	hud.refresh_identity()
-	aspirations.reset()
+	if fresh:
+		aspirations.reset()
 	sim.set_selected(true)
 	rig.set_locked(false)
 	rig.frame(lot.center(), deg_to_rad(35.0), deg_to_rad(-50.0), 22.0)
 	Clock.set_speed(1)
+
+
+## Saves, changes things, loads, and prints whether everything came back.
+func _save_load_check() -> void:
+	await get_tree().process_frame
+	_enter_live()
+	work.join("painter")
+	sim.sim_name = "Saved Sim"
+	sim.skills.add_xp("painting", 500.0)
+	build.funds = 12345
+	_place("lamp", Vector2i(12, 6))
+	var objects_before := lot.furniture.size()
+	Clock.total_minutes = 1000.0
+	save_game()
+	sim.sim_name = "Changed"
+	build.funds = 1
+	work.quit()
+	lot.clear_build()
+	Clock.total_minutes = 5.0
+	load_game()
+	await get_tree().process_frame
+	var ok := sim.sim_name == "Saved Sim" and build.funds == 12345 and work.career == "painter" 		and lot.furniture.size() == objects_before and absf(Clock.total_minutes - 1000.0) < 5.0 and not lot.walls.is_empty()
+	print("SAVELOAD %s name=%s funds=%d career=%s objects=%d/%d" % ["OK" if ok else "FAIL", sim.sim_name, build.funds, work.career, lot.furniture.size(), objects_before])
+	get_tree().quit()
 
 
 ## Headless smoke run: queue a few actions and log what the Sim does.
@@ -470,6 +617,12 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_go(lot.cell_to_world(Vector2i(10, 14)))
 			await get_tree().create_timer(2.5).timeout
 			open_menu(find_furniture("bed"), rig.camera.unproject_position(find_furniture("bed").global_position + Vector3.UP))
+		"title":
+			open_main_menu()
+			await get_tree().create_timer(1.5).timeout
+		"gamemenu":
+			open_game_menu()
+			await get_tree().create_timer(0.8).timeout
 		"night", "dusk":
 			Clock.total_minutes = (22.0 if scenario == "night" else 19.4) * 60.0
 			Clock.set_speed(0)

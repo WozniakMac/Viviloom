@@ -38,6 +38,19 @@ func reset() -> void:
 	changed.emit()
 
 
+func to_dict() -> Dictionary:
+	return {"milestone": milestone, "satisfaction": satisfaction, "wants": wants.duplicate(true)}
+
+
+func from_dict(d: Dictionary) -> void:
+	milestone = int(d.get("milestone", 0))
+	satisfaction = int(d.get("satisfaction", 0))
+	wants = d.get("wants", []).duplicate(true)
+	while wants.size() < WANT_COUNT:
+		_add_want()
+	changed.emit()
+
+
 func milestones() -> Array:
 	return Aspirations.INFO[sim.aspiration]["milestones"]
 

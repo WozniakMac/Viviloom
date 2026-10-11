@@ -15,6 +15,8 @@ const NEED_COLORS := {
 	"fun": Color(0.9, 0.4, 0.7),
 	"social": Color(0.35, 0.75, 0.35),
 }
+signal menu_requested
+
 const NOTICE_SECONDS := 7.0
 const MAX_NOTICES := 4
 
@@ -288,6 +290,9 @@ func _build_top_right() -> void:
 	_build_button = IconButton.make("build", 52, "Build / buy mode (F3)")
 	_build_button.toggle_mode = true
 	bar.add_child(_build_button)
+	var menu := IconButton.make("menu", 44, "Menu: save, load, quit (Esc)")
+	menu.pressed.connect(func(): menu_requested.emit())
+	bar.add_child(menu)
 
 	_notices = VBoxContainer.new()
 	_notices.set_anchors_preset(Control.PRESET_TOP_RIGHT)

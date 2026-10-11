@@ -41,6 +41,20 @@ func quit() -> void:
 	changed.emit()
 
 
+func to_dict() -> Dictionary:
+	return {"career": career, "level": level, "performance": performance, "last_shift_day": _last_shift_day}
+
+
+## Loading always puts the Sim at home; a shift in progress is simply skipped.
+func from_dict(d: Dictionary) -> void:
+	career = d.get("career", "")
+	level = int(d.get("level", 0))
+	performance = d.get("performance", 0.0)
+	_last_shift_day = int(d.get("last_shift_day", 0))
+	state = State.HOME
+	changed.emit()
+
+
 func has_job() -> bool:
 	return career != ""
 

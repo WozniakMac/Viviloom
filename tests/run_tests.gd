@@ -22,6 +22,7 @@ func _ready() -> void:
 	_test_aspiration_goals()
 	_test_clear_build()
 	_test_daylight()
+	_test_sim_round_trip()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -290,3 +291,28 @@ func _test_daylight() -> void:
 	_check(not Daylight.is_dark(18.5), "evenings stay light until sunset")
 	_check(Daylight.is_dark(22.0) and Daylight.is_dark(3.0), "nights are dark")
 	_check(Daylight.sun_height(20.0) < 0.05 and Daylight.sun_height(6.0) < 0.05, "sunrise and sunset sit on the horizon")
+
+
+func _test_sim_round_trip() -> void:
+	var a := Sim.new()
+	var b := Sim.new()
+	b.sim_name = "Jules"
+	a.sim_name = "Ada"
+	var t: Array[String] = ["genius", "lazy"]
+	a.set_traits(t)
+	a.aspiration = "wealthy"
+	a.needs.set_value("hunger", 33.0)
+	a.skills.add_xp("logic", 300.0)
+	a.emotions.add("fresh", "happy", 1, "Freshly Showered", "", 90.0)
+	a.count_stat("jokes", 2)
+	a.change_relationship(b, 42.0, 10.0)
+	var data: Dictionary = JSON.parse_string(JSON.stringify(a.to_dict()))
+	var c := Sim.new()
+	c.from_dict(data, [b])
+	_check(c.sim_name == "Ada" and c.traits == t and c.aspiration == "wealthy", "identity survives saving")
+	_check(is_equal_approx(c.needs.get_value("hunger"), 33.0) and c.skills.level("logic") == a.skills.level("logic"), "needs and skills survive saving")
+	_check(c.emotions.has("fresh") and c.emotions.has("trait_genius") == a.emotions.has("trait_genius"), "moodlets survive saving")
+	_check(c.stats.get("jokes", 0) == 2 and is_equal_approx(c.friendship_with(b), 42.0), "stats and relationships survive saving")
+	a.free()
+	b.free()
+	c.free()
