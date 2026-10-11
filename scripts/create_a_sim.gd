@@ -6,6 +6,9 @@ extends CanvasLayer
 ## finish. Edits apply to the Sim immediately.
 
 signal finished
+signal member_selected(sim: Sim)
+signal add_requested
+signal remove_requested(sim: Sim)
 
 const PALETTES := {
 	"skin": [Color(0.96, 0.8, 0.69), Color(0.87, 0.69, 0.55), Color(0.76, 0.57, 0.42), Color(0.6, 0.42, 0.3), Color(0.45, 0.3, 0.2), Color(0.32, 0.21, 0.15)],
@@ -27,6 +30,7 @@ var _swatches := {}
 var _aspiration_buttons := {}
 var _hair_buttons := {}
 var _rng := RandomNumberGenerator.new()
+var _household_row: HBoxContainer
 
 
 func setup(p_sim: Sim) -> void:
@@ -206,6 +210,17 @@ func _build() -> void:
 		b.pressed.connect(func(): _turn(d[1]))
 		turn.add_child(b)
 
+	# Bottom left: the household, with + to add another Sim.
+	var hh := PanelContainer.new()
+	hh.add_theme_stylebox_override("panel", UiTheme.panel_style(26, 6))
+	hh.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	hh.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	hh.position = Vector2(24, -24)
+	root.add_child(hh)
+	_household_row = HBoxContainer.new()
+	_household_row.add_theme_constant_override("separation", 6)
+	hh.add_child(_household_row)
+
 	# Bottom right: done.
 	_done = IconButton.make("check", 72, "")
 	_done.glyph_color = Color.WHITE
@@ -218,6 +233,44 @@ func _build() -> void:
 	_done.pressed.connect(_finish)
 	root.add_child(_done)
 	_sync_swatches()
+
+
+## Shows the household along the bottom; the Sim being edited is outlined.
+func set_household(members: Array, max_size: int) -> void:
+	for c in _household_row.get_children():
+		c.queue_free()
+	for m in members:
+		var icon := Hud.MemberIcon.new()
+		icon.member = m
+		icon.active = m == sim
+		icon.custom_minimum_size = Vector2(48, 48)
+		icon.tooltip_text = m.sim_name if m.sim_name != "" else "New Sim"
+		icon.clicked.connect(func(): member_selected.emit(m))
+		_household_row.add_child(icon)
+	if members.size() < max_size:
+		var add := IconButton.make("add", 48, "Add a Sim to the household")
+		add.pressed.connect(func(): add_requested.emit())
+		_household_row.add_child(add)
+	if members.size() > 1:
+		var rm := IconButton.make("close", 48, "Remove %s from the household" % sim.sim_name)
+		rm.pressed.connect(func(): remove_requested.emit(sim))
+		_household_row.add_child(rm)
+
+
+## Switches the panels to another household member.
+func edit(s: Sim) -> void:
+	sim = s
+	_picked = s.traits.duplicate()
+	_name_edit.text = s.sim_name
+	_pick_hair(s.hair_style)
+	_pick_aspiration(s.aspiration)
+	_sync_swatches()
+	_refresh()
+
+
+func randomize_sim_for(s: Sim) -> void:
+	edit(s)
+	randomize_sim()
 
 
 func _swatch_style(c: Color, selected: bool) -> StyleBoxFlat:

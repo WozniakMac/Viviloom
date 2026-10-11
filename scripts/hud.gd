@@ -16,6 +16,8 @@ const NEED_COLORS := {
 	"social": Color(0.35, 0.75, 0.35),
 }
 signal menu_requested
+## A household member's portrait was clicked.
+signal sim_selected(sim: Sim)
 
 const NOTICE_SECONDS := 7.0
 const MAX_NOTICES := 4
@@ -196,7 +198,36 @@ class WantBubble:
 		draw_string(font, c + Vector2(-ts.x * 0.5, fs * 0.35), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UiTheme.ACCENT)
 
 
+## A household member: a circle in their shirt colour with their initial.
+class MemberIcon:
+	extends Control
+	signal clicked
+	var member: Sim
+	var active := false
+
+	func _gui_input(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			clicked.emit()
+			accept_event()
+
+	func _process(_d: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		var c := size * 0.5
+		var r := minf(size.x, size.y) * 0.5 - 2.0
+		draw_circle(c, r + 2.0, UiTheme.GREEN if active else Color.WHITE)
+		draw_circle(c, r, member.shirt_color)
+		draw_circle(c + Vector2(0, -r * 0.15), r * 0.45, member.skin_color)
+		var font := get_theme_default_font()
+		var t := member.sim_name.substr(0, 1)
+		draw_string(font, c + Vector2(-5, r * 0.25), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, member.hair_color.darkened(0.3))
+		if member.away:
+			draw_circle(c, r, Color(0.2, 0.25, 0.35, 0.55))
+
+
 var sim: Sim
+var _household: Array = []
 var pie_menu: PieMenu
 var build: BuildMode
 
@@ -228,6 +259,7 @@ var _career_box: VBoxContainer
 var _aspiration_box: VBoxContainer
 var _wants_box: HBoxContainer
 var aspirations: AspirationTracker
+var _household_box: HBoxContainer
 var _asp_refresh := 0.0
 var work: Work
 var _away_label: Label
@@ -663,6 +695,11 @@ func _build_sim_cluster() -> void:
 	_funds_label.mouse_filter = Control.MOUSE_FILTER_PASS
 	funds_pill.add_child(_funds_label)
 
+	_household_box = HBoxContainer.new()
+	_household_box.position = Vector2(352, 218)
+	_household_box.add_theme_constant_override("separation", 4)
+	c.add_child(_household_box)
+
 
 static func _portrait_shader() -> Shader:
 	var sh := Shader.new()
@@ -681,17 +718,58 @@ void fragment() {
 	return sh
 
 
+## Shows `s` in the portrait, queue, moodlets and panels (the active Sim).
 func set_sim(s: Sim) -> void:
+	if sim != null:
+		sim.queue_changed.disconnect(_rebuild_queue)
+		sim.emotions.changed.disconnect(_rebuild_moodlets)
+		sim.panel_requested.disconnect(_on_panel_requested)
 	sim = s
 	sim.queue_changed.connect(_rebuild_queue)
-	sim.action_failed.connect(show_notice)
-	sim.announced.connect(show_notice)
 	sim.emotions.changed.connect(_rebuild_moodlets)
-	sim.panel_requested.connect(func(panel: String):
-		if panel == "career":
-			_show_page(4))
+	sim.panel_requested.connect(_on_panel_requested)
+	_skill_rows.clear()
+	for c in _skills_box.get_children():
+		c.queue_free()
 	_rebuild_queue()
 	refresh_identity()
+	_refresh_household()
+
+
+## Notifications from any household member, active or not.
+func watch_sim(s: Sim) -> void:
+	s.action_failed.connect(func(t: String):
+		if s == sim:
+			show_notice(t, s.sim_name))
+	s.announced.connect(func(t: String): show_notice(t, s.sim_name))
+
+
+func _on_panel_requested(panel: String) -> void:
+	if panel == "career":
+		_show_page(4)
+
+
+## Small portraits of the household; click one to control that Sim.
+func set_household(members: Array) -> void:
+	_household = members
+	_refresh_household()
+
+
+func _refresh_household() -> void:
+	if _household_box == null:
+		return
+	for c in _household_box.get_children():
+		c.queue_free()
+	if _household.size() < 2:
+		return
+	for m in _household:
+		var b := MemberIcon.new()
+		b.member = m
+		b.active = m == sim
+		b.custom_minimum_size = Vector2(40, 40)
+		b.tooltip_text = "%s%s" % [m.sim_name, "" if m == sim else "  (click to control)"]
+		b.clicked.connect(func(): sim_selected.emit(m))
+		_household_box.add_child(b)
 
 
 ## Name and traits, after they change in Create a Sim.
@@ -743,11 +821,18 @@ func _rebuild_moodlets() -> void:
 
 
 func set_aspirations(t: AspirationTracker) -> void:
+	if aspirations != null:
+		aspirations.changed.disconnect(_rebuild_wants)
+		aspirations.changed.disconnect(_refresh_aspiration)
 	aspirations = t
 	aspirations.changed.connect(_rebuild_wants)
 	aspirations.changed.connect(_refresh_aspiration)
-	aspirations.notice.connect(func(text: String, title: String): show_notice(text, title))
 	_rebuild_wants()
+	_refresh_aspiration()
+
+
+func watch_aspirations(t: AspirationTracker) -> void:
+	t.notice.connect(func(text: String, title: String): show_notice(text, title))
 
 
 func _rebuild_wants() -> void:
@@ -810,10 +895,15 @@ func _refresh_aspiration() -> void:
 
 
 func set_work(w: Work) -> void:
+	if work != null:
+		work.changed.disconnect(_refresh_career)
 	work = w
 	work.changed.connect(_refresh_career)
-	work.notice.connect(func(text: String, title: String): show_notice(text, title))
 	_refresh_career()
+
+
+func watch_work(w: Work) -> void:
+	w.notice.connect(func(text: String, title: String): show_notice(text, title))
 
 
 ## Career tab: the current job, or the list of careers to join.

@@ -21,6 +21,12 @@ var visitors: Visitors
 var work: Work
 var daylight: Daylight
 var aspirations: AspirationTracker
+## Everyone in the player's household; `sim`, `work` and `aspirations` are the
+## active member's.
+var household: Array[Sim] = []
+var works := {}
+var trackers := {}
+const MAX_HOUSEHOLD := 4
 ## Which neighbourhood home is on the lot (its floor plan).
 var home_id := "cottage"
 var _menu: CanvasLayer
@@ -35,18 +41,6 @@ func _ready() -> void:
 	add_child(lot)
 	_place_house()
 
-	sim = Sim.new()
-	sim.name = "Sim"
-	sim.lot = lot
-	add_child(sim)
-	sim.global_position = lot.cell_to_world(Vector2i(10, 14))
-	sim.set_selected(true)
-	var start_needs := {"hunger": 70.0, "energy": 85.0, "bladder": 55.0, "hygiene": 80.0, "fun": 45.0, "social": 60.0}
-	for n in start_needs:
-		sim.needs.set_value(n, start_needs[n])
-	var start_traits: Array[String] = ["cheerful", "creative", "bookworm"]
-	sim.set_traits(start_traits)
-
 	rig = CameraRig.new()
 	rig.name = "CameraRig"
 	add_child(rig)
@@ -56,17 +50,23 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.name = "Hud"
 	add_child(hud)
-	hud.set_sim(sim)
 
 	build = BuildMode.new()
 	build.name = "BuildMode"
 	build.lot = lot
-	build.sim = sim
 	build.camera = rig.camera
 	add_child(build)
 	hud.set_build(build, lot)
-	sim.earned.connect(build.earn)
-	lot.sims.append(sim)
+	hud.sim_selected.connect(select_sim)
+
+	var first := _new_sim("Alex")
+	var start_needs := {"hunger": 70.0, "energy": 85.0, "bladder": 55.0, "hygiene": 80.0, "fun": 45.0, "social": 60.0}
+	for n in start_needs:
+		first.needs.set_value(n, start_needs[n])
+	var start_traits: Array[String] = ["cheerful", "creative", "bookworm"]
+	first.set_traits(start_traits)
+	add_to_household(first)
+	select_sim(first)
 
 	visitors = Visitors.new()
 	visitors.name = "Visitors"
@@ -76,23 +76,83 @@ func _ready() -> void:
 	visitors.left.connect(func(v: Sim): hud.show_notice("%s has gone home for the evening." % v.sim_name, "Visitor"))
 	hud.set_others(lot)
 
-	work = Work.new()
-	work.name = "Work"
-	work.sim = sim
-	work.lot = lot
-	add_child(work)
-	work.paid.connect(build.earn)
-	hud.set_work(work)
-
-	aspirations = AspirationTracker.new()
-	aspirations.name = "Aspirations"
-	add_child(aspirations)
-	aspirations.setup(sim, build, work)
-	hud.set_aspirations(aspirations)
 	hud.menu_requested.connect(func():
 		if _menu == null and _cas == null:
 			open_game_menu())
 	_check_dev_args()
+
+
+# --- household ------------------------------------------------------------------
+
+func _new_sim(sim_name: String) -> Sim:
+	var s := Sim.new()
+	s.name = "Sim_%d" % (household.size() + 1)
+	s.sim_name = sim_name
+	s.lot = lot
+	add_child(s)
+	s.set_selected(false)
+	s.global_position = lot.cell_to_world(Vector2i(10 + household.size(), 14))
+	return s
+
+
+## Adds a Sim to the household with their own job and aspiration tracker.
+func add_to_household(s: Sim) -> void:
+	household.append(s)
+	if not lot.sims.has(s):
+		lot.sims.append(s)
+	s.earned.connect(build.earn)
+	hud.watch_sim(s)
+	var w := Work.new()
+	w.name = "Work_" + s.name
+	w.sim = s
+	w.lot = lot
+	add_child(w)
+	w.paid.connect(build.earn)
+	hud.watch_work(w)
+	works[s] = w
+	var t := AspirationTracker.new()
+	t.name = "Aspirations_" + s.name
+	add_child(t)
+	t.setup(s, build, w)
+	hud.watch_aspirations(t)
+	trackers[s] = t
+	build.household = household
+	hud.set_household(household)
+
+
+func remove_from_household(s: Sim) -> void:
+	if household.size() <= 1 or not household.has(s):
+		return
+	household.erase(s)
+	lot.sims.erase(s)
+	(works[s] as Node).queue_free()
+	(trackers[s] as Node).queue_free()
+	works.erase(s)
+	trackers.erase(s)
+	for o in household:
+		o.relationships.erase(s)
+	s.queue_free()
+	if sim == s:
+		select_sim(household[0])
+	hud.set_household(household)
+
+
+## Takes control of `s`: the HUD, panels and camera follow them.
+func select_sim(s: Sim) -> void:
+	if sim != null and is_instance_valid(sim):
+		sim.set_selected(false)
+	sim = s
+	work = works[s]
+	aspirations = trackers[s]
+	build.sim = s
+	s.set_selected(_cas == null)
+	hud.set_sim(s)
+	hud.set_work(work)
+	hud.set_aspirations(aspirations)
+	# Pan to them unless the camera is held by a menu or Create a Sim.
+	if _cas == null and s.visible and rig.is_processing():
+		var tw := create_tween()
+		tw.tween_property(rig, "position", Vector3(s.global_position.x, 0.0, s.global_position.z), 0.4).set_trans(Tween.TRANS_SINE)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -472,10 +532,13 @@ func save_game() -> void:
 		"home": home_id,
 		"walls": walls,
 		"objects": objects,
-		"sim": sim.to_dict(),
+		"household": household.map(func(m: Sim): return {
+			"sim": m.to_dict(),
+			"work": (works[m] as Work).to_dict(),
+			"aspiration": (trackers[m] as AspirationTracker).to_dict(),
+		}),
+		"active": household.find(sim),
 		"neighbour": visitors.neighbour.to_dict(),
-		"work": work.to_dict(),
-		"aspiration": aspirations.to_dict(),
 	}
 	if SaveGame.write(data):
 		hud.show_notice("Game saved.", "OpenSims")
@@ -504,11 +567,23 @@ func load_game() -> void:
 	for o in d.get("objects", []):
 		if Catalog.INFO.has(o[0]):
 			_place(o[0], Vector2i(int(o[1]), int(o[2])), int(o[3]))
-	var everyone: Array = [sim, visitors.neighbour]
-	sim.from_dict(d.get("sim", {}), everyone)
+	var members: Array = d.get("household", [])
+	if members.is_empty() and d.has("sim"):
+		members = [{"sim": d["sim"], "work": d.get("work", {}), "aspiration": d.get("aspiration", {})}]
+	# Match the household size to the save, then fill everyone in.
+	while household.size() < members.size():
+		add_to_household(_new_sim(""))
+	while household.size() > maxi(members.size(), 1):
+		remove_from_household(household[household.size() - 1])
+	var everyone: Array = household.duplicate()
+	everyone.append(visitors.neighbour)
+	for i in members.size():
+		var m: Dictionary = members[i]
+		household[i].from_dict(m.get("sim", {}), everyone)
+		(works[household[i]] as Work).from_dict(m.get("work", {}))
+		(trackers[household[i]] as AspirationTracker).from_dict(m.get("aspiration", {}))
 	visitors.neighbour.from_dict(d.get("neighbour", {}), everyone)
-	work.from_dict(d.get("work", {}))
-	aspirations.from_dict(d.get("aspiration", {}))
+	select_sim(household[clampi(int(d.get("active", 0)), 0, household.size() - 1)])
 	_enter_live(false)
 	hud.show_notice("Welcome back! Your game was loaded.", "OpenSims")
 
@@ -519,25 +594,58 @@ func open_create_a_sim() -> void:
 	Clock.set_speed(0)
 	hud.visible = false
 	sim.set_selected(false)
-	_home_position = sim.global_position
 	_studio = CreateASim.make_studio(CAS_STUDIO)
 	add_child(_studio)
-	sim.global_position = CAS_STUDIO
-	# Turned slightly towards the camera, which looks along -Z.
-	sim.rotation.y = PI - 0.25
 	rig.set_locked(true)
 	rig.frame(CAS_STUDIO + Vector3(0, 0.95, 0), 0.0, deg_to_rad(-6.0), 4.6)
 	_cas = CreateASim.new()
 	_cas.name = "CreateASim"
 	add_child(_cas)
 	_cas.setup(sim)
+	_cas.set_household(household, MAX_HOUSEHOLD)
 	_cas.finished.connect(_on_cas_finished)
+	_cas.member_selected.connect(_cas_show)
+	_cas.add_requested.connect(func():
+		var s := _new_sim("")
+		add_to_household(s)
+		_cas.randomize_sim_for(s)
+		_cas_show(s))
+	_cas.remove_requested.connect(func(s: Sim):
+		remove_from_household(s)
+		_cas.set_household(household, MAX_HOUSEHOLD)
+		_cas_show(household[0]))
+	_cas_show(sim)
+
+
+## Puts `s` on the studio floor (the others step out of view) and edits them.
+func _cas_show(s: Sim) -> void:
+	for m in household:
+		m.visible = m == s
+		m.away = m != s
+		m.clear_queue()
+	s.global_position = CAS_STUDIO
+	# Turned slightly towards the camera, which looks along -Z.
+	s.rotation.y = PI - 0.25
+	select_sim(s)
+	s.set_selected(false)
+	_cas.edit(s)
+	_cas.set_household(household, MAX_HOUSEHOLD)
 
 
 func _on_cas_finished() -> void:
 	_cas = null
 	_studio.queue_free()
-	sim.global_position = _home_position
+	for i in household.size():
+		var m := household[i]
+		m.visible = true
+		m.away = false
+		m.global_position = lot.cell_to_world(Vector2i(9 + i, 14))
+	# Housemates already know each other.
+	for a_sim in household:
+		for b_sim in household:
+			if a_sim != b_sim and not a_sim.relationships.has(b_sim):
+				a_sim.change_relationship(b_sim, 35.0, 0.0)
+	select_sim(household[0])
 	open_neighbourhood()
 
 
@@ -556,7 +664,8 @@ func _on_home_chosen(lot_id: String, price: int) -> void:
 	build.funds -= price
 	build.funds_changed.emit(build.funds)
 	hud.show_notice("Welcome home to %s! %s was spent on the move." % [Neighbourhood.LOTS[lot_id]["name"], Hud.money(price)], "Moved In")
-	sim.global_position = lot.cell_to_world(Vector2i(10, 14))
+	for i in household.size():
+		household[i].global_position = lot.cell_to_world(Vector2i(9 + i, 14))
 	_enter_live()
 
 
@@ -564,7 +673,8 @@ func _enter_live(fresh := true) -> void:
 	hud.visible = true
 	hud.refresh_identity()
 	if fresh:
-		aspirations.reset()
+		for m in household:
+			(trackers[m] as AspirationTracker).reset()
 	sim.set_selected(true)
 	rig.set_locked(false)
 	rig.frame(lot.center(), deg_to_rad(35.0), deg_to_rad(-50.0), 22.0)
@@ -617,6 +727,21 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_go(lot.cell_to_world(Vector2i(10, 14)))
 			await get_tree().create_timer(2.5).timeout
 			open_menu(find_furniture("bed"), rig.camera.unproject_position(find_furniture("bed").global_position + Vector3.UP))
+		"household":
+			var bea := _new_sim("Bea")
+			bea.set_part_color("shirt", Color(0.85, 0.3, 0.45))
+			bea.set_hair_style("long")
+			var bt: Array[String] = ["genius", "lazy"]
+			bea.set_traits(bt)
+			add_to_household(bea)
+			select_sim(bea)
+			bea.change_relationship(household[0], 55.0, 20.0)
+			hud._show_page(3)
+			await get_tree().create_timer(2.0).timeout
+		"cas2":
+			open_create_a_sim()
+			_cas.add_requested.emit()
+			await get_tree().create_timer(1.0).timeout
 		"title":
 			open_main_menu()
 			await get_tree().create_timer(1.5).timeout

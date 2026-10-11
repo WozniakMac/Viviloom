@@ -132,6 +132,9 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			ci.draw_arc(c, s * 0.8, PI * 1.1, PI * 1.9 + PI * 0.5, 16, col, 2.0)
 			var end := c + Vector2(cos(PI * 0.4), sin(PI * 0.4)) * s * 0.8 if dir > 0.0 else c + Vector2(cos(PI * 1.1), sin(PI * 1.1)) * s * 0.8
 			ci.draw_circle(end, s * 0.22, col)
+		"add":
+			ci.draw_line(c + Vector2(-s, 0), c + Vector2(s, 0), col, maxf(2.0, s * 0.3))
+			ci.draw_line(c + Vector2(0, -s), c + Vector2(0, s), col, maxf(2.0, s * 0.3))
 		"menu":
 			for x in [-0.6, 0.0, 0.6]:
 				ci.draw_circle(c + Vector2(x * s, 0), s * 0.2, col)

@@ -10,6 +10,8 @@ enum Tool { MOVE, WALL, DOOR, DELETE, PLACE }
 
 var lot: Lot
 var sim: Sim
+## Everyone in the household; they all stop what they're doing in build mode.
+var household: Array = []
 var camera: Camera3D
 var active := false
 var tool := Tool.MOVE
@@ -53,7 +55,8 @@ func enter() -> void:
 	active = true
 	_speed_before = maxi(Clock.speed, 1)
 	Clock.set_speed(0)
-	sim.clear_queue()
+	for m in household:
+		m.clear_queue()
 	set_tool(Tool.MOVE)
 	_set_visible(true)
 
@@ -226,7 +229,9 @@ func _rotate_held(dir: int) -> void:
 
 
 func _can_drop() -> bool:
-	var avoid: Array[Vector2i] = [lot.world_to_cell(sim.global_position)]
+	var avoid: Array[Vector2i] = []
+	for m in household:
+		avoid.append(lot.world_to_cell(m.global_position))
 	return lot.can_place(_held, _held_cell, _held_rot, avoid)
 
 
