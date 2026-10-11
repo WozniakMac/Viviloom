@@ -47,6 +47,11 @@ class SimAction:
 @export var pants_color := Color(0.18, 0.2, 0.28)
 @export var skin_color := Color(0.87, 0.69, 0.55)
 @export var hair_color := Color(0.25, 0.16, 0.1)
+## "short", "long" or "bun".
+@export var hair_style := "short"
+
+const MODEL := preload("res://assets/sim/sim.glb")
+const HAIR_STYLES: Array[String] = ["short", "long", "bun"]
 @export var walk_speed := 2.0
 
 var lot: Lot
@@ -73,17 +78,13 @@ var _rng := RandomNumberGenerator.new()
 var queue: Array[SimAction] = []
 var path := PackedVector3Array()
 var _path_index := 0
-var _walk_phase := 0.0
-var _busy_phase := 0.0
-var _swing := 0.0
 var _pose := "stand"
 var _selected := false
 
 var _body: Node3D
-var _leg_l: Node3D
-var _leg_r: Node3D
-var _arm_l: Node3D
-var _arm_r: Node3D
+var _anim: AnimationPlayer
+## Hair style name -> its mesh in the model.
+var _hair_meshes := {}
 var _selection_ring: MeshInstance3D
 var _plumbob: MeshInstance3D
 ## Materials by part ("shirt", "pants", "skin", "hair") so the look can change later.
@@ -104,7 +105,13 @@ func set_part_color(part: String, c: Color) -> void:
 		"skin": skin_color = c
 		"hair": hair_color = c
 	if _materials.has(part):
-		(_materials[part] as StandardMaterial3D).albedo_color = c
+		(_materials[part] as BaseMaterial3D).albedo_color = c
+
+
+func set_hair_style(style: String) -> void:
+	hair_style = style
+	for k in _hair_meshes:
+		(_hair_meshes[k] as Node3D).visible = k == style
 
 
 ## Replaces the Sim's traits and their lasting moodlets.
@@ -195,6 +202,7 @@ func to_dict() -> Dictionary:
 	return {
 		"name": sim_name,
 		"colors": {"shirt": shirt_color.to_html(), "pants": pants_color.to_html(), "skin": skin_color.to_html(), "hair": hair_color.to_html()},
+		"hair_style": hair_style,
 		"traits": traits,
 		"aspiration": aspiration,
 		"needs": needs.values.duplicate(),
@@ -210,6 +218,7 @@ func from_dict(d: Dictionary, others: Array) -> void:
 	sim_name = d.get("name", sim_name)
 	for part in d.get("colors", {}):
 		set_part_color(part, Color.html(d["colors"][part]))
+	set_hair_style(d.get("hair_style", hair_style))
 	var t: Array[String] = []
 	for x in d.get("traits", []):
 		t.append(x)
@@ -644,43 +653,43 @@ func _set_pose(p: String) -> void:
 	_selection_ring.visible = _selected and _pose == "stand"
 
 
+## Picks the body animation for what the Sim is doing and lays the body down or
+## sits it on furniture.
 func _animate(delta: float, moving: bool, cur: SimAction) -> void:
-	var target_swing := 0.55 if moving else 0.0
-	_swing = lerpf(_swing, target_swing, 1.0 - exp(-10.0 * delta))
-	if moving:
-		_walk_phase += delta * walk_speed * 3.6
-	_busy_phase += delta * 8.0
-	var s := sin(_walk_phase) * _swing
-	var busy := (cur != null and cur.performing and cur.interaction.busy_hands) or _social_with != null
-	var arm_l := -s * 0.8
-	var arm_r := s * 0.8
-	if busy:
-		arm_l = 0.9 + sin(_busy_phase) * 0.15
-		arm_r = 0.9 - sin(_busy_phase) * 0.15
+	var busy := cur != null and cur.performing and cur.interaction.busy_hands
+	var talking := _social_with != null or (cur != null and cur.performing and cur.target_sim != null)
+	var anim := "idle"
 	match _pose:
 		"sit":
+			anim = "sit_use" if busy else "sit"
 			_body.rotation.x = 0.0
 			_body.position.y = -0.45
-			_leg_l.rotation.x = PI * 0.5
-			_leg_r.rotation.x = PI * 0.5
 		"lie":
+			anim = "lie"
 			_body.rotation.x = PI * 0.5
 			_body.position.y = 0.15
-			_leg_l.rotation.x = 0.0
-			_leg_r.rotation.x = 0.0
-			arm_l = 0.0
-			arm_r = 0.0
 		_:
 			_body.rotation.x = 0.0
-			_body.position.y = absf(sin(_walk_phase)) * 0.035 * (_swing / 0.55)
-			_leg_l.rotation.x = s
-			_leg_r.rotation.x = -s
-	_arm_l.rotation.x = arm_l
-	_arm_r.rotation.x = arm_r
+			_body.position.y = 0.0
+			if moving:
+				anim = "walk"
+			elif talking:
+				anim = "talk"
+			elif busy:
+				anim = "use"
+	if _anim != null:
+		if _anim.current_animation != anim:
+			_anim.play(anim, 0.25)
+		# Animations follow game speed (capped so ultra speed isn't frantic), and the
+		# walk cycle matches the walking speed (about 1.4 m per stride).
+		var rate := minf(Clock.SPEED_FACTORS[Clock.speed], 3.0)
+		if anim == "walk":
+			rate *= walk_speed / 1.4
+		_anim.speed_scale = rate
 	# The plumbob floats over the head, spinning and bobbing even while paused.
 	_plumbob.rotation.y += get_process_delta_time() * 1.8
-	var head := _body.to_global(Vector3(0, 1.66, 0))
-	_plumbob.global_position = head + Vector3(0, 0.55 + sin(Time.get_ticks_msec() * 0.003) * 0.04, 0)
+	var head := _body.to_global(Vector3(0, 1.7, 0))
+	_plumbob.global_position = head + Vector3(0, 0.5 + sin(Time.get_ticks_msec() * 0.003) * 0.04, 0)
 
 
 func _build_visual() -> void:
@@ -688,60 +697,33 @@ func _build_visual() -> void:
 	_body.name = "Body"
 	add_child(_body)
 
-	var shirt := _mat(shirt_color)
-	var pants := _mat(pants_color)
-	var skin := _mat(skin_color)
-	_materials = {"shirt": shirt, "pants": pants, "skin": skin, "hair": _mat(hair_color)}
-
-	_leg_l = _limb(Vector3(-0.1, 0.9, 0), 0.085, 0.9, pants)
-	_leg_r = _limb(Vector3(0.1, 0.9, 0), 0.085, 0.9, pants)
-	_arm_l = _limb(Vector3(-0.27, 1.42, 0), 0.06, 0.62, shirt)
-	_arm_r = _limb(Vector3(0.27, 1.42, 0), 0.06, 0.62, shirt)
-
-	var torso := MeshInstance3D.new()
-	var torso_mesh := CapsuleMesh.new()
-	torso_mesh.radius = 0.2
-	torso_mesh.height = 0.68
-	torso.mesh = torso_mesh
-	torso.scale = Vector3(1.0, 1.0, 0.7)
-	torso.position = Vector3(0, 1.18, 0)
-	torso.material_override = shirt
-	_body.add_child(torso)
-
-	var head := MeshInstance3D.new()
-	var head_mesh := SphereMesh.new()
-	head_mesh.radius = 0.14
-	head_mesh.height = 0.3
-	head.mesh = head_mesh
-	head.position = Vector3(0, 1.66, 0)
-	head.material_override = skin
-	_body.add_child(head)
-
-	var hair := MeshInstance3D.new()
-	var hair_mesh := SphereMesh.new()
-	hair_mesh.radius = 0.15
-	hair_mesh.height = 0.2
-	hair_mesh.is_hemisphere = true
-	hair.mesh = hair_mesh
-	hair.position = Vector3(0, 1.69, 0.015)
-	hair.material_override = _materials["hair"]
-	_body.add_child(hair)
-
-	# Face: eyes, brows and a mouth (the front of the head is -Z).
-	for x in [-0.052, 0.052]:
-		_face_part(SphereMesh.new(), Vector3(0.034, 0.03, 0.02), Vector3(x, 1.685, -0.128), Color(0.97, 0.97, 0.95))
-		_face_part(SphereMesh.new(), Vector3(0.018, 0.02, 0.012), Vector3(x, 1.685, -0.139), Color(0.12, 0.08, 0.06))
-		_face_part(BoxMesh.new(), Vector3(0.045, 0.01, 0.01), Vector3(x, 1.722, -0.13), Color(0.0, 0.0, 0.0), "hair")
-	_face_part(BoxMesh.new(), Vector3(0.06, 0.012, 0.01), Vector3(0, 1.59, -0.13), Color(0.6, 0.25, 0.25))
-
-	# Nose, so facing direction is readable from the camera.
-	var nose := MeshInstance3D.new()
-	var nose_mesh := BoxMesh.new()
-	nose_mesh.size = Vector3(0.04, 0.05, 0.05)
-	nose.mesh = nose_mesh
-	nose.position = Vector3(0, 1.64, -0.145)
-	nose.material_override = skin
-	_body.add_child(nose)
+	# The character model (tools/make_sim.py) with its own copy of each material so
+	# every Sim can have their own colours.
+	var model := MODEL.instantiate() as Node3D
+	_body.add_child(model)
+	_anim = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	if _anim != null:
+		for a in _anim.get_animation_list():
+			_anim.get_animation(a).loop_mode = Animation.LOOP_LINEAR
+		_anim.play("idle")
+	_materials = {}
+	for node in model.find_children("*", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		if mi.name.begins_with("Hair_"):
+			_hair_meshes[mi.name.trim_prefix("Hair_").to_lower()] = mi
+		for i in mi.mesh.get_surface_count():
+			var src := mi.mesh.surface_get_material(i)
+			if src == null:
+				continue
+			var key := src.resource_name.to_lower()
+			if not _materials.has(key):
+				_materials[key] = src.duplicate()
+			mi.set_surface_override_material(i, _materials[key])
+	set_part_color("shirt", shirt_color)
+	set_part_color("pants", pants_color)
+	set_part_color("skin", skin_color)
+	set_part_color("hair", hair_color)
+	set_hair_style(hair_style)
 
 	_selection_ring = MeshInstance3D.new()
 	var ring := TorusMesh.new()
@@ -795,35 +777,6 @@ func _build_visual() -> void:
 	_plumbob.top_level = true
 	_plumbob.visible = false
 	add_child(_plumbob)
-
-
-## Adds a small face feature; `part` makes it follow that part's colour.
-func _face_part(mesh: PrimitiveMesh, scale_: Vector3, pos: Vector3, color: Color, part := "") -> void:
-	if mesh is SphereMesh:
-		(mesh as SphereMesh).radius = 0.5
-		(mesh as SphereMesh).height = 1.0
-	var m := MeshInstance3D.new()
-	m.mesh = mesh
-	m.scale = scale_
-	m.position = pos
-	m.material_override = _materials[part] if part != "" else _mat(color)
-	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_body.add_child(m)
-
-
-func _limb(pivot_pos: Vector3, radius: float, length: float, mat: Material) -> Node3D:
-	var pivot := Node3D.new()
-	pivot.position = pivot_pos
-	_body.add_child(pivot)
-	var m := MeshInstance3D.new()
-	var capsule := CapsuleMesh.new()
-	capsule.radius = radius
-	capsule.height = length
-	m.mesh = capsule
-	m.position = Vector3(0, -length * 0.5, 0)
-	m.material_override = mat
-	pivot.add_child(m)
-	return pivot
 
 
 func _mat(c: Color) -> StandardMaterial3D:

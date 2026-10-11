@@ -25,6 +25,7 @@ var _trait_info: Label
 var _done: IconButton
 var _swatches := {}
 var _aspiration_buttons := {}
+var _hair_buttons := {}
 var _rng := RandomNumberGenerator.new()
 
 
@@ -122,6 +123,26 @@ func _build() -> void:
 	var lt := UiTheme.title(Label.new(), 18)
 	lt.text = "Appearance"
 	lv.add_child(lt)
+	var hl := Label.new()
+	hl.text = "Hairstyle"
+	hl.add_theme_font_size_override("font_size", 14)
+	hl.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+	lv.add_child(hl)
+	var hrow := HBoxContainer.new()
+	hrow.add_theme_constant_override("separation", 6)
+	lv.add_child(hrow)
+	for style in Sim.HAIR_STYLES:
+		var hb := Button.new()
+		hb.text = style.capitalize()
+		hb.toggle_mode = true
+		hb.focus_mode = Control.FOCUS_NONE
+		hb.custom_minimum_size = Vector2(80, 32)
+		hb.add_theme_stylebox_override("pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		hb.add_theme_stylebox_override("hover_pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		hb.pressed.connect(_pick_hair.bind(style))
+		hrow.add_child(hb)
+		_hair_buttons[style] = hb
+	_pick_hair(sim.hair_style)
 	for part in ["skin", "hair", "shirt", "pants"]:
 		var l := Label.new()
 		l.text = PART_LABELS[part]
@@ -149,7 +170,7 @@ func _build() -> void:
 	var asp := PanelContainer.new()
 	asp.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	asp.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	asp.position = Vector2(-24, 400)
+	asp.position = Vector2(-24, 470)
 	asp.custom_minimum_size = Vector2(286, 0)
 	root.add_child(asp)
 	var av := VBoxContainer.new()
@@ -223,6 +244,12 @@ func _sync_swatches() -> void:
 			(pair[0] as Button).set_pressed_no_signal((pair[1] as Color).is_equal_approx(current[part]))
 
 
+func _pick_hair(style: String) -> void:
+	sim.set_hair_style(style)
+	for k in _hair_buttons:
+		(_hair_buttons[k] as Button).button_pressed = k == style
+
+
 func _pick_aspiration(a: String) -> void:
 	sim.aspiration = a
 	for k in _aspiration_buttons:
@@ -281,6 +308,7 @@ func randomize_sim() -> void:
 			_picked.append(t)
 	sim.set_traits(_picked)
 	_pick_aspiration(Aspirations.ORDER[_rng.randi() % Aspirations.ORDER.size()])
+	_pick_hair(Sim.HAIR_STYLES[_rng.randi() % Sim.HAIR_STYLES.size()])
 	_sync_swatches()
 	_refresh()
 

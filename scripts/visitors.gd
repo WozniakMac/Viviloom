@@ -25,6 +25,7 @@ func setup(p_lot: Lot) -> void:
 	neighbour.pants_color = Color(0.3, 0.32, 0.4)
 	neighbour.skin_color = Color(0.6, 0.42, 0.3)
 	neighbour.hair_color = Color(0.08, 0.07, 0.07)
+	neighbour.hair_style = "bun"
 	neighbour.lot = lot
 	add_child(neighbour)
 	neighbour.set_selected(false)
