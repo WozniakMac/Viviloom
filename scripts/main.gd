@@ -17,6 +17,7 @@ var _marker_time := 0.0
 var _cas: CreateASim
 var _studio: Node3D
 var _home_position := Vector3.ZERO
+var visitors: Visitors
 
 
 func _ready() -> void:
@@ -58,6 +59,15 @@ func _ready() -> void:
 	add_child(build)
 	hud.set_build(build, lot)
 	sim.earned.connect(build.earn)
+	lot.sims.append(sim)
+
+	visitors = Visitors.new()
+	visitors.name = "Visitors"
+	add_child(visitors)
+	visitors.setup(lot)
+	visitors.arrived.connect(func(v: Sim): hud.show_notice("%s from next door has dropped by to say hello. Click them to socialize." % v.sim_name, "Visitor"))
+	visitors.left.connect(func(v: Sim): hud.show_notice("%s has gone home for the evening." % v.sim_name, "Visitor"))
+	hud.set_others(lot)
 	_check_dev_args()
 
 
@@ -92,9 +102,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
-			var f := _furniture_at(mb.position)
-			if f != null:
-				open_menu(f, mb.position)
+			var picked: Object = _pick_at(mb.position)
+			if picked is Furniture:
+				open_menu(picked, mb.position)
+				return
+			if picked is Sim and picked != sim:
+				open_sim_menu(picked, mb.position)
 				return
 			var hit: Variant = _ground_point(mb.position)
 			if hit != null and lot.contains_point(hit):
@@ -107,25 +120,67 @@ func open_menu(f: Furniture, screen_pos: Vector2) -> void:
 	var names: Array[String] = []
 	for i in f.interactions:
 		names.append(i.name)
-	for c in hud.pie_menu.chosen.get_connections():
-		hud.pie_menu.chosen.disconnect(c.callable)
-	hud.pie_menu.chosen.connect(func(idx: int): sim.queue_interaction(f, f.interactions[idx]), CONNECT_ONE_SHOT)
+	_on_pie_choice(func(idx: int): sim.queue_interaction(f, f.interactions[idx]))
 	hud.pie_menu.open(screen_pos, f.display_name, names)
 
 
-func _furniture_at(screen_pos: Vector2) -> Furniture:
+## Social pie menu for another Sim: first a ring of categories, then the socials in
+## the chosen one.
+func open_sim_menu(other: Sim, screen_pos: Vector2) -> void:
+	var options := Socials.available(sim.friendship_with(other), sim.romance_with(other))
+	var cats: Array[String] = []
+	for i in options:
+		var c: String = i.social["category"]
+		if not cats.has(c):
+			cats.append(c)
+	var title := "%s · %s" % [other.sim_name, sim.relationship_label(other)]
+	var labels: Array[String] = []
+	for c in cats:
+		labels.append(c + "...")
+	_on_pie_choice(func(ci: int):
+		var in_cat: Array[Interaction] = []
+		var names: Array[String] = []
+		for i in options:
+			if i.social["category"] == cats[ci]:
+				in_cat.append(i)
+				names.append(i.name)
+		_on_pie_choice(func(ii: int): sim.queue_social(other, in_cat[ii]))
+		hud.pie_menu.open(screen_pos, cats[ci], names))
+	hud.pie_menu.open(screen_pos, title, labels)
+
+
+func _on_pie_choice(callback: Callable) -> void:
+	for c in hud.pie_menu.chosen.get_connections():
+		hud.pie_menu.chosen.disconnect(c.callable)
+	hud.pie_menu.chosen.connect(callback, CONNECT_ONE_SHOT)
+
+
+## The furniture or Sim under the cursor, if any.
+func _pick_at(screen_pos: Vector2) -> Object:
 	var cam := rig.camera
 	var origin := cam.project_ray_origin(screen_pos)
 	var q := PhysicsRayQueryParameters3D.create(origin, origin + cam.project_ray_normal(screen_pos) * 500.0)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
-	if hit.is_empty() or not (hit.collider as Object).has_meta("furniture"):
+	if hit.is_empty():
 		return null
-	return (hit.collider as Object).get_meta("furniture") as Furniture
+	var col := hit.collider as Object
+	if col.has_meta("furniture"):
+		return col.get_meta("furniture")
+	if col.has_meta("sim"):
+		return col.get_meta("sim")
+	return null
+
+
+func _furniture_at(screen_pos: Vector2) -> Furniture:
+	var picked: Object = _pick_at(screen_pos)
+	return picked as Furniture if picked is Furniture else null
 
 
 func _process(delta: float) -> void:
 	lot.update_walls(rig.camera.global_position, rig.global_position, delta)
-	var people: Array[Vector3] = [sim.global_position]
+	var people: Array[Vector3] = []
+	for s in lot.sims:
+		people.append(s.global_position)
 	lot.update_doors(people, delta)
 	if _marker.visible:
 		_marker_time += delta
@@ -331,6 +386,16 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_interaction(books, books.interactions[1])
 			hud._show_page(1)
 			await get_tree().create_timer(6.0).timeout
+		"social":
+			Clock.total_minutes = 9.0 * 60.0 + 1.0
+			await get_tree().create_timer(0.3).timeout
+			var jules := visitors.neighbour
+			jules.global_position = lot.cell_to_world(Vector2i(10, 9))
+			jules.clear_queue()
+			sim.global_position = lot.cell_to_world(Vector2i(13, 9))
+			sim.queue_social(jules, Socials.find("Tell a Joke"))
+			hud._show_page(3)
+			await get_tree().create_timer(2.5).timeout
 		"cas":
 			open_create_a_sim()
 			_cas.randomize_sim()

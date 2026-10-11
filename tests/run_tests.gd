@@ -17,6 +17,7 @@ func _ready() -> void:
 	_test_emotions_from_moodlets()
 	_test_skills_level_up()
 	_test_traits_and_skill_gain()
+	_test_relationships()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -202,3 +203,21 @@ func _test_traits_and_skill_gain() -> void:
 	sim.set_traits(cheerful)
 	_check(sim.emotions.has("trait_cheerful") and not sim.emotions.has("trait_creative"), "lasting trait moodlets follow traits")
 	sim.free()
+
+
+func _test_relationships() -> void:
+	var a := Sim.new()
+	var b := Sim.new()
+	a.change_relationship(b, 25.0, 0.0)
+	_check(a.friendship_with(b) == 25.0 and b.friendship_with(a) == 25.0, "relationships are shared both ways")
+	_check(a.relationship_label(b) == "Acquaintance", "25 friendship is an acquaintance")
+	a.change_relationship(b, 500.0, 40.0)
+	_check(a.friendship_with(b) == 100.0 and a.relationship_label(b) == "Romantic Interest", "friendship caps and romance shows")
+	var flirt := Socials.find("Flirt")
+	var no_traits: Array[String] = []
+	_check(Socials.success_chance(flirt, 5.0, 0.0, "fine", no_traits) == 0.0, "flirting with a stranger is turned down")
+	_check(Socials.success_chance(flirt, 40.0, 0.0, "fine", no_traits) == 1.0, "friends accept a flirt")
+	var joke := Socials.find("Tell a Joke")
+	_check(Socials.success_chance(joke, 0.0, 0.0, "playful", no_traits) > Socials.success_chance(joke, 0.0, 0.0, "fine", no_traits), "playful Sims tell better jokes")
+	a.free()
+	b.free()

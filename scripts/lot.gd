@@ -20,6 +20,8 @@ enum WallView { UP, CUTAWAY, DOWN }
 @export var size := Vector2i(24, 20)
 
 var furniture: Array[Furniture] = []
+## Sims currently on the lot (household and visitors), for socials and doors.
+var sims: Array = []
 ## Vector3i edge -> wall Node3D.
 var walls := {}
 ## Vector3i edge -> true for walls that have a door.

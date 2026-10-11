@@ -65,6 +65,12 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			for i in 3:
 				var h := s * (0.8 + i * 0.6)
 				ci.draw_rect(Rect2(c + Vector2(-s + i * s * 0.75, s - h), Vector2(s * 0.5, h)), col)
+		"relationships":
+			for k in [[-0.45, UiTheme.PANEL_EDGE], [0.35, col]]:
+				var off := Vector2(s * k[0], 0)
+				var cc: Color = col if k[1] == col else col.lerp(Color.WHITE, 0.35)
+				ci.draw_circle(c + off + Vector2(0, -s * 0.5), s * 0.36, cc)
+				ci.draw_colored_polygon(PackedVector2Array([c + off + Vector2(-s * 0.6, s), c + off + Vector2(-s * 0.4, s * 0.05), c + off + Vector2(s * 0.4, s * 0.05), c + off + Vector2(s * 0.6, s)]), cc)
 		"simology":
 			ci.draw_circle(c + Vector2(0, -s * 0.5), s * 0.45, col)
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.85, s), c + Vector2(-s * 0.55, s * 0.05), c + Vector2(s * 0.55, s * 0.05), c + Vector2(s * 0.85, s)]), col)

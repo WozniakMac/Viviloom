@@ -142,6 +142,28 @@ class MoodletIcon:
 			draw_circle(Vector2(size.x * 0.5 + (i - (mini(moodlet.weight, 4) - 1) * 0.5) * 7.0, size.y - 9.0), 2.3, Color.WHITE)
 
 
+## Friendship (green right / red left of centre) or romance (pink) bar.
+class RelBar:
+	extends Control
+	var value := 0.0
+	var centred := true
+
+	func _draw() -> void:
+		var bg := StyleBoxFlat.new()
+		bg.bg_color = Color(0.84, 0.88, 0.94)
+		bg.set_corner_radius_all(int(size.y / 2))
+		draw_style_box(bg, Rect2(Vector2.ZERO, size))
+		if centred:
+			var mid := size.x * 0.5
+			var w := mid * absf(value) / 100.0
+			var col := UiTheme.GREEN if value >= 0.0 else UiTheme.RED
+			var x := mid if value >= 0.0 else mid - w
+			draw_rect(Rect2(x, 1, w, size.y - 2), col)
+			draw_line(Vector2(mid, 0), Vector2(mid, size.y), Color(1, 1, 1, 0.9), 2.0)
+		else:
+			draw_rect(Rect2(0, 1, size.x * value / 100.0, size.y - 2), Color(0.96, 0.45, 0.7))
+
+
 var sim: Sim
 var pie_menu: PieMenu
 var build: BuildMode
@@ -169,6 +191,9 @@ var _info_title: Label
 var _skills_box: VBoxContainer
 var _skill_rows := {}
 var _traits_box: VBoxContainer
+var _rel_box: VBoxContainer
+var _rel_refresh := 0.0
+var _lot: Lot
 var _autonomy_button: Button
 var _walls_button: IconButton
 var _live_button: IconButton
@@ -408,6 +433,10 @@ func _build_info_panel() -> void:
 	_traits_box.add_theme_constant_override("separation", 10)
 	v.add_child(_traits_box)
 	_pages.append(_traits_box)
+	_rel_box = VBoxContainer.new()
+	_rel_box.add_theme_constant_override("separation", 10)
+	v.add_child(_rel_box)
+	_pages.append(_rel_box)
 
 	var tabs_pill := PanelContainer.new()
 	tabs_pill.add_theme_stylebox_override("panel", UiTheme.panel_style(26, 5))
@@ -416,8 +445,8 @@ func _build_info_panel() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
 	tabs_pill.add_child(tabs)
-	var defs := [["skills", "Skills"], ["simology", "Simology"], ["needs", "Needs"]]
-	var page_of := {"needs": 0, "skills": 1, "simology": 2}
+	var defs := [["skills", "Skills"], ["relationships", "Relationships"], ["simology", "Simology"], ["needs", "Needs"]]
+	var page_of := {"needs": 0, "skills": 1, "simology": 2, "relationships": 3}
 	for d in defs:
 		var b := IconButton.make(d[0], 42, d[1])
 		b.toggle_mode = true
@@ -429,7 +458,7 @@ func _build_info_panel() -> void:
 
 
 func _tab_for_page(index: int) -> IconButton:
-	var id: String = ["needs", "skills", "simology"][index]
+	var id: String = ["needs", "skills", "simology", "relationships"][index]
 	for b in _tabs:
 		if b.icon_id == id:
 			return b
@@ -449,7 +478,7 @@ func _on_tab(index: int) -> void:
 
 func _show_page(index: int) -> void:
 	_info_panel.visible = true
-	_info_title.text = ["Needs", "Skills", "Simology"][index]
+	_info_title.text = ["Needs", "Skills", "Simology", "Relationships"][index]
 	_autonomy_button.visible = index == 0
 	for i in _pages.size():
 		_pages[i].visible = i == index
@@ -634,6 +663,71 @@ func _rebuild_moodlets() -> void:
 		_moodlet_box.add_child(icon)
 
 
+## Lets the Relationships tab list everyone on the lot, not just Sims already met.
+func set_others(lot: Lot) -> void:
+	_lot = lot
+
+
+func _refresh_relationships() -> void:
+	for c in _rel_box.get_children():
+		c.queue_free()
+	var others: Array[Sim] = []
+	for o in sim.relationships:
+		if is_instance_valid(o):
+			others.append(o)
+	if _lot != null:
+		for o in _lot.sims:
+			if o != sim and not others.has(o):
+				others.append(o)
+	if others.is_empty():
+		var none := Label.new()
+		none.text = "%s hasn't met anyone yet. Click another Sim to socialize." % sim.sim_name
+		none.add_theme_font_size_override("font_size", 14)
+		none.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		none.custom_minimum_size = Vector2(350, 0)
+		_rel_box.add_child(none)
+		return
+	for o in others:
+		var row := VBoxContainer.new()
+		row.add_theme_constant_override("separation", 3)
+		var top := HBoxContainer.new()
+		row.add_child(top)
+		var name_label := UiTheme.title(Label.new(), 15)
+		name_label.text = o.sim_name + ("" if o.visible else "  (away)")
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(name_label)
+		var kind := Label.new()
+		kind.text = sim.relationship_label(o)
+		kind.add_theme_font_size_override("font_size", 13)
+		kind.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+		top.add_child(kind)
+		row.add_child(_rel_bar("Friendship", sim.friendship_with(o), true))
+		if sim.romance_with(o) > 0.0:
+			row.add_child(_rel_bar("Romance", sim.romance_with(o), false))
+		_rel_box.add_child(row)
+
+
+## A relationship bar: friendship runs -100..100 from the middle, romance 0..100.
+func _rel_bar(label: String, value: float, centred: bool) -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	var l := Label.new()
+	l.text = label
+	l.custom_minimum_size = Vector2(80, 0)
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+	h.add_child(l)
+	var bar := RelBar.new()
+	bar.value = value
+	bar.centred = centred
+	bar.custom_minimum_size = Vector2(260, 12)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.tooltip_text = "%s %d" % [label, int(value)]
+	h.add_child(bar)
+	return h
+
+
 func _rebuild_traits() -> void:
 	for c in _traits_box.get_children():
 		c.queue_free()
@@ -753,6 +847,10 @@ func _process(delta: float) -> void:
 		bar.value = sim.needs.get_value(n)
 		bar.trend = sim.needs.trend.get(n, 0.0)
 		bar.queue_redraw()
+	_rel_refresh -= delta
+	if _pages[3].visible and _rel_refresh <= 0.0:
+		_rel_refresh = 0.5
+		_refresh_relationships()
 	if _pages[1].visible:
 		_refresh_skills()
 

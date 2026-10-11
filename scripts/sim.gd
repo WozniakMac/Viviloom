@@ -9,6 +9,7 @@ signal action_failed(message: String)
 ## Something worth telling the player (skill level, money earned...).
 signal announced(message: String)
 signal earned(amount: int)
+signal relationships_changed
 
 const MAX_QUEUE := 8
 ## Game minutes a Sim stands around before deciding something on their own.
@@ -26,6 +27,10 @@ class SimAction:
 	var performing := false
 	var elapsed := 0.0
 	var spot := Vector3.ZERO
+	## For socials: who they're talking to, whether it will land, re-path attempts.
+	var target_sim: Sim
+	var outcome := true
+	var retries := 0
 
 	func progress() -> float:
 		if not performing or interaction == null:
@@ -48,6 +53,14 @@ var traits: Array[String] = []
 ## trait -> game minutes until its periodic moodlet comes back.
 var _trait_timers := {}
 var autonomy_enabled := true
+## Other Sim -> Vector2(friendship -100..100, romance 0..100).
+var relationships := {}
+## Visitors aren't controlled by the player and come and go on their own.
+var is_visitor := false
+## Off the lot (at work, or a visitor who went home).
+var away := false
+var _social_with: Sim = null
+var _social_interaction: Interaction
 var _idle_minutes := 0.0
 var _rng := RandomNumberGenerator.new()
 var queue: Array[SimAction] = []
@@ -159,6 +172,71 @@ func queue_go(target: Vector3) -> bool:
 	return _enqueue(a)
 
 
+func friendship_with(o: Sim) -> float:
+	return (relationships.get(o, Vector2.ZERO) as Vector2).x
+
+
+func romance_with(o: Sim) -> float:
+	return (relationships.get(o, Vector2.ZERO) as Vector2).y
+
+
+func relationship_label(o: Sim) -> String:
+	return Socials.friendship_label(friendship_with(o), romance_with(o))
+
+
+## Changes the relationship on both sides.
+func change_relationship(o: Sim, d_friend: float, d_romance: float) -> void:
+	for pair in [[self, o], [o, self]]:
+		var a: Sim = pair[0]
+		var b: Sim = pair[1]
+		var r: Vector2 = a.relationships.get(b, Vector2.ZERO)
+		a.relationships[b] = Vector2(clampf(r.x + d_friend, -100.0, 100.0), clampf(r.y + d_romance, 0.0, 100.0))
+		a.relationships_changed.emit()
+
+
+## Whether another Sim can start talking to this one right now.
+func can_socialize() -> bool:
+	return visible and not away and _pose != "lie" and _social_with == null
+
+
+func is_socializing() -> bool:
+	return _social_with != null
+
+
+func queue_social(target: Sim, interaction: Interaction, autonomous := false) -> bool:
+	var a := SimAction.new()
+	a.label = "%s with %s" % [interaction.name, target.sim_name]
+	a.target_sim = target
+	a.interaction = interaction
+	a.autonomous = autonomous
+	return _enqueue(a)
+
+
+## Called on the Sim being talked to: they stop and face the speaker.
+func join_social(partner: Sim, interaction: Interaction) -> void:
+	_social_with = partner
+	_social_interaction = interaction
+	stop()
+	var cur := current_action()
+	if cur != null and cur.started and not cur.performing:
+		cur.started = false
+	elif cur != null and cur.performing and cur.autonomous:
+		cancel(0)
+
+
+func leave_social(partner: Sim) -> void:
+	if _social_with == partner:
+		_social_with = null
+		_social_interaction = null
+
+
+func _face_toward(p: Vector3) -> void:
+	var d := p - global_position
+	d.y = 0.0
+	if d.length() > 0.01:
+		rotation.y = atan2(-d.x, -d.z)
+
+
 func queue_interaction(f: Furniture, interaction: Interaction, autonomous := false) -> bool:
 	var a := SimAction.new()
 	a.label = interaction.name
@@ -197,7 +275,12 @@ func _enqueue(a: SimAction) -> bool:
 
 
 func _process(real_delta: float) -> void:
+	if away:
+		return
 	var delta := Clock.scaled(real_delta)
+	if _social_with != null:
+		_listen(delta)
+		return
 	var cur := current_action()
 	if cur != null and not cur.started:
 		_start(cur)
@@ -217,12 +300,17 @@ func _process(real_delta: float) -> void:
 	if cur != null and cur.started and not cur.performing and not is_moving():
 		if cur.interaction == null:
 			_complete(cur)
+		elif cur.target_sim != null and global_position.distance_to(cur.target_sim.global_position) > 1.8 and cur.retries < 3:
+			# They moved while we walked over; catch up.
+			cur.retries += 1
+			_path_to_partner(cur)
 		else:
 			_begin_perform(cur)
 	elif cur != null and cur.performing:
 		cur.elapsed += Clock.game_delta
 		var full := cur.interaction.until_full != "" and needs.get_value(cur.interaction.until_full) >= 99.9
-		if cur.elapsed >= cur.interaction.max_minutes or full or _should_abandon(cur):
+		var lost := cur.target_sim != null and cur.target_sim._social_with != self
+		if cur.elapsed >= cur.interaction.max_minutes or full or lost or _should_abandon(cur):
 			_end_perform(cur, true)
 			_complete(cur)
 	_animate(delta, moving, cur)
@@ -238,6 +326,21 @@ func _should_abandon(a: SimAction) -> bool:
 	return false
 
 
+## Being talked to: stand facing the speaker, gesturing, while Social fills up.
+func _listen(delta: float) -> void:
+	var partner := _social_with
+	if not is_instance_valid(partner) or partner.away:
+		_social_with = null
+		return
+	_face_toward(partner.global_position)
+	var rates: Dictionary = _social_interaction.rates if _social_interaction != null else {}
+	needs.tick(Clock.game_delta, rates, Traits.decay_mult(traits))
+	emotions.tick(Clock.game_delta)
+	emotions.sync_needs(needs)
+	_update_traits(Clock.game_delta)
+	_animate(delta, false, null)
+
+
 func _update_autonomy() -> void:
 	if not queue.is_empty() or is_moving():
 		_idle_minutes = 0.0
@@ -247,12 +350,19 @@ func _update_autonomy() -> void:
 		return
 	_idle_minutes = 0.0
 	var pick := Autonomy.choose(self, lot, _rng)
-	if not pick.is_empty():
+	if pick.is_empty():
+		return
+	if pick[0] is Sim:
+		queue_social(pick[0], pick[1], true)
+	else:
 		queue_interaction(pick[0], pick[1], true)
 
 
 func _start(a: SimAction) -> void:
 	a.started = true
+	if a.target_sim != null:
+		_path_to_partner(a)
+		return
 	if a.interaction == null:
 		if not move_to(a.target):
 			_fail(a, "%s can't get there." % sim_name)
@@ -285,7 +395,75 @@ func _start(a: SimAction) -> void:
 	_path_index = 0
 
 
+## Walks up to the Sim we want to talk to, stopping about a metre away.
+func _path_to_partner(a: SimAction) -> void:
+	var t := a.target_sim
+	if not is_instance_valid(t) or (not t.can_socialize() and t._social_with != self):
+		_fail(a, "%s is busy right now." % (t.sim_name if is_instance_valid(t) else "They"))
+		return
+	var away_dir := global_position - t.global_position
+	away_dir.y = 0.0
+	if away_dir.length() < 0.01:
+		away_dir = Vector3.FORWARD
+	away_dir = away_dir.normalized()
+	for k in 8:
+		var dir := away_dir.rotated(Vector3.UP, (k + 1) / 2 * (PI / 4.0) * (1.0 if k % 2 == 0 else -1.0))
+		var spot := t.global_position + dir * 1.0
+		var cell := lot.world_to_cell(spot)
+		if not lot.in_bounds(cell) or not lot.is_walkable(cell) or lot.crosses_wall(spot, t.global_position):
+			continue
+		var p := lot.find_path(global_position, spot)
+		if p.is_empty() and global_position.distance_to(spot) > 0.3:
+			continue
+		path = p
+		_path_index = 0
+		a.spot = spot
+		return
+	_fail(a, "%s can't reach %s." % [sim_name, t.sim_name])
+
+
+func _begin_social(a: SimAction) -> void:
+	var t := a.target_sim
+	if not t.can_socialize() and t._social_with != self:
+		_fail(a, "%s is busy right now." % t.sim_name)
+		return
+	a.performing = true
+	t.join_social(self, a.interaction)
+	_face_toward(t.global_position)
+	_set_pose("stand")
+	a.outcome = _rng.randf() < Socials.success_chance(a.interaction, friendship_with(t), romance_with(t), emotions.mood(), traits)
+
+
+## Relationship and moodlets once a social has gone on long enough.
+func _social_result(a: SimAction) -> void:
+	var t := a.target_sim
+	if not is_instance_valid(t) or a.elapsed < a.interaction.reward_after():
+		return
+	var s: Dictionary = a.interaction.social
+	if a.outcome:
+		change_relationship(t, s.get("friendship", 0.0), s.get("romance", 0.0))
+		var am: Array = s.get("actor_moodlet", [])
+		if not am.is_empty():
+			emotions.add(am[0], am[1], am[2], am[3], am[4], am[5])
+		var tm: Array = s.get("target_moodlet", [])
+		if not tm.is_empty():
+			t.emotions.add(tm[0], tm[1], tm[2], tm[3], tm[4], tm[5])
+		return
+	if s.get("risky", false) and friendship_with(t) >= s.get("min_friendship", -1000.0):
+		change_relationship(t, -3.0, 0.0)
+		emotions.add("fell_flat", "embarrassed", 1, "Fell Flat", "Nobody laughed.", 120.0)
+		announced.emit("%s's %s fell flat with %s." % [sim_name, a.interaction.name.to_lower(), t.sim_name])
+	else:
+		change_relationship(t, -5.0, -3.0 if s.get("category", "") == "Romance" else 0.0)
+		emotions.add("rejected", "embarrassed", 2, "Turned Down", "Well, that was awkward.", 180.0)
+		t.emotions.add("uncomfortable_advance", "tense", 1, "Awkward Moment", "That came out of nowhere.", 120.0)
+		announced.emit("%s wasn't ready for that from %s. Get to know them better first." % [t.sim_name, sim_name])
+
+
 func _begin_perform(a: SimAction) -> void:
+	if a.target_sim != null:
+		_begin_social(a)
+		return
 	a.performing = true
 	var f := a.furniture
 	f.user = self
@@ -334,6 +512,12 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 
 func _end_perform(a: SimAction, finished := false) -> void:
 	if not a.performing:
+		return
+	if a.target_sim != null:
+		_social_result(a)
+		a.performing = false
+		if is_instance_valid(a.target_sim):
+			a.target_sim.leave_social(self)
 		return
 	_reward(a.interaction, a.elapsed, finished)
 	a.performing = false
@@ -394,7 +578,7 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 		_walk_phase += delta * walk_speed * 3.6
 	_busy_phase += delta * 8.0
 	var s := sin(_walk_phase) * _swing
-	var busy := cur != null and cur.performing and cur.interaction.busy_hands
+	var busy := (cur != null and cur.performing and cur.interaction.busy_hands) or _social_with != null
 	var arm_l := -s * 0.8
 	var arm_r := s * 0.8
 	if busy:
@@ -500,6 +684,18 @@ func _build_visual() -> void:
 	_selection_ring.material_override = ring_mat
 	_selection_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_selection_ring)
+
+	# Click target so the Sim can be picked for social interactions.
+	var body := StaticBody3D.new()
+	body.set_meta("sim", self)
+	var shape := CollisionShape3D.new()
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.3
+	capsule.height = 1.8
+	shape.shape = capsule
+	shape.position = Vector3(0, 0.9, 0)
+	body.add_child(shape)
+	add_child(body)
 
 	# The green diamond over the controlled Sim.
 	_plumbob = MeshInstance3D.new()

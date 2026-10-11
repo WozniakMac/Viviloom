@@ -21,6 +21,8 @@ var moodlet: Array = []
 ## Money earned on completion, plus this much more per skill level.
 var earns := 0
 var earns_per_level := 0
+## Set for social interactions between two Sims (see Socials).
+var social := {}
 
 
 func _init(p_name: String, p_rates: Dictionary, p_max_minutes: float, p_until_full := "", p_pose := "stand", p_busy_hands := false) -> void:
@@ -47,6 +49,10 @@ func pays(base: int, per_level: int) -> Interaction:
 	earns = base
 	earns_per_level = per_level
 	return self
+
+
+func is_social() -> bool:
+	return not social.is_empty()
 
 
 ## Game minutes of doing this before its moodlet is earned.

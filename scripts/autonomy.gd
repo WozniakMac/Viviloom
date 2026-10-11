@@ -52,7 +52,7 @@ static func preference(sim: Sim, f: Furniture, interaction: Interaction) -> floa
 	return m
 
 
-## Returns [furniture, interaction] or an empty array if nothing is worth doing.
+## Returns [furniture or Sim, interaction] or an empty array if nothing is worth doing.
 ## Low needs come before everything else: while any need is low, only
 ## interactions that restore one of them are considered, purely on need.
 static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
@@ -70,6 +70,17 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 				s *= preference(sim, f, i)
 			if s >= MIN_SCORE:
 				options.append([s, f, i])
+	# Other Sims on the lot: a chat or a joke when Social or Fun need it.
+	for other in lot.sims:
+		if other == sim or not (other as Sim).can_socialize():
+			continue
+		var dist := sim.global_position.distance_to(other.global_position)
+		for i in [Socials.find("Chat"), Socials.find("Tell a Joke")]:
+			if not urgent.is_empty() and not restores_any(i, urgent):
+				continue
+			var s := score(sim.needs, i) / (1.0 + dist / 20.0)
+			if s >= MIN_SCORE:
+				options.append([s, other, i])
 	if options.is_empty():
 		return []
 	options.sort_custom(func(a, b): return a[0] > b[0])
