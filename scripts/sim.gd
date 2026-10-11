@@ -6,6 +6,9 @@ extends Node3D
 signal arrived
 signal queue_changed
 signal action_failed(message: String)
+## Something worth telling the player (skill level, money earned...).
+signal announced(message: String)
+signal earned(amount: int)
 
 const MAX_QUEUE := 8
 ## Game minutes a Sim stands around before deciding something on their own.
@@ -38,6 +41,11 @@ class SimAction:
 
 var lot: Lot
 var needs := Needs.new()
+var emotions := Emotions.new()
+var skills := Skills.new()
+var traits: Array[String] = []
+## trait -> game minutes until its periodic moodlet comes back.
+var _trait_timers := {}
 var autonomy_enabled := true
 var _idle_minutes := 0.0
 var _rng := RandomNumberGenerator.new()
@@ -56,10 +64,38 @@ var _leg_r: Node3D
 var _arm_l: Node3D
 var _arm_r: Node3D
 var _selection_ring: MeshInstance3D
+var _plumbob: MeshInstance3D
 
 
 func _ready() -> void:
 	_build_visual()
+	skills.leveled_up.connect(func(s: String, l: int):
+		announced.emit("%s reached %s level %d!" % [sim_name, Skills.label(s), l]))
+
+
+## Replaces the Sim's traits and their lasting moodlets.
+func set_traits(list: Array[String]) -> void:
+	for t in traits:
+		emotions.remove("trait_" + t)
+	traits = list.duplicate()
+	_trait_timers.clear()
+	for t in traits:
+		var info: Dictionary = Traits.INFO[t]
+		if info.has("lasting"):
+			var l: Array = info["lasting"]
+			emotions.add("trait_" + t, l[0], l[1], l[2], l[3])
+		if info.has("periodic"):
+			# First occurrence comes partway through the cycle.
+			_trait_timers[t] = info["periodic"][4] * 0.25
+
+
+func _update_traits(minutes: float) -> void:
+	for t in _trait_timers:
+		_trait_timers[t] -= minutes
+		if _trait_timers[t] <= 0.0:
+			var p: Array = Traits.INFO[t]["periodic"]
+			_trait_timers[t] += p[4]
+			emotions.add("trait_" + t, p[0], p[1], p[2], p[3], p[5])
 
 
 func is_moving() -> bool:
@@ -99,6 +135,7 @@ func stop() -> void:
 func set_selected(selected: bool) -> void:
 	_selected = selected
 	_selection_ring.visible = selected and _pose == "stand"
+	_plumbob.visible = selected
 
 
 func queue_go(target: Vector3) -> bool:
@@ -155,7 +192,11 @@ func _process(real_delta: float) -> void:
 	var rates := {}
 	if cur != null and cur.performing:
 		rates = cur.interaction.rates
-	needs.tick(Clock.game_delta, rates)
+		_practise(cur.interaction, Clock.game_delta)
+	needs.tick(Clock.game_delta, rates, Traits.decay_mult(traits))
+	emotions.tick(Clock.game_delta)
+	emotions.sync_needs(needs)
+	_update_traits(Clock.game_delta)
 
 	_update_autonomy()
 	var moving := _follow_path(delta)
@@ -167,10 +208,20 @@ func _process(real_delta: float) -> void:
 	elif cur != null and cur.performing:
 		cur.elapsed += Clock.game_delta
 		var full := cur.interaction.until_full != "" and needs.get_value(cur.interaction.until_full) >= 99.9
-		if cur.elapsed >= cur.interaction.max_minutes or full:
-			_end_perform(cur)
+		if cur.elapsed >= cur.interaction.max_minutes or full or _should_abandon(cur):
+			_end_perform(cur, true)
 			_complete(cur)
 	_animate(delta, moving, cur)
+
+
+## Sims drop something they chose themselves when another need becomes critical.
+func _should_abandon(a: SimAction) -> bool:
+	if not a.autonomous:
+		return false
+	for n in Needs.ORDER:
+		if needs.get_value(n) < Needs.CRITICAL and a.interaction.rates.get(n, 0.0) <= 0.0:
+			return true
+	return false
 
 
 func _update_autonomy() -> void:
@@ -236,9 +287,41 @@ func _begin_perform(a: SimAction) -> void:
 	_set_pose(a.interaction.pose)
 
 
-func _end_perform(a: SimAction) -> void:
+## Experience gained for `minutes` of an activity, sped up by traits and by feeling
+## the emotion that suits the skill.
+func skill_gain(interaction: Interaction, minutes: float) -> float:
+	if interaction.skill == "":
+		return 0.0
+	var gain := interaction.skill_rate * minutes / 60.0 * Traits.skill_mult(traits, interaction.skill)
+	if emotions.mood() == Skills.boosting_emotion(interaction.skill):
+		gain *= Skills.EMOTION_BONUS
+	return gain
+
+
+func _practise(interaction: Interaction, minutes: float) -> void:
+	if interaction.skill != "":
+		skills.add_xp(interaction.skill, skill_gain(interaction, minutes))
+
+
+## Moodlet and pay for an activity done long enough. Skill makes both better.
+## Pay only comes when the activity is finished, not cancelled.
+func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
+	if minutes_done < i.reward_after():
+		return
+	var lvl := skills.level(i.skill) if i.skill != "" else 0
+	if not i.moodlet.is_empty():
+		var m := i.moodlet
+		emotions.add(m[0], m[1], m[2] + lvl / 4, m[3], m[4], m[5])
+	if i.earns > 0 and finished:
+		var amount := i.earns + i.earns_per_level * lvl
+		earned.emit(amount)
+		announced.emit("%s sold their work for $%d." % [sim_name, amount])
+
+
+func _end_perform(a: SimAction, finished := false) -> void:
 	if not a.performing:
 		return
+	_reward(a.interaction, a.elapsed, finished)
 	a.performing = false
 	a.furniture.user = null
 	if a.furniture.use_position != null:
@@ -323,6 +406,10 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 			_leg_r.rotation.x = -s
 	_arm_l.rotation.x = arm_l
 	_arm_r.rotation.x = arm_r
+	# The plumbob floats over the head, spinning and bobbing even while paused.
+	_plumbob.rotation.y += get_process_delta_time() * 1.8
+	var head := _body.to_global(Vector3(0, 1.66, 0))
+	_plumbob.global_position = head + Vector3(0, 0.55 + sin(Time.get_ticks_msec() * 0.003) * 0.04, 0)
 
 
 func _build_visual() -> void:
@@ -391,6 +478,30 @@ func _build_visual() -> void:
 	_selection_ring.material_override = ring_mat
 	_selection_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_selection_ring)
+
+	# The green diamond over the controlled Sim.
+	_plumbob = MeshInstance3D.new()
+	_plumbob.name = "Plumbob"
+	var gem_mat := _mat(Color(0.3, 0.95, 0.35))
+	gem_mat.emission_enabled = true
+	gem_mat.emission = Color(0.15, 0.7, 0.2)
+	gem_mat.roughness = 0.2
+	for half in [1.0, -1.0]:
+		var cone := CylinderMesh.new()
+		cone.top_radius = 0.0 if half > 0.0 else 0.11
+		cone.bottom_radius = 0.11 if half > 0.0 else 0.0
+		cone.height = 0.2 if half > 0.0 else 0.13
+		cone.radial_segments = 6
+		cone.rings = 1
+		var piece := MeshInstance3D.new()
+		piece.mesh = cone
+		piece.position.y = 0.1 * half if half > 0.0 else -0.065
+		piece.material_override = gem_mat
+		piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_plumbob.add_child(piece)
+	_plumbob.top_level = true
+	_plumbob.visible = false
+	add_child(_plumbob)
 
 
 func _limb(pivot_pos: Vector3, radius: float, length: float, mat: Material) -> Node3D:

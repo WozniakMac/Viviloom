@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess"]
 
 ## Display name and price for the build-mode catalogue.
 const INFO := {
@@ -12,6 +12,9 @@ const INFO := {
 	"shower": ["Shower", 650],
 	"tv": ["Television", 500],
 	"desk": ["Computer Desk", 450],
+	"bookshelf": ["Bookshelf", 250],
+	"easel": ["Easel", 350],
+	"chess": ["Chess Table", 400],
 }
 const WALL_PRICE := 14
 const DOOR_PRICE := 150
@@ -36,7 +39,7 @@ static func create(kind: String) -> Furniture:
 			f.spots = [Vector3(0, 0, 1.0)]
 			f.interactions = [
 				Interaction.new("Grab a Snack", {"hunger": 90.0}, 15.0, "hunger", "stand", true),
-				Interaction.new("Have a Meal", {"hunger": 75.0, "fun": 2.0}, 80.0, "hunger", "stand", true),
+				Interaction.new("Cook a Meal", {"hunger": 75.0, "fun": 4.0}, 80.0, "hunger", "stand", true).practices("cooking", 70.0).grants("tasty_meal", "happy", 1, "Tasty Meal", "That really hit the spot.", 180.0),
 			]
 		"bed":
 			f.display_name = "Double Bed"
@@ -53,7 +56,7 @@ static func create(kind: String) -> Furniture:
 			f.use_facing = Vector3(0, 0, 1)
 			var sleep_rates := {"energy": 13.0, "hunger": -3.0, "bladder": -4.0, "hygiene": -2.0, "fun": 0.0, "social": -2.0}
 			f.interactions = [
-				Interaction.new("Sleep", sleep_rates, 600.0, "energy", "lie"),
+				Interaction.new("Sleep", sleep_rates, 600.0, "energy", "lie").grants("well_rested", "energized", 1, "Well Rested", "Ready to take on the day!", 240.0),
 				Interaction.new("Nap", sleep_rates, 90.0, "energy", "lie"),
 			]
 		"toilet":
@@ -80,7 +83,7 @@ static func create(kind: String) -> Furniture:
 			f.use_position = Vector3(0, 0.08, 0)
 			f.use_facing = Vector3(0, 0, 1)
 			f.interactions = [
-				Interaction.new("Take a Shower", {"hygiene": 220.0}, 40.0, "hygiene", "stand", true),
+				Interaction.new("Take a Shower", {"hygiene": 220.0}, 40.0, "hygiene", "stand", true).grants("fresh", "happy", 1, "Freshly Showered", "Clean and refreshed.", 120.0),
 			]
 		"tv":
 			f.display_name = "Television"
@@ -92,6 +95,7 @@ static func create(kind: String) -> Furniture:
 			f.spots = [Vector3(0, 0, 2.5), Vector3(-1.0, 0, 2.5), Vector3(1.0, 0, 2.5)]
 			f.interactions = [
 				Interaction.new("Watch TV", {"fun": 35.0}, 240.0, "fun"),
+				Interaction.new("Watch Cooking Show", {"fun": 20.0}, 120.0, "fun").practices("cooking", 25.0).grants("tv_inspired", "inspired", 1, "Inspired by TV", "So many recipes to try!", 120.0),
 			]
 		"desk":
 			f.display_name = "Computer Desk"
@@ -109,7 +113,53 @@ static func create(kind: String) -> Furniture:
 			f.use_facing = Vector3(0, 0, -1)
 			f.interactions = [
 				Interaction.new("Chat Online", {"social": 25.0, "fun": 8.0}, 180.0, "social", "sit", true),
-				Interaction.new("Play Games", {"fun": 45.0, "energy": -6.0}, 180.0, "fun", "sit", true),
+				Interaction.new("Play Games", {"fun": 45.0, "energy": -6.0}, 180.0, "fun", "sit", true).practices("gaming", 60.0).grants("gamer_high", "playful", 1, "Game On", "That was a great match.", 120.0),
+			]
+		"bookshelf":
+			f.display_name = "Bookshelf"
+			f.height = 2.0
+			f.add_box(Vector3(0.9, 2.0, 0.4), Vector3(0, 1.0, -0.28), WOOD)
+			var book_colors := [Color(0.7, 0.2, 0.2), Color(0.2, 0.4, 0.7), Color(0.85, 0.7, 0.25), Color(0.25, 0.55, 0.3)]
+			for shelf in 4:
+				f.add_box(Vector3(0.82, 0.03, 0.34), Vector3(0, 0.15 + shelf * 0.47, -0.24), WOOD.darkened(0.25))
+				for b in 5:
+					var h := 0.28 + 0.06 * ((b + shelf) % 3)
+					f.add_box(Vector3(0.12, h, 0.26), Vector3(-0.3 + b * 0.15, 0.17 + shelf * 0.47 + h * 0.5, -0.24), book_colors[(b + shelf) % 4])
+			f.spots = [Vector3(0, 0, 0.9)]
+			f.interactions = [
+				Interaction.new("Browse Books", {"fun": 30.0}, 60.0, "fun", "stand", true).grants("lit_inspired", "inspired", 1, "Inspired by Literature", "Browsing books sparked some new ideas.", 120.0),
+				Interaction.new("Study", {"fun": 8.0}, 120.0, "", "stand", true).practices("logic", 55.0).grants("studied", "focused", 1, "Studious", "Facts are sticking today.", 120.0),
+			]
+		"easel":
+			f.display_name = "Easel"
+			f.height = 1.8
+			for x in [-0.25, 0.25]:
+				var leg := f.add_box(Vector3(0.05, 1.7, 0.05), Vector3(x, 0.85, -0.1), WOOD)
+				leg.rotation.z = -x * 0.25
+			var back_leg := f.add_box(Vector3(0.05, 1.6, 0.05), Vector3(0, 0.8, -0.35), WOOD)
+			back_leg.rotation.x = -0.3
+			f.add_box(Vector3(0.7, 0.05, 0.12), Vector3(0, 0.75, -0.05), WOOD)
+			f.add_box(Vector3(0.62, 0.72, 0.03), Vector3(0, 1.15, -0.06), WHITE)
+			f.add_box(Vector3(0.3, 0.25, 0.01), Vector3(-0.08, 1.2, -0.04), Color(0.3, 0.6, 0.85))
+			f.add_box(Vector3(0.18, 0.3, 0.01), Vector3(0.15, 1.05, -0.04), Color(0.9, 0.55, 0.2))
+			f.spots = [Vector3(0, 0, 0.9)]
+			f.interactions = [
+				Interaction.new("Paint", {"fun": 25.0}, 180.0, "", "stand", true).practices("painting", 65.0).grants("proud_painter", "confident", 1, "Proud Painter", "Finished a painting worth showing off.", 180.0).pays(25, 30),
+			]
+		"chess":
+			f.display_name = "Chess Table"
+			f.height = 0.9
+			f.add_box(Vector3(0.08, 0.7, 0.08), Vector3(0, 0.35, -0.15), DARK)
+			f.add_box(Vector3(0.6, 0.05, 0.6), Vector3(0, 0.72, -0.15), WOOD)
+			for i in 16:
+				var light := (i + i / 4) % 2 == 0
+				f.add_box(Vector3(0.12, 0.012, 0.12), Vector3(-0.18 + (i % 4) * 0.12, 0.75, -0.33 + (i / 4) * 0.12), WHITE if light else DARK)
+			f.add_box(Vector3(0.4, 0.05, 0.35), Vector3(0, 0.45, 0.3), WOOD.darkened(0.2))
+			f.spots = [Vector3(0, 0, 0.9)]
+			f.use_position = Vector3(0, 0, 0.3)
+			f.use_facing = Vector3(0, 0, -1)
+			f.interactions = [
+				Interaction.new("Practise Chess", {"fun": 30.0}, 120.0, "fun", "sit", true).practices("logic", 70.0).grants("chess_focus", "focused", 1, "Sharp Thinking", "Thinking several moves ahead.", 120.0),
 			]
 		_:
 			push_error("Unknown furniture kind: %s" % kind)

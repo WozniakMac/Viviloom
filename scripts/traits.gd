@@ -1,0 +1,106 @@
+class_name Traits
+extends RefCounted
+## Personality traits. Each one can give a lasting moodlet, a moodlet that comes back
+## every so often, faster skill practice, different need decay, and favourite
+## activities that the Sim picks more often on their own.
+
+const MAX_TRAITS := 3
+## Keys per trait (all optional except label/description):
+##   lasting:   [emotion, weight, moodlet label, moodlet description]
+##   periodic:  [emotion, weight, moodlet label, description, every N game minutes, lasting minutes]
+##   skill_mult: {skill: multiplier}
+##   decay_mult: {need: multiplier}
+##   likes:     {skill or object kind: autonomy multiplier}
+const INFO := {
+	"cheerful": {
+		"label": "Cheerful",
+		"description": "Tends to be happier than other Sims.",
+		"lasting": ["happy", 1, "Naturally Cheerful", "Life is good."],
+	},
+	"gloomy": {
+		"label": "Gloomy",
+		"description": "Grows sad now and then, and enjoys things a little less.",
+		"periodic": ["sad", 1, "Feeling Gloomy", "Nothing in particular, just... gloomy.", 360.0, 180.0],
+		"decay_mult": {"fun": 1.25},
+	},
+	"creative": {
+		"label": "Creative",
+		"description": "Often inspired, and learns painting faster.",
+		"periodic": ["inspired", 1, "Creative Spark", "An idea is forming!", 480.0, 240.0],
+		"skill_mult": {"painting": 1.5},
+		"likes": {"painting": 2.0},
+	},
+	"genius": {
+		"label": "Genius",
+		"description": "Often focused, and picks up logic faster.",
+		"periodic": ["focused", 1, "Sharp Mind", "Thoughts are crystal clear.", 480.0, 240.0],
+		"skill_mult": {"logic": 1.5},
+		"likes": {"logic": 2.0},
+	},
+	"lazy": {
+		"label": "Lazy",
+		"description": "Tires quickly and loves lounging in front of the TV.",
+		"decay_mult": {"energy": 1.3},
+		"likes": {"tv": 2.0, "bed": 1.3},
+	},
+	"bookworm": {
+		"label": "Bookworm",
+		"description": "Finds books more fun than anything else.",
+		"likes": {"bookshelf": 2.5},
+		"skill_mult": {"logic": 1.2},
+	},
+}
+const ORDER: Array[String] = ["cheerful", "gloomy", "creative", "genius", "lazy", "bookworm"]
+const CONFLICTS := [["cheerful", "gloomy"]]
+
+
+static func label(t: String) -> String:
+	return INFO[t]["label"]
+
+
+static func description(t: String) -> String:
+	return INFO[t]["description"]
+
+
+static func conflicts(a: String, b: String) -> bool:
+	for pair in CONFLICTS:
+		if (pair[0] == a and pair[1] == b) or (pair[0] == b and pair[1] == a):
+			return true
+	return false
+
+
+## Whether `t` can join `current` (not full, not a duplicate, no conflict).
+static func can_add(current: Array[String], t: String) -> bool:
+	if current.size() >= MAX_TRAITS or current.has(t):
+		return false
+	for c in current:
+		if conflicts(c, t):
+			return false
+	return true
+
+
+static func skill_mult(traits: Array[String], skill: String) -> float:
+	var m := 1.0
+	for t in traits:
+		m *= INFO[t].get("skill_mult", {}).get(skill, 1.0)
+	return m
+
+
+static func decay_mult(traits: Array[String]) -> Dictionary:
+	var out := {}
+	for t in traits:
+		var d: Dictionary = INFO[t].get("decay_mult", {})
+		for need in d:
+			out[need] = out.get(need, 1.0) * d[need]
+	return out
+
+
+## How much more the Sim wants to do `interaction` on `kind` of object.
+static func liking(traits: Array[String], kind: String, interaction: Interaction) -> float:
+	var m := 1.0
+	for t in traits:
+		var likes: Dictionary = INFO[t].get("likes", {})
+		m *= likes.get(kind, 1.0)
+		if interaction.skill != "":
+			m *= likes.get(interaction.skill, 1.0)
+	return m

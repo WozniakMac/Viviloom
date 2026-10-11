@@ -147,7 +147,7 @@ func _on_press(p: Variant, screen_pos: Vector2) -> void:
 			else:
 				var e := lot.edge_near(pt)
 				if lot.walls.has(e):
-					_earn(Catalog.WALL_PRICE + (Catalog.DOOR_PRICE if lot.doors.has(e) else 0))
+					earn(Catalog.WALL_PRICE + (Catalog.DOOR_PRICE if lot.doors.has(e) else 0))
 					lot.remove_wall(e)
 	_refresh_overlays(p)
 
@@ -204,7 +204,7 @@ func _cancel_held() -> void:
 
 
 func _sell(f: Furniture) -> void:
-	_earn(f.price)
+	earn(f.price)
 	if f == _held:
 		_held = null
 		_footprint.visible = false
@@ -290,7 +290,7 @@ func _spend(amount: int) -> bool:
 	return true
 
 
-func _earn(amount: int) -> void:
+func earn(amount: int) -> void:
 	funds += amount
 	funds_changed.emit(funds)
 

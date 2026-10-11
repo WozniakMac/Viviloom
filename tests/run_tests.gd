@@ -14,6 +14,9 @@ func _ready() -> void:
 	_test_autonomy_prefers_urgent_need()
 	_test_walls_and_doors()
 	_test_placement_rules()
+	_test_emotions_from_moodlets()
+	_test_skills_level_up()
+	_test_traits_and_skill_gain()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -93,6 +96,10 @@ func _test_autonomy_prefers_urgent_need() -> void:
 	_check(Autonomy.score(needs, toilet) > Autonomy.score(needs, tv), "nearly empty bladder beats moderate fun")
 	needs.set_value("bladder", 95.0)
 	_check(Autonomy.score(needs, toilet) == 0.0, "satisfied needs are not advertised")
+	needs.set_value("bladder", 20.0)
+	var urgent := Autonomy.urgent_needs(needs)
+	_check(urgent == ["bladder"], "only low needs are urgent")
+	_check(Autonomy.restores_any(toilet, urgent) and not Autonomy.restores_any(tv, urgent), "hobbies wait while a need is low")
 
 
 func _test_walls_and_doors() -> void:
@@ -142,3 +149,56 @@ func _test_placement_rules() -> void:
 	_check(lot.is_walkable(Vector2i(7, 7)), "removing frees the tiles")
 	bed.free()
 	lot.free()
+
+
+func _test_emotions_from_moodlets() -> void:
+	var e := Emotions.new()
+	_check(e.mood() == Emotions.FINE, "no moodlets means fine")
+	e.add("a", "happy", 1, "A")
+	e.add("b", "inspired", 2, "B", "", 60.0)
+	_check(e.mood() == "inspired", "strongest emotion wins")
+	e.add("c", "inspired", 1, "C")
+	_check(e.mood_label() == "Very Inspired", "a total of 3 is 'very'")
+	e.add("b", "inspired", 2, "B", "", 30.0)
+	_check(e.moodlets.size() == 3, "same id refreshes instead of stacking")
+	e.tick(31.0)
+	_check(not e.has("b") and e.mood() == "happy", "timed moodlets expire and mood updates")
+	var needs := Needs.new()
+	needs.set_value("hunger", 10.0)
+	e.sync_needs(needs)
+	_check(e.has("need_starving") and not e.has("need_hungry"), "very low hunger gives only the strong moodlet")
+	needs.set_value("hunger", 25.0)
+	e.sync_needs(needs)
+	_check(e.has("need_hungry") and not e.has("need_starving"), "moodlet follows the need back up")
+	needs.set_value("hunger", 90.0)
+	e.sync_needs(needs)
+	_check(not e.has("need_hungry"), "full need clears its moodlet")
+
+
+func _test_skills_level_up() -> void:
+	var s := Skills.new()
+	var ups: Array = []
+	s.leveled_up.connect(func(sk, l): ups.append([sk, l]))
+	_check(s.known().is_empty() and s.level("painting") == 0, "skills start unknown at level 0")
+	s.add_xp("painting", Skills.xp_for_level(2) + 1.0)
+	_check(s.level("painting") == 2 and ups.size() == 1, "levels come from total experience")
+	s.add_xp("painting", 1e9)
+	_check(s.level("painting") == Skills.MAX_LEVEL and s.progress("painting") == 1.0, "experience caps at max level")
+	_check(s.known() == ["painting"], "only practised skills are listed")
+
+
+func _test_traits_and_skill_gain() -> void:
+	var current: Array[String] = ["cheerful"]
+	_check(not Traits.can_add(current, "gloomy"), "cheerful and gloomy conflict")
+	_check(Traits.can_add(current, "creative"), "unrelated traits combine")
+	var sim := Sim.new()
+	var t: Array[String] = ["creative"]
+	sim.set_traits(t)
+	var paint: Interaction = Interaction.new("Paint", {"fun": 25.0}, 180.0).practices("painting", 60.0)
+	_check(is_equal_approx(sim.skill_gain(paint, 60.0), 90.0), "creative paints 1.5x faster")
+	sim.emotions.add("x", "inspired", 2, "X")
+	_check(is_equal_approx(sim.skill_gain(paint, 60.0), 135.0), "being inspired speeds painting further")
+	var cheerful: Array[String] = ["cheerful"]
+	sim.set_traits(cheerful)
+	_check(sim.emotions.has("trait_cheerful") and not sim.emotions.has("trait_creative"), "lasting trait moodlets follow traits")
+	sim.free()

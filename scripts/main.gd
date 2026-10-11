@@ -30,6 +30,8 @@ func _ready() -> void:
 	var start_needs := {"hunger": 70.0, "energy": 85.0, "bladder": 55.0, "hygiene": 80.0, "fun": 45.0, "social": 60.0}
 	for n in start_needs:
 		sim.needs.set_value(n, start_needs[n])
+	var start_traits: Array[String] = ["cheerful", "creative", "bookworm"]
+	sim.set_traits(start_traits)
 
 	rig = CameraRig.new()
 	rig.name = "CameraRig"
@@ -49,6 +51,7 @@ func _ready() -> void:
 	build.camera = rig.camera
 	add_child(build)
 	hud.set_build(build, lot)
+	sim.earned.connect(build.earn)
 	_check_dev_args()
 
 
@@ -164,6 +167,9 @@ func _place_house() -> void:
 	_place("desk", Vector2i(8, 3))
 	_place("tv", Vector2i(12, 3))
 	_place("fridge", Vector2i(16, 3))
+	_place("bookshelf", Vector2i(17, 6), 3)
+	_place("easel", Vector2i(15, 9))
+	_place("chess", Vector2i(11, 8))
 	_place("toilet", Vector2i(4, 10), 2)
 	_place("shower", Vector2i(6, 10), 2)
 	var hedge := Color(0.18, 0.38, 0.16)
@@ -270,6 +276,18 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_interaction(find_furniture("bed"), find_furniture("bed").interactions[0])
 			sim.queue_interaction(find_furniture("toilet"), find_furniture("toilet").interactions[0])
 			await get_tree().create_timer(2.5).timeout
+		"mood":
+			var easel := find_furniture("easel")
+			var books := find_furniture("bookshelf")
+			sim.skills.add_xp("painting", 420.0)
+			sim.skills.add_xp("cooking", 120.0)
+			sim.needs.set_value("hunger", 25.0)
+			sim.emotions.add("lit_inspired", "inspired", 1, "Inspired by Literature", "Browsing books sparked some new ideas.", 120.0)
+			sim.emotions.add("trait_creative", "inspired", 1, "Creative Spark", "An idea is forming!", 240.0)
+			sim.queue_interaction(easel, easel.interactions[0])
+			sim.queue_interaction(books, books.interactions[1])
+			hud._show_page(1)
+			await get_tree().create_timer(6.0).timeout
 		"build":
 			build.enter()
 			build.set_tool(BuildMode.Tool.WALL)

@@ -12,6 +12,15 @@ var max_minutes: float
 var pose: String
 ## Whether the Sim moves its arms while doing this (eating, typing...).
 var busy_hands: bool
+## Skill practised while performing, and experience per game hour.
+var skill := ""
+var skill_rate := 0.0
+## Moodlet granted once the Sim has done this for a while:
+## [id, emotion, weight, label, description, minutes]. Skilled Sims get a stronger one.
+var moodlet: Array = []
+## Money earned on completion, plus this much more per skill level.
+var earns := 0
+var earns_per_level := 0
 
 
 func _init(p_name: String, p_rates: Dictionary, p_max_minutes: float, p_until_full := "", p_pose := "stand", p_busy_hands := false) -> void:
@@ -21,3 +30,25 @@ func _init(p_name: String, p_rates: Dictionary, p_max_minutes: float, p_until_fu
 	until_full = p_until_full
 	pose = p_pose
 	busy_hands = p_busy_hands
+
+
+func practices(p_skill: String, xp_per_hour: float) -> Interaction:
+	skill = p_skill
+	skill_rate = xp_per_hour
+	return self
+
+
+func grants(id: String, emotion: String, weight: int, label: String, description: String, minutes: float) -> Interaction:
+	moodlet = [id, emotion, weight, label, description, minutes]
+	return self
+
+
+func pays(base: int, per_level: int) -> Interaction:
+	earns = base
+	earns_per_level = per_level
+	return self
+
+
+## Game minutes of doing this before its moodlet is earned.
+func reward_after() -> float:
+	return minf(30.0, max_minutes * 0.5)

@@ -16,6 +16,21 @@ static func urgency(v: float) -> float:
 	return 0.2 + d * d * 4.0
 
 
+static func urgent_needs(needs: Needs) -> Array[String]:
+	var out: Array[String] = []
+	for n in Needs.ORDER:
+		if needs.get_value(n) < Needs.LOW:
+			out.append(n)
+	return out
+
+
+static func restores_any(interaction: Interaction, list: Array[String]) -> bool:
+	for n in list:
+		if interaction.rates.get(n, 0.0) > 0.0:
+			return true
+	return false
+
+
 static func score(needs: Needs, interaction: Interaction) -> float:
 	var total := 0.0
 	for need in interaction.rates:
@@ -28,15 +43,31 @@ static func score(needs: Needs, interaction: Interaction) -> float:
 	return total
 
 
+## Personality and mood on top of needs: traits favour some activities, and a Sim
+## feeling the emotion that suits a skill is drawn to practising it.
+static func preference(sim: Sim, f: Furniture, interaction: Interaction) -> float:
+	var m := Traits.liking(sim.traits, f.kind, interaction)
+	if interaction.skill != "" and sim.emotions.mood() == Skills.boosting_emotion(interaction.skill):
+		m *= 1.5
+	return m
+
+
 ## Returns [furniture, interaction] or an empty array if nothing is worth doing.
+## Low needs come before everything else: while any need is low, only
+## interactions that restore one of them are considered, purely on need.
 static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
+	var urgent := urgent_needs(sim.needs)
 	var options: Array = []
 	for f in lot.furniture:
 		if f.user != null and f.user != sim:
 			continue
 		var dist := sim.global_position.distance_to(f.global_position)
 		for i in f.interactions:
+			if not urgent.is_empty() and not restores_any(i, urgent):
+				continue
 			var s := score(sim.needs, i) / (1.0 + dist / 20.0)
+			if urgent.is_empty():
+				s *= preference(sim, f, i)
 			if s >= MIN_SCORE:
 				options.append([s, f, i])
 	if options.is_empty():

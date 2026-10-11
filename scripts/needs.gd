@@ -49,11 +49,12 @@ func add(need: String, amount: float) -> void:
 
 ## Advances needs by `minutes` of game time. `rates` maps need -> points per hour and
 ## replaces normal decay for those needs (e.g. {"hunger": 40.0} while eating).
-func tick(minutes: float, rates: Dictionary = {}) -> void:
+## `decay_mult` scales normal decay per need (traits).
+func tick(minutes: float, rates: Dictionary = {}, decay_mult: Dictionary = {}) -> void:
 	if minutes <= 0.0:
 		return
 	for n in ORDER:
-		var rate: float = rates.get(n, -DECAY_PER_HOUR[n])
+		var rate: float = rates.get(n, -DECAY_PER_HOUR[n] * decay_mult.get(n, 1.0))
 		values[n] = clampf(values[n] + rate * minutes / 60.0, 0.0, 100.0)
 	changed.emit()
 
