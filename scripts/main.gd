@@ -1,7 +1,8 @@
 extends Node3D
 ## Game root: builds the world, the lot, the Sim and the camera, and routes clicks.
 ##
-## Dev flag: `-- --screenshot=<path>` sends the Sim on a walk, saves a frame and quits.
+## Dev flags (after `--`): `--screenshot=<path>` saves a frame after a short scripted
+## scenario and quits; `--scenario=<menu|sleep|walk>` picks the scenario.
 
 var lot: Lot
 var sim: Sim
@@ -17,13 +18,13 @@ func _ready() -> void:
 	lot = Lot.new()
 	lot.name = "Lot"
 	add_child(lot)
-	_place_garden()
+	_place_house()
 
 	sim = Sim.new()
 	sim.name = "Sim"
 	sim.lot = lot
 	add_child(sim)
-	sim.global_position = lot.cell_to_world(Vector2i(3, 14))
+	sim.global_position = lot.cell_to_world(Vector2i(10, 14))
 	sim.set_selected(true)
 	var start_needs := {"hunger": 70.0, "energy": 85.0, "bladder": 55.0, "hygiene": 80.0, "fun": 45.0, "social": 60.0}
 	for n in start_needs:
@@ -46,17 +47,45 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+			var f := _furniture_at(mb.position)
+			if f != null:
+				open_menu(f, mb.position)
+				return
 			var hit: Variant = _ground_point(mb.position)
 			if hit != null and lot.contains_point(hit):
-				if sim.move_to(hit):
-					_show_marker(sim.path[sim.path.size() - 1])
+				if lot.is_walkable(lot.world_to_cell(hit)) and sim.queue_go(hit):
+					_show_marker(hit)
+
+
+## Opens the interaction pie menu for `f` at a screen position.
+func open_menu(f: Furniture, screen_pos: Vector2) -> void:
+	var names: Array[String] = []
+	for i in f.interactions:
+		names.append(i.name)
+	for c in hud.pie_menu.chosen.get_connections():
+		hud.pie_menu.chosen.disconnect(c.callable)
+	hud.pie_menu.chosen.connect(func(idx: int): sim.queue_interaction(f, f.interactions[idx]), CONNECT_ONE_SHOT)
+	hud.pie_menu.open(screen_pos, f.display_name, names)
+
+
+func _furniture_at(screen_pos: Vector2) -> Furniture:
+	var cam := rig.camera
+	var origin := cam.project_ray_origin(screen_pos)
+	var q := PhysicsRayQueryParameters3D.create(origin, origin + cam.project_ray_normal(screen_pos) * 500.0)
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	if hit.is_empty() or not (hit.collider as Object).has_meta("furniture"):
+		return null
+	return (hit.collider as Object).get_meta("furniture") as Furniture
 
 
 func _process(delta: float) -> void:
 	if _marker.visible:
 		_marker_time += delta
 		_marker.scale = Vector3.ONE * (1.0 + 0.15 * sin(_marker_time * 6.0))
-		if not sim.is_moving():
+		var walking := false
+		for a in sim.queue:
+			walking = walking or a.interaction == null
+		if not walking:
 			_marker.visible = false
 
 
@@ -90,13 +119,31 @@ func _build_marker() -> void:
 	add_child(_marker)
 
 
-func _place_garden() -> void:
-	# Placeholder hedges so routing around obstacles is visible until real objects exist.
+func _place_house() -> void:
+	# A floor slab for the house; walls arrive with build mode.
+	lot.add_floor(Rect2i(3, 2, 15, 10), Color(0.62, 0.48, 0.34))
+	_place("bed", Vector2i(4, 3))
+	_place("desk", Vector2i(8, 3))
+	_place("tv", Vector2i(12, 3))
+	_place("fridge", Vector2i(16, 3))
+	_place("toilet", Vector2i(4, 10), 2)
+	_place("shower", Vector2i(6, 10), 2)
 	var hedge := Color(0.18, 0.38, 0.16)
-	lot.add_block(Rect2i(8, 3, 1, 10), 1.0, hedge, "HedgeWest")
-	lot.add_block(Rect2i(9, 12, 6, 1), 1.0, hedge, "HedgeSouth")
-	lot.add_block(Rect2i(14, 5, 1, 7), 1.0, hedge, "HedgeEast")
-	lot.add_block(Rect2i(18, 8, 3, 3), 0.5, Color(0.55, 0.5, 0.45), "Planter")
+	lot.add_block(Rect2i(1, 16, 6, 1), 0.9, hedge, "HedgeFrontWest")
+	lot.add_block(Rect2i(15, 16, 7, 1), 0.9, hedge, "HedgeFrontEast")
+
+
+func _place(kind: String, at: Vector2i, rot := 0) -> Furniture:
+	var f := Catalog.create(kind)
+	lot.place_furniture(f, at, rot)
+	return f
+
+
+func find_furniture(kind: String) -> Furniture:
+	for f in lot.furniture:
+		if f.kind == kind:
+			return f
+	return null
 
 
 func _setup_environment() -> void:
@@ -127,16 +174,50 @@ func _setup_environment() -> void:
 
 
 func _check_dev_args() -> void:
+	var shot := ""
+	var scenario := "menu"
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--screenshot="):
-			_take_screenshot(arg.trim_prefix("--screenshot="))
+			shot = arg.trim_prefix("--screenshot=")
+		elif arg.begins_with("--scenario="):
+			scenario = arg.trim_prefix("--scenario=")
+	if shot != "":
+		_run_scenario(scenario, shot)
+	elif scenario == "trace":
+		_trace()
 
 
-func _take_screenshot(path: String) -> void:
+## Headless smoke run: queue a few actions and log what the Sim does.
+func _trace() -> void:
+	Clock.set_speed(3)
+	sim.queue_interaction(find_furniture("fridge"), find_furniture("fridge").interactions[0])
+	sim.queue_interaction(find_furniture("toilet"), find_furniture("toilet").interactions[0])
+	for i in 30:
+		await get_tree().create_timer(0.5).timeout
+		var cur := sim.current_action()
+		print("t=%.1f pos=%s action=%s performing=%s hunger=%.0f bladder=%.0f" % [i * 0.5, sim.global_position, cur.label if cur else "-", cur.performing if cur else false, sim.needs.get_value("hunger"), sim.needs.get_value("bladder")])
+	get_tree().quit()
+
+
+func _run_scenario(scenario: String, path: String) -> void:
 	await get_tree().create_timer(0.5).timeout
-	sim.move_to(lot.cell_to_world(Vector2i(11, 7)))
-	_show_marker(sim.path[sim.path.size() - 1])
-	await get_tree().create_timer(3.0).timeout
+	match scenario:
+		"menu":
+			var desk := find_furniture("desk")
+			sim.queue_interaction(find_furniture("fridge"), find_furniture("fridge").interactions[0])
+			sim.queue_interaction(desk, desk.interactions[1])
+			sim.queue_go(lot.cell_to_world(Vector2i(10, 14)))
+			await get_tree().create_timer(2.5).timeout
+			open_menu(find_furniture("bed"), rig.camera.unproject_position(find_furniture("bed").global_position + Vector3.UP))
+		"sleep":
+			Clock.set_speed(3)
+			sim.needs.set_value("energy", 30.0)
+			sim.queue_interaction(find_furniture("bed"), find_furniture("bed").interactions[0])
+			sim.queue_interaction(find_furniture("toilet"), find_furniture("toilet").interactions[0])
+			await get_tree().create_timer(2.5).timeout
+		_:
+			sim.queue_go(lot.cell_to_world(Vector2i(20, 8)))
+			await get_tree().create_timer(3.0).timeout
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(path)
 	get_tree().quit()

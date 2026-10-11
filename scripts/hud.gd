@@ -1,13 +1,18 @@
 class_name Hud
 extends CanvasLayer
-## Live-mode HUD: controls hint, clock, and the selected Sim's needs panel.
+## Live-mode HUD: controls hint, clock, action queue, notices, pie menu and needs panel.
 
 var sim: Sim
+var pie_menu: PieMenu
 
 var _clock_label: Label
 var _name_label: Label
 var _bars := {}
 var _bar_styles := {}
+var _queue_box: HBoxContainer
+var _queue_buttons: Array[Button] = []
+var _notice: Label
+var _notice_time := 0.0
 
 
 func _ready() -> void:
@@ -16,9 +21,24 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	var hint := _outlined_label("Left-click: walk   WASD: pan   Q/E or middle-drag: rotate   Wheel: zoom")
-	hint.position = Vector2(16, 16)
+	var hint := _outlined_label("Click ground: walk   Click object: interact   Click queued action: cancel   WASD: pan   Q/E: rotate   Wheel: zoom")
+	hint.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	hint.position = Vector2(16, -36)
 	root.add_child(hint)
+
+	_queue_box = HBoxContainer.new()
+	_queue_box.position = Vector2(16, 16)
+	_queue_box.add_theme_constant_override("separation", 6)
+	root.add_child(_queue_box)
+
+	_notice = _outlined_label("")
+	_notice.add_theme_font_size_override("font_size", 18)
+	_notice.add_theme_color_override("font_color", Color(1.0, 0.85, 0.55))
+	_notice.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_notice.position = Vector2(-300, 50)
+	_notice.size = Vector2(600, 30)
+	root.add_child(_notice)
 
 	_clock_label = _outlined_label("")
 	_clock_label.add_theme_font_size_override("font_size", 22)
@@ -30,16 +50,66 @@ func _ready() -> void:
 
 	root.add_child(_build_needs_panel())
 
+	pie_menu = PieMenu.new()
+	pie_menu.name = "PieMenu"
+	root.add_child(pie_menu)
+
 
 func set_sim(s: Sim) -> void:
 	sim = s
+	sim.queue_changed.connect(_rebuild_queue)
+	sim.action_failed.connect(show_notice)
+	_rebuild_queue()
 
 
-func _process(_delta: float) -> void:
+func show_notice(text: String) -> void:
+	_notice.text = text
+	_notice_time = 3.0
+	_notice.modulate.a = 1.0
+
+
+## The action queue, top-left. The first entry is what the Sim is doing now;
+## clicking an entry cancels it.
+func _rebuild_queue() -> void:
+	for b in _queue_buttons:
+		b.queue_free()
+	_queue_buttons.clear()
+	for i in sim.queue.size():
+		var a: Sim.SimAction = sim.queue[i]
+		var b := Button.new()
+		b.text = a.label
+		b.tooltip_text = "Click to cancel"
+		b.focus_mode = Control.FOCUS_NONE
+		var col := Color(0.2, 0.42, 0.68, 0.95) if i == 0 else Color(0.13, 0.17, 0.25, 0.9)
+		if a.autonomous:
+			col = col.lerp(Color(0.4, 0.4, 0.4, 0.9), 0.5)
+		var st := StyleBoxFlat.new()
+		st.bg_color = col
+		st.set_corner_radius_all(8)
+		st.set_content_margin_all(8)
+		b.add_theme_stylebox_override("normal", st)
+		var hover := st.duplicate() as StyleBoxFlat
+		hover.bg_color = Color(0.7, 0.25, 0.25, 0.95)
+		b.add_theme_stylebox_override("hover", hover)
+		b.pressed.connect(func(): sim.cancel(sim.queue.find(a)))
+		_queue_box.add_child(b)
+		_queue_buttons.append(b)
+
+
+func _process(delta: float) -> void:
+	if _notice_time > 0.0:
+		_notice_time -= delta
+		_notice.modulate.a = clampf(_notice_time, 0.0, 1.0)
 	_clock_label.text = "%s  %s   Day %d" % [Clock.weekday_name(), Clock.time_string(), Clock.day()]
 	if sim == null:
 		return
 	_name_label.text = "%s  ·  %s" % [sim.sim_name, sim.needs.mood()]
+	var cur := sim.current_action()
+	if cur != null and not _queue_buttons.is_empty():
+		var label := cur.label
+		if cur.performing:
+			label += "  %d%%" % int(cur.progress() * 100.0)
+		_queue_buttons[0].text = label
 	for n in Needs.ORDER:
 		var v := sim.needs.get_value(n)
 		(_bars[n] as ProgressBar).value = v

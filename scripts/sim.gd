@@ -1,8 +1,32 @@
 class_name Sim
 extends Node3D
-## A simple stylised person that walks along paths computed by its Lot.
+## A simple stylised person. Walks along paths from its Lot and works through a queue
+## of actions (walk somewhere, or use an object).
 
 signal arrived
+signal queue_changed
+signal action_failed(message: String)
+
+const MAX_QUEUE := 8
+
+
+class SimAction:
+	extends RefCounted
+	var label: String
+	var target := Vector3.ZERO
+	var furniture: Furniture
+	var interaction: Interaction
+	var autonomous := false
+	var started := false
+	var performing := false
+	var elapsed := 0.0
+	var spot := Vector3.ZERO
+
+	func progress() -> float:
+		if not performing or interaction == null:
+			return 0.0
+		return clampf(elapsed / interaction.max_minutes, 0.0, 1.0)
+
 
 @export var sim_name := "Alex"
 @export var shirt_color := Color(0.22, 0.47, 0.82)
@@ -12,10 +36,14 @@ signal arrived
 
 var lot: Lot
 var needs := Needs.new()
+var queue: Array[SimAction] = []
 var path := PackedVector3Array()
 var _path_index := 0
 var _walk_phase := 0.0
+var _busy_phase := 0.0
 var _swing := 0.0
+var _pose := "stand"
+var _selected := false
 
 var _body: Node3D
 var _leg_l: Node3D
@@ -31,6 +59,14 @@ func _ready() -> void:
 
 func is_moving() -> bool:
 	return _path_index < path.size()
+
+
+func is_idle() -> bool:
+	return queue.is_empty()
+
+
+func current_action() -> SimAction:
+	return queue[0] if not queue.is_empty() else null
 
 
 ## Starts walking to `target`. Returns false if there is no route.
@@ -49,31 +85,168 @@ func stop() -> void:
 
 
 func set_selected(selected: bool) -> void:
-	_selection_ring.visible = selected
+	_selected = selected
+	_selection_ring.visible = selected and _pose == "stand"
+
+
+func queue_go(target: Vector3) -> bool:
+	var a := SimAction.new()
+	a.label = "Go Here"
+	a.target = target
+	return _enqueue(a)
+
+
+func queue_interaction(f: Furniture, interaction: Interaction, autonomous := false) -> bool:
+	var a := SimAction.new()
+	a.label = interaction.name
+	a.furniture = f
+	a.interaction = interaction
+	a.autonomous = autonomous
+	return _enqueue(a)
+
+
+## Cancels the action at `index`; a running one stops right away.
+func cancel(index: int) -> void:
+	if index < 0 or index >= queue.size():
+		return
+	var a := queue[index]
+	if a.started:
+		if a.performing:
+			_end_perform(a)
+		else:
+			stop()
+	queue.erase(a)
+	queue_changed.emit()
+
+
+func _enqueue(a: SimAction) -> bool:
+	if queue.size() >= MAX_QUEUE:
+		action_failed.emit("%s's queue is full." % sim_name)
+		return false
+	queue.append(a)
+	queue_changed.emit()
+	return true
 
 
 func _process(real_delta: float) -> void:
-	needs.tick(Clock.game_delta)
 	var delta := Clock.scaled(real_delta)
-	var moving := false
-	if _path_index < path.size():
-		var target := path[_path_index]
-		var to := target - global_position
-		to.y = 0.0
-		var step := walk_speed * delta
-		if to.length() <= step:
-			global_position = Vector3(target.x, 0.0, target.z)
-			_path_index += 1
-			moving = _path_index < path.size()
-			if not moving:
-				stop()
-				arrived.emit()
+	var cur := current_action()
+	if cur != null and not cur.started:
+		_start(cur)
+		cur = current_action()
+
+	var rates := {}
+	if cur != null and cur.performing:
+		rates = cur.interaction.rates
+	needs.tick(Clock.game_delta, rates)
+
+	var moving := _follow_path(delta)
+	if cur != null and cur.started and not cur.performing and not is_moving():
+		if cur.interaction == null:
+			_complete(cur)
 		else:
-			var dir := to.normalized()
-			global_position += dir * step
-			_face(dir, delta)
-			moving = true
-	_animate(delta, moving)
+			_begin_perform(cur)
+	elif cur != null and cur.performing:
+		cur.elapsed += Clock.game_delta
+		var full := cur.interaction.until_full != "" and needs.get_value(cur.interaction.until_full) >= 99.9
+		if cur.elapsed >= cur.interaction.max_minutes or full:
+			_end_perform(cur)
+			_complete(cur)
+	_animate(delta, moving, cur)
+
+
+func _start(a: SimAction) -> void:
+	a.started = true
+	if a.interaction == null:
+		if not move_to(a.target):
+			_fail(a, "%s can't get there." % sim_name)
+		return
+	var f := a.furniture
+	if f.user != null and f.user != self:
+		_fail(a, "The %s is in use." % f.display_name)
+		return
+	var best := PackedVector3Array()
+	var best_len := INF
+	for s in f.world_spots():
+		if not lot.is_walkable(lot.world_to_cell(s)):
+			continue
+		var p := lot.find_path(global_position, s)
+		if p.is_empty():
+			continue
+		var length := 0.0
+		var prev := global_position
+		for q in p:
+			length += prev.distance_to(q)
+			prev = q
+		if length < best_len:
+			best_len = length
+			best = p
+			a.spot = s
+	if best.is_empty():
+		_fail(a, "%s can't reach the %s." % [sim_name, f.display_name])
+		return
+	path = best
+	_path_index = 0
+
+
+func _begin_perform(a: SimAction) -> void:
+	a.performing = true
+	var f := a.furniture
+	f.user = self
+	var facing: Vector3
+	if f.use_position != null:
+		global_position = f.to_global(f.use_position)
+		facing = f.global_basis * f.use_facing
+	else:
+		facing = f.global_position - global_position
+	facing.y = 0.0
+	if facing.length() > 0.01:
+		rotation.y = atan2(-facing.x, -facing.z)
+	_set_pose(a.interaction.pose)
+
+
+func _end_perform(a: SimAction) -> void:
+	if not a.performing:
+		return
+	a.performing = false
+	a.furniture.user = null
+	if a.furniture.use_position != null:
+		global_position = a.spot
+	_set_pose("stand")
+
+
+func _complete(a: SimAction) -> void:
+	queue.erase(a)
+	queue_changed.emit()
+	if a.interaction == null:
+		arrived.emit()
+
+
+func _fail(a: SimAction, message: String) -> void:
+	queue.erase(a)
+	queue_changed.emit()
+	if not a.autonomous:
+		action_failed.emit(message)
+
+
+func _follow_path(delta: float) -> bool:
+	if _path_index >= path.size():
+		return false
+	var target := path[_path_index]
+	var to := target - global_position
+	to.y = 0.0
+	var step := walk_speed * delta
+	if to.length() <= step:
+		global_position = Vector3(target.x, 0.0, target.z)
+		_path_index += 1
+		if _path_index >= path.size():
+			stop()
+			return false
+		return true
+	var dir := to.normalized()
+	global_position += dir * step
+	_face(dir, delta)
+	return true
 
 
 func _face(dir: Vector3, delta: float) -> void:
@@ -81,17 +254,44 @@ func _face(dir: Vector3, delta: float) -> void:
 	rotation.y = lerp_angle(rotation.y, desired, 1.0 - exp(-14.0 * delta))
 
 
-func _animate(delta: float, moving: bool) -> void:
+func _set_pose(p: String) -> void:
+	_pose = p
+	_selection_ring.visible = _selected and _pose == "stand"
+
+
+func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 	var target_swing := 0.55 if moving else 0.0
 	_swing = lerpf(_swing, target_swing, 1.0 - exp(-10.0 * delta))
 	if moving:
 		_walk_phase += delta * walk_speed * 3.6
+	_busy_phase += delta * 8.0
 	var s := sin(_walk_phase) * _swing
-	_leg_l.rotation.x = s
-	_leg_r.rotation.x = -s
-	_arm_l.rotation.x = -s * 0.8
-	_arm_r.rotation.x = s * 0.8
-	_body.position.y = absf(sin(_walk_phase)) * 0.035 * (_swing / 0.55)
+	var busy := cur != null and cur.performing and cur.interaction.busy_hands
+	var arm_l := -s * 0.8
+	var arm_r := s * 0.8
+	if busy:
+		arm_l = 0.9 + sin(_busy_phase) * 0.15
+		arm_r = 0.9 - sin(_busy_phase) * 0.15
+	match _pose:
+		"sit":
+			_body.rotation.x = 0.0
+			_body.position.y = -0.45
+			_leg_l.rotation.x = PI * 0.5
+			_leg_r.rotation.x = PI * 0.5
+		"lie":
+			_body.rotation.x = PI * 0.5
+			_body.position.y = 0.15
+			_leg_l.rotation.x = 0.0
+			_leg_r.rotation.x = 0.0
+			arm_l = 0.0
+			arm_r = 0.0
+		_:
+			_body.rotation.x = 0.0
+			_body.position.y = absf(sin(_walk_phase)) * 0.035 * (_swing / 0.55)
+			_leg_l.rotation.x = s
+			_leg_r.rotation.x = -s
+	_arm_l.rotation.x = arm_l
+	_arm_r.rotation.x = arm_r
 
 
 func _build_visual() -> void:

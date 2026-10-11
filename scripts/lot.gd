@@ -8,6 +8,7 @@ const SIM_RADIUS := 0.25
 @export var size := Vector2i(24, 20)
 
 var astar := AStarGrid2D.new()
+var furniture: Array[Furniture] = []
 var _ready_grid := false
 
 
@@ -192,3 +193,31 @@ func add_block(rect: Rect2i, height: float, color: Color, block_name := "Block")
 	m.material_override = mat
 	add_child(m)
 	return m
+
+
+## Puts `f` on the lot with its footprint's top-left tile at `at_cell`.
+func place_furniture(f: Furniture, at_cell: Vector2i, rot_steps := 0) -> void:
+	f.rot_steps = posmod(rot_steps, 4)
+	f.cell = at_cell
+	var fp := f.rotated_footprint()
+	f.position = Vector3((at_cell.x + fp.x * 0.5) * CELL, 0.0, (at_cell.y + fp.y * 0.5) * CELL)
+	f.rotation.y = f.rot_steps * PI * 0.5
+	if f.get_parent() == null:
+		add_child(f)
+	set_rect_blocked(f.footprint_rect(), true)
+	furniture.append(f)
+
+
+## A flat floor finish (does not block walking).
+func add_floor(rect: Rect2i, color: Color) -> void:
+	var m := MeshInstance3D.new()
+	m.name = "Floor"
+	var box := BoxMesh.new()
+	box.size = Vector3(rect.size.x * CELL, 0.04, rect.size.y * CELL)
+	m.mesh = box
+	m.position = Vector3((rect.position.x + rect.size.x * 0.5) * CELL, 0.0, (rect.position.y + rect.size.y * 0.5) * CELL)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.roughness = 0.6
+	m.material_override = mat
+	add_child(m)
