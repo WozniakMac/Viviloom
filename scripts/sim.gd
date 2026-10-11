@@ -8,6 +8,8 @@ signal queue_changed
 signal action_failed(message: String)
 
 const MAX_QUEUE := 8
+## Game minutes a Sim stands around before deciding something on their own.
+const IDLE_BEFORE_AUTONOMY := 4.0
 
 
 class SimAction:
@@ -36,6 +38,9 @@ class SimAction:
 
 var lot: Lot
 var needs := Needs.new()
+var autonomy_enabled := true
+var _idle_minutes := 0.0
+var _rng := RandomNumberGenerator.new()
 var queue: Array[SimAction] = []
 var path := PackedVector3Array()
 var _path_index := 0
@@ -120,6 +125,11 @@ func cancel(index: int) -> void:
 
 
 func _enqueue(a: SimAction) -> bool:
+	if not a.autonomous:
+		# A direct order replaces whatever the Sim chose on their own.
+		for i in range(queue.size() - 1, -1, -1):
+			if queue[i].autonomous:
+				cancel(i)
 	if queue.size() >= MAX_QUEUE:
 		action_failed.emit("%s's queue is full." % sim_name)
 		return false
@@ -140,6 +150,7 @@ func _process(real_delta: float) -> void:
 		rates = cur.interaction.rates
 	needs.tick(Clock.game_delta, rates)
 
+	_update_autonomy()
 	var moving := _follow_path(delta)
 	if cur != null and cur.started and not cur.performing and not is_moving():
 		if cur.interaction == null:
@@ -153,6 +164,19 @@ func _process(real_delta: float) -> void:
 			_end_perform(cur)
 			_complete(cur)
 	_animate(delta, moving, cur)
+
+
+func _update_autonomy() -> void:
+	if not queue.is_empty() or is_moving():
+		_idle_minutes = 0.0
+		return
+	_idle_minutes += Clock.game_delta
+	if not autonomy_enabled or _idle_minutes < IDLE_BEFORE_AUTONOMY:
+		return
+	_idle_minutes = 0.0
+	var pick := Autonomy.choose(self, lot, _rng)
+	if not pick.is_empty():
+		queue_interaction(pick[0], pick[1], true)
 
 
 func _start(a: SimAction) -> void:

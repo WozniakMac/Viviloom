@@ -44,6 +44,16 @@ func _ready() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		match (event as InputEventKey).keycode:
+			KEY_P, KEY_0, KEY_KP_0:
+				Clock.set_speed(1 if Clock.is_paused() else 0)
+			KEY_1, KEY_KP_1:
+				Clock.set_speed(1)
+			KEY_2, KEY_KP_2:
+				Clock.set_speed(2)
+			KEY_3, KEY_KP_3:
+				Clock.set_speed(3)
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
@@ -190,12 +200,12 @@ func _check_dev_args() -> void:
 ## Headless smoke run: queue a few actions and log what the Sim does.
 func _trace() -> void:
 	Clock.set_speed(3)
-	sim.queue_interaction(find_furniture("fridge"), find_furniture("fridge").interactions[0])
-	sim.queue_interaction(find_furniture("toilet"), find_furniture("toilet").interactions[0])
-	for i in 30:
+	sim.needs.set_value("bladder", 20.0)
+	sim.needs.set_value("fun", 25.0)
+	for i in 40:
 		await get_tree().create_timer(0.5).timeout
 		var cur := sim.current_action()
-		print("t=%.1f pos=%s action=%s performing=%s hunger=%.0f bladder=%.0f" % [i * 0.5, sim.global_position, cur.label if cur else "-", cur.performing if cur else false, sim.needs.get_value("hunger"), sim.needs.get_value("bladder")])
+		print("t=%.1f %s action=%s auto=%s performing=%s needs=%s" % [i * 0.5, Clock.time_string(), cur.label if cur else "-", cur.autonomous if cur else false, cur.performing if cur else false, sim.needs.values])
 	get_tree().quit()
 
 

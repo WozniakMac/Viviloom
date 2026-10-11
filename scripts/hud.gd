@@ -13,6 +13,8 @@ var _queue_box: HBoxContainer
 var _queue_buttons: Array[Button] = []
 var _notice: Label
 var _notice_time := 0.0
+var _speed_buttons: Array[Button] = []
+var _autonomy_button: Button
 
 
 func _ready() -> void:
@@ -21,7 +23,7 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	var hint := _outlined_label("Click ground: walk   Click object: interact   Click queued action: cancel   WASD: pan   Q/E: rotate   Wheel: zoom")
+	var hint := _outlined_label("Click ground: walk   Click object: interact   Click queued action: cancel   P/0-3: speed   WASD: pan   Q/E: rotate   Wheel: zoom")
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	hint.position = Vector2(16, -36)
 	root.add_child(hint)
@@ -36,7 +38,7 @@ func _ready() -> void:
 	_notice.add_theme_color_override("font_color", Color(1.0, 0.85, 0.55))
 	_notice.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_notice.position = Vector2(-300, 50)
+	_notice.position = Vector2(-300, 84)
 	_notice.size = Vector2(600, 30)
 	root.add_child(_notice)
 
@@ -44,9 +46,28 @@ func _ready() -> void:
 	_clock_label.add_theme_font_size_override("font_size", 22)
 	_clock_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_clock_label.position = Vector2(-200, 12)
+	_clock_label.position = Vector2(-200, 10)
 	_clock_label.size = Vector2(400, 30)
 	root.add_child(_clock_label)
+
+	var speeds := HBoxContainer.new()
+	speeds.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	speeds.position = Vector2(-96, 44)
+	speeds.add_theme_constant_override("separation", 4)
+	root.add_child(speeds)
+	var labels := ["II", ">", ">>", ">>>"]
+	var tips := ["Pause (P or 0)", "Normal speed (1)", "Fast (2)", "Very fast (3)"]
+	for i in labels.size():
+		var b := Button.new()
+		b.text = labels[i]
+		b.tooltip_text = tips[i]
+		b.custom_minimum_size = Vector2(44, 30)
+		b.focus_mode = Control.FOCUS_NONE
+		b.pressed.connect(Clock.set_speed.bind(i))
+		speeds.add_child(b)
+		_speed_buttons.append(b)
+	Clock.speed_changed.connect(_on_speed_changed)
+	_on_speed_changed(Clock.speed)
 
 	root.add_child(_build_needs_panel())
 
@@ -60,6 +81,20 @@ func set_sim(s: Sim) -> void:
 	sim.queue_changed.connect(_rebuild_queue)
 	sim.action_failed.connect(show_notice)
 	_rebuild_queue()
+
+
+func _on_speed_changed(speed: int) -> void:
+	for i in _speed_buttons.size():
+		var st := StyleBoxFlat.new()
+		st.bg_color = Color(0.25, 0.55, 0.3, 0.95) if i == speed else Color(0.12, 0.15, 0.22, 0.9)
+		st.set_corner_radius_all(6)
+		_speed_buttons[i].add_theme_stylebox_override("normal", st)
+
+
+func _on_autonomy_toggled(on: bool) -> void:
+	_autonomy_button.text = "Free will: On" if on else "Free will: Off"
+	if sim != null:
+		sim.autonomy_enabled = on
 
 
 func show_notice(text: String) -> void:
@@ -133,9 +168,20 @@ func _build_needs_panel() -> Control:
 	vbox.add_theme_constant_override("separation", 8)
 	panel.add_child(vbox)
 
+	var header := HBoxContainer.new()
+	vbox.add_child(header)
 	_name_label = Label.new()
 	_name_label.add_theme_font_size_override("font_size", 18)
-	vbox.add_child(_name_label)
+	_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(_name_label)
+	_autonomy_button = Button.new()
+	_autonomy_button.toggle_mode = true
+	_autonomy_button.button_pressed = true
+	_autonomy_button.focus_mode = Control.FOCUS_NONE
+	_autonomy_button.tooltip_text = "Let the Sim look after themselves when idle"
+	_autonomy_button.toggled.connect(_on_autonomy_toggled)
+	header.add_child(_autonomy_button)
+	_on_autonomy_toggled(true)
 
 	var grid := GridContainer.new()
 	grid.columns = 2

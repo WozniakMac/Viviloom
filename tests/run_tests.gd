@@ -11,6 +11,7 @@ func _init() -> void:
 	_test_blocked_goal_snaps_to_neighbour()
 	_test_needs_decay()
 	_test_needs_activity_rates()
+	_test_autonomy_prefers_urgent_need()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -79,3 +80,14 @@ func _test_needs_activity_rates() -> void:
 	needs.tick(30.0, {"hunger": 40.0})
 	_check(is_equal_approx(needs.get_value("hunger"), 100.0), "eating rate restores hunger and clamps")
 	_check(needs.get_value("fun") < 80.0, "other needs still decay")
+
+
+func _test_autonomy_prefers_urgent_need() -> void:
+	var needs := Needs.new()
+	needs.set_value("bladder", 10.0)
+	needs.set_value("fun", 60.0)
+	var toilet := Interaction.new("Use Toilet", {"bladder": 350.0}, 20.0, "bladder")
+	var tv := Interaction.new("Watch TV", {"fun": 35.0}, 240.0, "fun")
+	_check(Autonomy.score(needs, toilet) > Autonomy.score(needs, tv), "nearly empty bladder beats moderate fun")
+	needs.set_value("bladder", 95.0)
+	_check(Autonomy.score(needs, toilet) == 0.0, "satisfied needs are not advertised")
