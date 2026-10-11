@@ -1,6 +1,6 @@
 class_name CameraRig
 extends Node3D
-## Orbiting overhead camera: WASD/arrows pan, Q/E or middle-drag rotate, wheel zoom.
+## Orbiting overhead camera: WASD/arrows pan, Q/E or middle-drag rotate, wheel or Z/X zoom.
 
 @export var pan_speed := 12.0
 @export var rotate_speed := 1.8
@@ -59,6 +59,11 @@ func _process(delta: float) -> void:
 		yaw += rotate_speed * delta
 	if Input.is_key_pressed(KEY_E):
 		yaw -= rotate_speed * delta
+	# Z / X zoom in and out, as well as the wheel.
+	if Input.is_key_pressed(KEY_Z):
+		_target_distance = maxf(min_distance, _target_distance * (1.0 - 1.5 * delta))
+	if Input.is_key_pressed(KEY_X):
+		_target_distance = minf(max_distance, _target_distance * (1.0 + 1.5 * delta))
 
 	if fwd_in != 0.0 or right_in != 0.0:
 		var fwd := Vector3(-sin(yaw), 0.0, -cos(yaw))

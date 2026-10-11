@@ -14,4 +14,4 @@ bottom-right, mode buttons and notifications top-right.
 
 Controls: left-click to walk or open an object's pie menu, click a queued action to
 cancel it, P / 1-3 for speed, F3 build, F1 live, V walls, WASD/arrows to pan, Q/E or
-middle-drag to rotate, wheel to zoom.
+middle-drag to rotate, wheel or Z/X to zoom.

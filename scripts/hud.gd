@@ -191,7 +191,7 @@ func _ready() -> void:
 	_build_sim_cluster()
 
 	_hint = Label.new()
-	_hint.text = "Click the ground to walk, objects to interact.   WASD / Q E / wheel: camera   F3: build   V: walls"
+	_hint.text = "Click the ground to walk, objects to interact.   WASD / Q E / Z X: camera   F3: build   V: walls"
 	_hint.add_theme_font_size_override("font_size", 14)
 	_hint.add_theme_color_override("font_color", Color.WHITE)
 	_hint.add_theme_color_override("font_outline_color", Color(0.05, 0.1, 0.25, 0.8))
