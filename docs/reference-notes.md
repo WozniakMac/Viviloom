@@ -51,3 +51,12 @@ names, art and text in OpenSims are original.
   moodlets and queue icons with progress rings, speed pill with clock, icon tab bar for
   Needs / Skills / Simology with trend arrows on need bars, white pill pie menu,
   notification cards, and a build catalogue with rendered thumbnails and stat tooltips.
+- Step 7: socials (two-level pie menu Friendly / Romance / Mean), friendship and romance
+  with level names, rejections and jokes that fall flat, a visiting neighbour, and a
+  Relationships tab.
+- Step 8: careers with five levels, Mon–Fri shifts, leaving the lot, pay, performance
+  from mood and skill, promotions, and a Career tab.
+- Step 9: aspirations with milestones (chosen in Create a Sim), wants as thought bubbles
+  above the portrait, satisfaction points, and an Aspiration tab.
+- Step 10: neighbourhood map after Create a Sim: lots for sale outlined in green, hover
+  cards with size, rooms and price, and a moving truck to buy and move in.

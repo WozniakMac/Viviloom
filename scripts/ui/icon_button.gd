@@ -65,6 +65,13 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			for i in 3:
 				var h := s * (0.8 + i * 0.6)
 				ci.draw_rect(Rect2(c + Vector2(-s + i * s * 0.75, s - h), Vector2(s * 0.5, h)), col)
+		"truck":
+			# A moving truck: cargo box, cab and wheels.
+			ci.draw_rect(Rect2(c + Vector2(-s * 1.1, -s * 0.7), Vector2(s * 1.3, s * 1.1)), col)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.3, -s * 0.3), c + Vector2(s * 0.8, -s * 0.3), c + Vector2(s * 1.1, s * 0.05), c + Vector2(s * 1.1, s * 0.4), c + Vector2(s * 0.3, s * 0.4)]), col)
+			for x in [-0.7, 0.75]:
+				ci.draw_circle(c + Vector2(s * x, s * 0.5), s * 0.24, col)
+				ci.draw_circle(c + Vector2(s * x, s * 0.5), s * 0.1, Color.WHITE)
 		"aspiration":
 			# A five-pointed star.
 			var pts := PackedVector2Array()

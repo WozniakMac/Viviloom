@@ -4,11 +4,13 @@ An original life-simulation sandbox built with Godot 4.7.
 
 - Open `project.godot` in Godot 4.7.2 and press F5, or run `Godot_v4.7.2-stable_win64.exe --path .`
 - Tests: `Godot_v4.7.2-stable_win64_console.exe --headless --path . res://tests/run_tests.tscn`
-- Screenshot smoke run: `... --path . -- --screenshot=C:/path/out.png --scenario=<menu|mood|cas|build|sleep>`
+- Screenshot smoke run: `... --path . -- --screenshot=C:/path/out.png --scenario=<menu|mood|cas|build|sleep|social|career|aspiration|map|studio>`
 - Skip Create a Sim at start: `... --path . -- --scenario=skip_cas`
 
-The game starts in Create a Sim (name, look, up to three traits), then moves the Sim
-into the starter house. The interface follows the layout of classic life sims: portrait,
+The game starts in Create a Sim (name, look, up to three traits, aspiration), then the
+neighbourhood map, where you buy a home and move in. In live mode Sims have needs,
+emotions, skills, wants, an aspiration, a career, and relationships with the neighbour
+who drops by. The interface follows the layout of classic life sims: portrait,
 mood and moodlets bottom-left, time controls bottom-centre, needs / skills / simology
 bottom-right, mode buttons and notifications top-right.
 

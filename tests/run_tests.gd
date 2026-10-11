@@ -20,6 +20,7 @@ func _ready() -> void:
 	_test_relationships()
 	_test_career_day()
 	_test_aspiration_goals()
+	_test_clear_build()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -268,3 +269,16 @@ func _test_aspiration_goals() -> void:
 			paint += 1
 	_check(paint > 200 / Aspirations.WANTS.size(), "creative Sims want to paint more often")
 	sim.free()
+
+
+func _test_clear_build() -> void:
+	var lot := _make_lot()
+	for e in Lot.wall_run(Vector2i(2, 2), Vector2i(8, 2)):
+		lot.add_wall(e)
+	lot.add_block(Rect2i(10, 10, 2, 1), 1.0, Color.GREEN)
+	var bed := Catalog.create("bed")
+	lot.place_furniture(bed, Vector2i(4, 4), 0)
+	lot.clear_build()
+	_check(lot.walls.is_empty() and lot.furniture.is_empty(), "clearing removes walls and objects")
+	_check(lot.is_walkable(Vector2i(10, 10)) and lot.is_walkable(Vector2i(4, 4)), "cleared tiles are walkable again")
+	lot.free()

@@ -240,7 +240,17 @@ func _build_marker() -> void:
 	add_child(_marker)
 
 
-func _place_house() -> void:
+## Builds one of the neighbourhood's homes on the lot (see Neighbourhood.LOTS).
+func _place_house(layout := "cottage") -> void:
+	var hedge := Color(0.18, 0.38, 0.16)
+	lot.add_block(Rect2i(1, 16, 6, 1), 0.9, hedge, "HedgeFrontWest")
+	lot.add_block(Rect2i(15, 16, 7, 1), 0.9, hedge, "HedgeFrontEast")
+	match layout:
+		"studio":
+			_place_studio()
+			return
+		"empty":
+			return
 	# A small starter house: floor, walls with two doors, and basic furniture.
 	lot.add_floor(Rect2i(3, 2, 15, 10), Color(0.62, 0.48, 0.34))
 	_place_walls()
@@ -253,9 +263,30 @@ func _place_house() -> void:
 	_place("chess", Vector2i(11, 8))
 	_place("toilet", Vector2i(4, 10), 2)
 	_place("shower", Vector2i(6, 10), 2)
-	var hedge := Color(0.18, 0.38, 0.16)
-	lot.add_block(Rect2i(1, 16, 6, 1), 0.9, hedge, "HedgeFrontWest")
-	lot.add_block(Rect2i(15, 16, 7, 1), 0.9, hedge, "HedgeFrontEast")
+
+
+## A compact one-room home with a bathroom corner.
+func _place_studio() -> void:
+	lot.add_floor(Rect2i(6, 4, 10, 7), Color(0.7, 0.6, 0.48))
+	var runs := [
+		[Vector2i(6, 4), Vector2i(16, 4)],
+		[Vector2i(6, 11), Vector2i(16, 11)],
+		[Vector2i(6, 4), Vector2i(6, 11)],
+		[Vector2i(16, 4), Vector2i(16, 11)],
+		[Vector2i(6, 8), Vector2i(9, 8)],
+		[Vector2i(9, 8), Vector2i(9, 11)],
+	]
+	for r in runs:
+		for e in Lot.wall_run(r[0], r[1]):
+			lot.add_wall(e)
+	lot.add_door(Vector3i(12, 11, 0))
+	lot.add_door(Vector3i(7, 8, 0))
+	_place("bed", Vector2i(7, 5))
+	_place("tv", Vector2i(11, 5))
+	_place("fridge", Vector2i(15, 5))
+	_place("desk", Vector2i(13, 8))
+	_place("toilet", Vector2i(6, 10), 2)
+	_place("shower", Vector2i(8, 10), 2)
 
 
 func _place_walls() -> void:
@@ -356,6 +387,29 @@ func _on_cas_finished() -> void:
 	_cas = null
 	_studio.queue_free()
 	sim.global_position = _home_position
+	open_neighbourhood()
+
+
+## The world map: pick a home, pay for it, and move in.
+func open_neighbourhood() -> void:
+	var map := Neighbourhood.new()
+	map.name = "Neighbourhood"
+	add_child(map)
+	map.setup(build.funds)
+	map.chosen.connect(_on_home_chosen)
+
+
+func _on_home_chosen(lot_id: String, price: int) -> void:
+	lot.clear_build()
+	_place_house(lot_id)
+	build.funds -= price
+	build.funds_changed.emit(build.funds)
+	hud.show_notice("Welcome home to %s! %s was spent on the move." % [Neighbourhood.LOTS[lot_id]["name"], Hud.money(price)], "Moved In")
+	sim.global_position = lot.cell_to_world(Vector2i(10, 14))
+	_enter_live()
+
+
+func _enter_live() -> void:
 	hud.visible = true
 	hud.refresh_identity()
 	aspirations.reset()
@@ -405,6 +459,18 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_interaction(books, books.interactions[1])
 			hud._show_page(1)
 			await get_tree().create_timer(6.0).timeout
+		"map":
+			hud.visible = false
+			open_neighbourhood()
+			var map := get_node("Neighbourhood") as Neighbourhood
+			map.select("cottage")
+			map._view.selected = "cottage"
+			map._view.queue_redraw()
+			await get_tree().create_timer(1.0).timeout
+		"studio":
+			open_neighbourhood()
+			(get_node("Neighbourhood") as Neighbourhood).choose("studio")
+			await get_tree().create_timer(2.0).timeout
 		"aspiration":
 			sim.skills.add_xp("painting", Skills.xp_for_level(2))
 			sim.skills.add_xp("cooking", Skills.xp_for_level(2))

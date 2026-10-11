@@ -35,6 +35,8 @@ var _dirty := true
 var _interior := {}
 var _rooms_dirty := true
 var _wall_mat: StandardMaterial3D
+## Floors and decorative blocks added by a house layout, removed by clear_build().
+var _built: Array[Node3D] = []
 var _door_mat: StandardMaterial3D
 
 
@@ -483,6 +485,22 @@ func place_furniture(f: Furniture, at_cell: Vector2i, rot_steps := 0) -> void:
 
 
 ## Takes `f` off the grid; the node itself stays (e.g. while it is being moved).
+## Removes every wall, door, floor, decoration and object, leaving an empty lot.
+func clear_build() -> void:
+	for f in furniture.duplicate():
+		remove_furniture(f)
+		f.queue_free()
+	for e in walls.keys():
+		remove_wall(e)
+	for n in _built:
+		if n.has_meta("blocks"):
+			set_rect_blocked(n.get_meta("blocks"), false)
+		n.queue_free()
+	_built.clear()
+	_dirty = true
+	_rooms_dirty = true
+
+
 func remove_furniture(f: Furniture) -> void:
 	if not furniture.has(f):
 		return
@@ -553,7 +571,9 @@ func add_block(rect: Rect2i, height: float, color: Color, block_name := "Block")
 	mat.albedo_color = color
 	mat.roughness = 0.85
 	m.material_override = mat
+	m.set_meta("blocks", rect)
 	add_child(m)
+	_built.append(m)
 	return m
 
 
@@ -570,3 +590,4 @@ func add_floor(rect: Rect2i, color: Color) -> void:
 	mat.roughness = 0.6
 	m.material_override = mat
 	add_child(m)
+	_built.append(m)
