@@ -18,6 +18,7 @@ var _cas: CreateASim
 var _studio: Node3D
 var _home_position := Vector3.ZERO
 var visitors: Visitors
+var work: Work
 
 
 func _ready() -> void:
@@ -68,6 +69,14 @@ func _ready() -> void:
 	visitors.arrived.connect(func(v: Sim): hud.show_notice("%s from next door has dropped by to say hello. Click them to socialize." % v.sim_name, "Visitor"))
 	visitors.left.connect(func(v: Sim): hud.show_notice("%s has gone home for the evening." % v.sim_name, "Visitor"))
 	hud.set_others(lot)
+
+	work = Work.new()
+	work.name = "Work"
+	work.sim = sim
+	work.lot = lot
+	add_child(work)
+	work.paid.connect(build.earn)
+	hud.set_work(work)
 	_check_dev_args()
 
 
@@ -102,6 +111,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+			if sim.away:
+				return
 			var picked: Object = _pick_at(mb.position)
 			if picked is Furniture:
 				open_menu(picked, mb.position)
@@ -386,6 +397,12 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_interaction(books, books.interactions[1])
 			hud._show_page(1)
 			await get_tree().create_timer(6.0).timeout
+		"career":
+			Clock.total_minutes = 8.0 * 60.0 + 50.0
+			work.join("tech")
+			hud._show_page(4)
+			Clock.set_speed(3)
+			await get_tree().create_timer(3.0).timeout
 		"social":
 			Clock.total_minutes = 9.0 * 60.0 + 1.0
 			await get_tree().create_timer(0.3).timeout

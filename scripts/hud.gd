@@ -32,6 +32,8 @@ class NeedBar:
 		bg.bg_color = Color(0.84, 0.88, 0.94)
 		bg.set_corner_radius_all(int(size.y / 2))
 		draw_style_box(bg, r)
+		if value <= 0.5:
+			return
 		var w := maxf(size.y, size.x * value / 100.0)
 		var fill := StyleBoxFlat.new()
 		fill.bg_color = Hud.need_color(value)
@@ -192,6 +194,9 @@ var _skills_box: VBoxContainer
 var _skill_rows := {}
 var _traits_box: VBoxContainer
 var _rel_box: VBoxContainer
+var _career_box: VBoxContainer
+var work: Work
+var _away_label: Label
 var _rel_refresh := 0.0
 var _lot: Lot
 var _autonomy_button: Button
@@ -437,6 +442,10 @@ func _build_info_panel() -> void:
 	_rel_box.add_theme_constant_override("separation", 10)
 	v.add_child(_rel_box)
 	_pages.append(_rel_box)
+	_career_box = VBoxContainer.new()
+	_career_box.add_theme_constant_override("separation", 10)
+	v.add_child(_career_box)
+	_pages.append(_career_box)
 
 	var tabs_pill := PanelContainer.new()
 	tabs_pill.add_theme_stylebox_override("panel", UiTheme.panel_style(26, 5))
@@ -445,8 +454,8 @@ func _build_info_panel() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
 	tabs_pill.add_child(tabs)
-	var defs := [["skills", "Skills"], ["relationships", "Relationships"], ["simology", "Simology"], ["needs", "Needs"]]
-	var page_of := {"needs": 0, "skills": 1, "simology": 2, "relationships": 3}
+	var defs := [["career", "Career"], ["skills", "Skills"], ["relationships", "Relationships"], ["simology", "Simology"], ["needs", "Needs"]]
+	var page_of := {"needs": 0, "skills": 1, "simology": 2, "relationships": 3, "career": 4}
 	for d in defs:
 		var b := IconButton.make(d[0], 42, d[1])
 		b.toggle_mode = true
@@ -458,7 +467,7 @@ func _build_info_panel() -> void:
 
 
 func _tab_for_page(index: int) -> IconButton:
-	var id: String = ["needs", "skills", "simology", "relationships"][index]
+	var id: String = ["needs", "skills", "simology", "relationships", "career"][index]
 	for b in _tabs:
 		if b.icon_id == id:
 			return b
@@ -478,7 +487,9 @@ func _on_tab(index: int) -> void:
 
 func _show_page(index: int) -> void:
 	_info_panel.visible = true
-	_info_title.text = ["Needs", "Skills", "Simology", "Relationships"][index]
+	_info_title.text = ["Needs", "Skills", "Simology", "Relationships", "Career"][index]
+	if index == 4:
+		_refresh_career()
 	_autonomy_button.visible = index == 0
 	for i in _pages.size():
 		_pages[i].visible = i == index
@@ -559,6 +570,16 @@ func _build_sim_cluster() -> void:
 	_portrait_rect.material = _portrait_mat
 	_portrait_rect.mouse_filter = Control.MOUSE_FILTER_STOP
 	c.add_child(_portrait_rect)
+	_away_label = UiTheme.title(Label.new(), 16)
+	_away_label.text = "At Work"
+	_away_label.add_theme_color_override("font_color", Color.WHITE)
+	_away_label.add_theme_color_override("font_outline_color", Color(0.05, 0.12, 0.3, 0.9))
+	_away_label.add_theme_constant_override("outline_size", 6)
+	_away_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_away_label.position = Vector2(56, 142)
+	_away_label.size = Vector2(170, 24)
+	_away_label.visible = false
+	c.add_child(_away_label)
 
 	var name_pill := PanelContainer.new()
 	name_pill.add_theme_stylebox_override("panel", UiTheme.pill(Color.WHITE, UiTheme.PANEL_EDGE, 12))
@@ -611,6 +632,9 @@ func set_sim(s: Sim) -> void:
 	sim.action_failed.connect(show_notice)
 	sim.announced.connect(show_notice)
 	sim.emotions.changed.connect(_rebuild_moodlets)
+	sim.panel_requested.connect(func(panel: String):
+		if panel == "career":
+			_show_page(4))
 	_rebuild_queue()
 	refresh_identity()
 
@@ -661,6 +685,89 @@ func _rebuild_moodlets() -> void:
 		icon.custom_minimum_size = Vector2(46, 46)
 		icon.tooltip_text = m.label
 		_moodlet_box.add_child(icon)
+
+
+func set_work(w: Work) -> void:
+	work = w
+	work.changed.connect(_refresh_career)
+	work.notice.connect(func(text: String, title: String): show_notice(text, title))
+	_refresh_career()
+
+
+## Career tab: the current job, or the list of careers to join.
+func _refresh_career() -> void:
+	if work == null:
+		return
+	for c in _career_box.get_children():
+		c.queue_free()
+	if not work.has_job():
+		var intro := Label.new()
+		intro.text = "%s doesn't have a job. Pick a career:" % sim.sim_name
+		intro.add_theme_font_size_override("font_size", 14)
+		intro.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+		_career_box.add_child(intro)
+		for c in Careers.ORDER:
+			var card := PanelContainer.new()
+			card.add_theme_stylebox_override("panel", UiTheme.pill(Color.WHITE, UiTheme.PANEL_EDGE, 10))
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 10)
+			card.add_child(row)
+			var col := VBoxContainer.new()
+			col.add_theme_constant_override("separation", 0)
+			col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(col)
+			var t := UiTheme.title(Label.new(), 15)
+			t.text = Careers.label(c)
+			col.add_child(t)
+			var d := Label.new()
+			d.text = "%s · §%d/h\n%s" % [Careers.title(c, 0), Careers.hourly(c, 0), Careers.schedule_text(c)]
+			d.add_theme_font_size_override("font_size", 12)
+			d.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+			col.add_child(d)
+			card.tooltip_text = Careers.INFO[c]["description"]
+			var join := Button.new()
+			join.text = "Join"
+			join.focus_mode = Control.FOCUS_NONE
+			join.add_theme_stylebox_override("normal", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+			join.add_theme_color_override("font_color", Color.WHITE)
+			join.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			join.pressed.connect(work.join.bind(c))
+			row.add_child(join)
+			_career_box.add_child(card)
+		return
+	var c2 := work.career
+	var head := UiTheme.title(Label.new(), 17)
+	head.text = "%s  ·  Level %d" % [Careers.title(c2, work.level), work.level + 1]
+	_career_box.add_child(head)
+	var info := Label.new()
+	var status: String = ["At home", "Heading to work", "At work"][work.state]
+	info.text = "%s career · §%d/h\n%s\n%s" % [Careers.label(c2), Careers.hourly(c2, work.level), Careers.schedule_text(c2), status]
+	info.add_theme_font_size_override("font_size", 13)
+	info.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+	_career_box.add_child(info)
+	var perf_label := Label.new()
+	perf_label.text = "Performance"
+	perf_label.add_theme_font_size_override("font_size", 13)
+	_career_box.add_child(perf_label)
+	var bar := NeedBar.new()
+	bar.value = work.performance
+	bar.custom_minimum_size = Vector2(340, 16)
+	_career_box.add_child(bar)
+	if work.level < Careers.max_level(c2):
+		var skill: String = Careers.INFO[c2]["skill"]
+		var next := Label.new()
+		next.text = "Next: %s — needs full performance and %s %d (now %d). Good moods at the start of a shift help." % [Careers.title(c2, work.level + 1), Skills.label(skill), Careers.skill_for_promotion(work.level), sim.skills.level(skill)]
+		next.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		next.custom_minimum_size = Vector2(340, 0)
+		next.add_theme_font_size_override("font_size", 12)
+		next.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+		_career_box.add_child(next)
+	var quit := Button.new()
+	quit.text = "Quit Job"
+	quit.focus_mode = Control.FOCUS_NONE
+	quit.size_flags_horizontal = Control.SIZE_SHRINK_END
+	quit.pressed.connect(work.quit)
+	_career_box.add_child(quit)
 
 
 ## Lets the Relationships tab list everyone on the lot, not just Sims already met.
@@ -842,6 +949,8 @@ func _process(delta: float) -> void:
 	_mood_style.bg_color = col
 	_portrait_mat.set_shader_parameter("ring_color", col.lerp(Color.WHITE, 0.25))
 	_update_portrait_camera()
+	_away_label.visible = sim.away
+	_portrait_rect.modulate = Color(0.75, 0.78, 0.85) if sim.away else Color.WHITE
 	for n in NEED_LAYOUT:
 		var bar: NeedBar = _need_bars[n]
 		bar.value = sim.needs.get_value(n)

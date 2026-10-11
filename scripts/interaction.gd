@@ -21,6 +21,8 @@ var moodlet: Array = []
 ## Money earned on completion, plus this much more per skill level.
 var earns := 0
 var earns_per_level := 0
+## A HUD panel to open when finished (e.g. "career" after looking for a job).
+var opens_panel := ""
 ## Set for social interactions between two Sims (see Socials).
 var social := {}
 

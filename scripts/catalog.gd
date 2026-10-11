@@ -149,6 +149,7 @@ static func create(kind: String) -> Furniture:
 			f.use_position = Vector3(0, 0, 0.35)
 			f.use_facing = Vector3(0, 0, -1)
 			f.interactions = [
+				_find_job(),
 				Interaction.new("Chat Online", {"social": 25.0, "fun": 8.0}, 180.0, "social", "sit", true),
 				Interaction.new("Play Games", {"fun": 45.0, "energy": -6.0}, 180.0, "fun", "sit", true).practices("gaming", 60.0).grants("gamer_high", "playful", 1, "Game On", "That was a great match.", 120.0),
 			]
@@ -203,3 +204,9 @@ static func create(kind: String) -> Furniture:
 	f.price = INFO[kind][1]
 	f.build_collider()
 	return f
+
+
+static func _find_job() -> Interaction:
+	var i := Interaction.new("Find a Job", {}, 20.0, "", "sit", true)
+	i.opens_panel = "career"
+	return i

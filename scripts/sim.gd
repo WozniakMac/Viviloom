@@ -10,6 +10,8 @@ signal action_failed(message: String)
 signal announced(message: String)
 signal earned(amount: int)
 signal relationships_changed
+## Asks the HUD to show a panel ("career"...).
+signal panel_requested(panel: String)
 
 const MAX_QUEUE := 8
 ## Game minutes a Sim stands around before deciding something on their own.
@@ -504,6 +506,8 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 	if not i.moodlet.is_empty():
 		var m := i.moodlet
 		emotions.add(m[0], m[1], m[2] + lvl / 4, m[3], m[4], m[5])
+	if finished and i.opens_panel != "":
+		panel_requested.emit(i.opens_panel)
 	if i.earns > 0 and finished:
 		var amount := i.earns + i.earns_per_level * lvl
 		earned.emit(amount)

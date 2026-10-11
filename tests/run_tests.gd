@@ -18,6 +18,7 @@ func _ready() -> void:
 	_test_skills_level_up()
 	_test_traits_and_skill_gain()
 	_test_relationships()
+	_test_career_day()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -221,3 +222,25 @@ func _test_relationships() -> void:
 	_check(Socials.success_chance(joke, 0.0, 0.0, "playful", no_traits) > Socials.success_chance(joke, 0.0, 0.0, "fine", no_traits), "playful Sims tell better jokes")
 	a.free()
 	b.free()
+
+
+func _test_career_day() -> void:
+	var sim := Sim.new()
+	var w := Work.new()
+	w.sim = sim
+	w.join("tech")
+	_check(w.has_job() and w.level == 0, "joining starts at level 1")
+	var pay: Array = []
+	w.paid.connect(func(a): pay.append(a))
+	w._mood_at_start = "focused"
+	w._finish_shift()
+	_check(pay == [Careers.hourly("tech", 0) * Careers.shift_hours("tech")], "a shift pays hourly wage times hours")
+	_check(w.performance == Careers.shift_performance("focused", 0) and w.performance > Careers.shift_performance("sad", 0), "good moods help performance")
+	w.performance = 100.0
+	w._try_promotion()
+	_check(w.level == 0, "no promotion without the skill")
+	sim.skills.add_xp("logic", Skills.xp_for_level(2))
+	w._try_promotion()
+	_check(w.level == 1 and sim.emotions.has("promoted"), "full performance and skill earn a promotion")
+	w.free()
+	sim.free()
