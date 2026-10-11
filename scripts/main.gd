@@ -19,6 +19,7 @@ var _studio: Node3D
 var _home_position := Vector3.ZERO
 var visitors: Visitors
 var work: Work
+var aspirations: AspirationTracker
 
 
 func _ready() -> void:
@@ -77,6 +78,12 @@ func _ready() -> void:
 	add_child(work)
 	work.paid.connect(build.earn)
 	hud.set_work(work)
+
+	aspirations = AspirationTracker.new()
+	aspirations.name = "Aspirations"
+	add_child(aspirations)
+	aspirations.setup(sim, build, work)
+	hud.set_aspirations(aspirations)
 	_check_dev_args()
 
 
@@ -351,6 +358,7 @@ func _on_cas_finished() -> void:
 	sim.global_position = _home_position
 	hud.visible = true
 	hud.refresh_identity()
+	aspirations.reset()
 	sim.set_selected(true)
 	rig.set_locked(false)
 	rig.frame(lot.center(), deg_to_rad(35.0), deg_to_rad(-50.0), 22.0)
@@ -397,6 +405,11 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_interaction(books, books.interactions[1])
 			hud._show_page(1)
 			await get_tree().create_timer(6.0).timeout
+		"aspiration":
+			sim.skills.add_xp("painting", Skills.xp_for_level(2))
+			sim.skills.add_xp("cooking", Skills.xp_for_level(2))
+			hud._show_page(5)
+			await get_tree().create_timer(1.5).timeout
 		"career":
 			Clock.total_minutes = 8.0 * 60.0 + 50.0
 			work.join("tech")

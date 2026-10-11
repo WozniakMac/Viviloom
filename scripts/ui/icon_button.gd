@@ -65,6 +65,14 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			for i in 3:
 				var h := s * (0.8 + i * 0.6)
 				ci.draw_rect(Rect2(c + Vector2(-s + i * s * 0.75, s - h), Vector2(s * 0.5, h)), col)
+		"aspiration":
+			# A five-pointed star.
+			var pts := PackedVector2Array()
+			for k in 10:
+				var ang := -PI * 0.5 + k * PI / 5.0
+				var rr := s * (1.1 if k % 2 == 0 else 0.45)
+				pts.append(c + Vector2(cos(ang), sin(ang)) * rr)
+			ci.draw_colored_polygon(pts, col)
 		"career":
 			# A briefcase.
 			ci.draw_rect(Rect2(c + Vector2(-s, -s * 0.45), Vector2(s * 2, s * 1.4)), col)

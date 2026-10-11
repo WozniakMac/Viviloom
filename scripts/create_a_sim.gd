@@ -24,6 +24,7 @@ var _picked: Array[String] = []
 var _trait_info: Label
 var _done: IconButton
 var _swatches := {}
+var _aspiration_buttons := {}
 var _rng := RandomNumberGenerator.new()
 
 
@@ -144,6 +145,34 @@ func _build() -> void:
 			row.add_child(sw)
 			_swatches[part].append([sw, c])
 
+	# Right, below appearance: the lifelong aspiration.
+	var asp := PanelContainer.new()
+	asp.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	asp.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	asp.position = Vector2(-24, 400)
+	asp.custom_minimum_size = Vector2(286, 0)
+	root.add_child(asp)
+	var av := VBoxContainer.new()
+	av.add_theme_constant_override("separation", 6)
+	asp.add_child(av)
+	var at := UiTheme.title(Label.new(), 18)
+	at.text = "Aspiration"
+	av.add_child(at)
+	for a in Aspirations.ORDER:
+		var b := Button.new()
+		b.text = "%s  ·  %s" % [Aspirations.label(a), Aspirations.INFO[a]["category"]]
+		b.toggle_mode = true
+		b.focus_mode = Control.FOCUS_NONE
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_stylebox_override("pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		b.add_theme_stylebox_override("hover_pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		b.tooltip_text = Aspirations.INFO[a]["description"]
+		b.pressed.connect(_pick_aspiration.bind(a))
+		av.add_child(b)
+		_aspiration_buttons[a] = b
+	_pick_aspiration(sim.aspiration)
+
 	# Bottom centre: turn the Sim.
 	var turn := HBoxContainer.new()
 	turn.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
@@ -192,6 +221,12 @@ func _sync_swatches() -> void:
 	for part in _swatches:
 		for pair in _swatches[part]:
 			(pair[0] as Button).set_pressed_no_signal((pair[1] as Color).is_equal_approx(current[part]))
+
+
+func _pick_aspiration(a: String) -> void:
+	sim.aspiration = a
+	for k in _aspiration_buttons:
+		(_aspiration_buttons[k] as Button).button_pressed = k == a
 
 
 func _turn(amount: float) -> void:
@@ -245,6 +280,7 @@ func randomize_sim() -> void:
 		if Traits.can_add(_picked, t):
 			_picked.append(t)
 	sim.set_traits(_picked)
+	_pick_aspiration(Aspirations.ORDER[_rng.randi() % Aspirations.ORDER.size()])
 	_sync_swatches()
 	_refresh()
 

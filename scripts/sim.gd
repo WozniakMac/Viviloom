@@ -12,6 +12,8 @@ signal earned(amount: int)
 signal relationships_changed
 ## Asks the HUD to show a panel ("career"...).
 signal panel_requested(panel: String)
+## An activity or social was done long enough to count (for wants and goals).
+signal activity_done(activity: String)
 
 const MAX_QUEUE := 8
 ## Game minutes a Sim stands around before deciding something on their own.
@@ -59,6 +61,9 @@ var autonomy_enabled := true
 var relationships := {}
 ## Visitors aren't controlled by the player and come and go on their own.
 var is_visitor := false
+## Lifelong goal (see Aspirations) and counters it can check, e.g. "paintings_sold".
+var aspiration := "renaissance"
+var stats := {}
 ## Off the lot (at work, or a visitor who went home).
 var away := false
 var _social_with: Sim = null
@@ -172,6 +177,10 @@ func queue_go(target: Vector3) -> bool:
 	a.label = "Go Here"
 	a.target = target
 	return _enqueue(a)
+
+
+func count_stat(stat: String, amount := 1) -> void:
+	stats[stat] = stats.get(stat, 0) + amount
 
 
 func friendship_with(o: Sim) -> float:
@@ -442,6 +451,11 @@ func _social_result(a: SimAction) -> void:
 	if not is_instance_valid(t) or a.elapsed < a.interaction.reward_after():
 		return
 	var s: Dictionary = a.interaction.social
+	count_stat("socials")
+	var stat: String = {"Tell a Joke": "jokes", "Flirt": "flirts", "Kiss": "kisses"}.get(a.interaction.name, "")
+	if stat != "" and a.outcome:
+		count_stat(stat)
+	activity_done.emit(a.interaction.name)
 	if a.outcome:
 		change_relationship(t, s.get("friendship", 0.0), s.get("romance", 0.0))
 		var am: Array = s.get("actor_moodlet", [])
@@ -502,6 +516,7 @@ func _practise(interaction: Interaction, minutes: float) -> void:
 func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 	if minutes_done < i.reward_after():
 		return
+	activity_done.emit(i.name)
 	var lvl := skills.level(i.skill) if i.skill != "" else 0
 	if not i.moodlet.is_empty():
 		var m := i.moodlet
@@ -510,6 +525,7 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 		panel_requested.emit(i.opens_panel)
 	if i.earns > 0 and finished:
 		var amount := i.earns + i.earns_per_level * lvl
+		count_stat("paintings_sold")
 		earned.emit(amount)
 		announced.emit("%s sold their painting for §%d." % [sim_name, amount])
 

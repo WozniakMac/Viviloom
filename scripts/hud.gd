@@ -166,6 +166,34 @@ class RelBar:
 			draw_rect(Rect2(0, 1, size.x * value / 100.0, size.y - 2), Color(0.96, 0.45, 0.7))
 
 
+## A thought bubble with one of the Sim's wants.
+class WantBubble:
+	extends Control
+	var want: Array
+
+	func _get_tooltip(_at: Vector2) -> String:
+		return "%sWants to: %s\nDo it for +%d satisfaction." % ["", want[1], Aspirations.WANT_POINTS]
+
+	func _draw() -> void:
+		var c := Vector2(size.x * 0.5, size.y * 0.42)
+		var r := size.x * 0.42
+		draw_circle(c + Vector2(0, 2), r, Color(0.05, 0.12, 0.3, 0.18))
+		draw_circle(c, r, Color.WHITE)
+		draw_arc(c, r, 0, TAU, 32, UiTheme.PANEL_EDGE, 1.5, true)
+		# Little trailing bubbles, like a thought.
+		draw_circle(Vector2(size.x * 0.32, size.y * 0.9), 4.0, Color.WHITE)
+		draw_circle(Vector2(size.x * 0.22, size.y * 0.99), 2.5, Color.WHITE)
+		var font := get_theme_default_font()
+		# A one-word summary ("Paint", "Chat"...), shrunk to fit the bubble.
+		var txt: String = (want[0] as String).capitalize()
+		var fs := 14
+		var ts := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		while ts.x > r * 1.75 and fs > 8:
+			fs -= 1
+			ts = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		draw_string(font, c + Vector2(-ts.x * 0.5, fs * 0.35), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UiTheme.ACCENT)
+
+
 var sim: Sim
 var pie_menu: PieMenu
 var build: BuildMode
@@ -195,6 +223,10 @@ var _skill_rows := {}
 var _traits_box: VBoxContainer
 var _rel_box: VBoxContainer
 var _career_box: VBoxContainer
+var _aspiration_box: VBoxContainer
+var _wants_box: HBoxContainer
+var aspirations: AspirationTracker
+var _asp_refresh := 0.0
 var work: Work
 var _away_label: Label
 var _rel_refresh := 0.0
@@ -446,6 +478,10 @@ func _build_info_panel() -> void:
 	_career_box.add_theme_constant_override("separation", 10)
 	v.add_child(_career_box)
 	_pages.append(_career_box)
+	_aspiration_box = VBoxContainer.new()
+	_aspiration_box.add_theme_constant_override("separation", 8)
+	v.add_child(_aspiration_box)
+	_pages.append(_aspiration_box)
 
 	var tabs_pill := PanelContainer.new()
 	tabs_pill.add_theme_stylebox_override("panel", UiTheme.panel_style(26, 5))
@@ -454,8 +490,8 @@ func _build_info_panel() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
 	tabs_pill.add_child(tabs)
-	var defs := [["career", "Career"], ["skills", "Skills"], ["relationships", "Relationships"], ["simology", "Simology"], ["needs", "Needs"]]
-	var page_of := {"needs": 0, "skills": 1, "simology": 2, "relationships": 3, "career": 4}
+	var defs := [["aspiration", "Aspiration"], ["career", "Career"], ["skills", "Skills"], ["relationships", "Relationships"], ["simology", "Simology"], ["needs", "Needs"]]
+	var page_of := {"needs": 0, "skills": 1, "simology": 2, "relationships": 3, "career": 4, "aspiration": 5}
 	for d in defs:
 		var b := IconButton.make(d[0], 42, d[1])
 		b.toggle_mode = true
@@ -467,7 +503,7 @@ func _build_info_panel() -> void:
 
 
 func _tab_for_page(index: int) -> IconButton:
-	var id: String = ["needs", "skills", "simology", "relationships", "career"][index]
+	var id: String = ["needs", "skills", "simology", "relationships", "career", "aspiration"][index]
 	for b in _tabs:
 		if b.icon_id == id:
 			return b
@@ -487,7 +523,9 @@ func _on_tab(index: int) -> void:
 
 func _show_page(index: int) -> void:
 	_info_panel.visible = true
-	_info_title.text = ["Needs", "Skills", "Simology", "Relationships", "Career"][index]
+	_info_title.text = ["Needs", "Skills", "Simology", "Relationships", "Career", "Aspiration"][index]
+	if index == 5:
+		_refresh_aspiration()
 	if index == 4:
 		_refresh_career()
 	_autonomy_button.visible = index == 0
@@ -516,8 +554,14 @@ func _build_sim_cluster() -> void:
 	_root.add_child(c)
 	_live_ui.append(c)
 
+	# Wants float above the portrait; the queue sits to its right.
+	_wants_box = HBoxContainer.new()
+	_wants_box.position = Vector2(60, 6)
+	_wants_box.add_theme_constant_override("separation", 6)
+	c.add_child(_wants_box)
+
 	_queue_box = HBoxContainer.new()
-	_queue_box.position = Vector2(56, 4)
+	_queue_box.position = Vector2(236, 62)
 	_queue_box.add_theme_constant_override("separation", 4)
 	_queue_box.alignment = BoxContainer.ALIGNMENT_BEGIN
 	c.add_child(_queue_box)
@@ -685,6 +729,73 @@ func _rebuild_moodlets() -> void:
 		icon.custom_minimum_size = Vector2(46, 46)
 		icon.tooltip_text = m.label
 		_moodlet_box.add_child(icon)
+
+
+func set_aspirations(t: AspirationTracker) -> void:
+	aspirations = t
+	aspirations.changed.connect(_rebuild_wants)
+	aspirations.changed.connect(_refresh_aspiration)
+	aspirations.notice.connect(func(text: String, title: String): show_notice(text, title))
+	_rebuild_wants()
+
+
+func _rebuild_wants() -> void:
+	for c in _wants_box.get_children():
+		c.queue_free()
+	if aspirations == null:
+		return
+	for w in aspirations.wants:
+		var b := WantBubble.new()
+		b.want = w
+		b.custom_minimum_size = Vector2(50, 56)
+		b.tooltip_text = w[1]
+		_wants_box.add_child(b)
+
+
+## Aspiration tab: name, satisfaction, and milestones with their goals ticked off.
+func _refresh_aspiration() -> void:
+	if aspirations == null or not _pages[5].visible:
+		return
+	for c in _aspiration_box.get_children():
+		c.queue_free()
+	var a := sim.aspiration
+	var info: Dictionary = Aspirations.INFO[a]
+	var head := UiTheme.title(Label.new(), 17)
+	head.text = info["label"]
+	_aspiration_box.add_child(head)
+	var sub := Label.new()
+	sub.text = "%s · %s\nSatisfaction points: %d" % [info["category"], info["description"], aspirations.satisfaction]
+	sub.add_theme_font_size_override("font_size", 13)
+	sub.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+	_aspiration_box.add_child(sub)
+	var ms: Array = info["milestones"]
+	for i in ms.size():
+		var title := Label.new()
+		var state := "Complete" if i < aspirations.milestone else ("Current" if i == aspirations.milestone else "Locked")
+		title.text = "Milestone %d  ·  %s" % [i + 1, state]
+		title.add_theme_font_size_override("font_size", 14)
+		title.add_theme_color_override("font_color", UiTheme.GREEN_DARK if i < aspirations.milestone else (UiTheme.TEXT if i == aspirations.milestone else UiTheme.TEXT_SOFT))
+		_aspiration_box.add_child(title)
+		if i != aspirations.milestone:
+			continue
+		for goal in ms[i]:
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 8)
+			var box := Panel.new()
+			box.custom_minimum_size = Vector2(14, 14)
+			box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			var st := StyleBoxFlat.new()
+			st.set_corner_radius_all(7)
+			st.bg_color = UiTheme.GREEN if aspirations.goal_done(goal) else Color.WHITE
+			st.border_color = UiTheme.GREEN_DARK if aspirations.goal_done(goal) else UiTheme.PANEL_EDGE
+			st.set_border_width_all(2)
+			box.add_theme_stylebox_override("panel", st)
+			row.add_child(box)
+			var gl := Label.new()
+			gl.text = goal["text"]
+			gl.add_theme_font_size_override("font_size", 13)
+			row.add_child(gl)
+			_aspiration_box.add_child(row)
 
 
 func set_work(w: Work) -> void:
@@ -956,6 +1067,10 @@ func _process(delta: float) -> void:
 		bar.value = sim.needs.get_value(n)
 		bar.trend = sim.needs.trend.get(n, 0.0)
 		bar.queue_redraw()
+	_asp_refresh -= delta
+	if _pages[5].visible and _asp_refresh <= 0.0:
+		_asp_refresh = 1.0
+		_refresh_aspiration()
 	_rel_refresh -= delta
 	if _pages[3].visible and _rel_refresh <= 0.0:
 		_rel_refresh = 0.5

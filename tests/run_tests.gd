@@ -19,6 +19,7 @@ func _ready() -> void:
 	_test_traits_and_skill_gain()
 	_test_relationships()
 	_test_career_day()
+	_test_aspiration_goals()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -243,4 +244,27 @@ func _test_career_day() -> void:
 	w._try_promotion()
 	_check(w.level == 1 and sim.emotions.has("promoted"), "full performance and skill earn a promotion")
 	w.free()
+	sim.free()
+
+
+func _test_aspiration_goals() -> void:
+	var sim := Sim.new()
+	var ctx := {"sim": sim, "funds": 30000, "career_level": 0}
+	_check(Aspirations.goal_met({"funds": 25000}, ctx), "funds goal checks household money")
+	_check(not Aspirations.goal_met({"career_level": 1}, ctx), "career goal needs a job")
+	_check(not Aspirations.goal_met({"any_skills": 2, "count": 2}, ctx), "skill goals start unmet")
+	sim.skills.add_xp("painting", Skills.xp_for_level(2))
+	sim.skills.add_xp("logic", Skills.xp_for_level(2))
+	_check(Aspirations.goal_met({"any_skills": 2, "count": 2}, ctx), "two skills at level 2 meet the goal")
+	sim.count_stat("paintings_sold", 3)
+	_check(Aspirations.goal_met({"stat": "paintings_sold", "count": 3}, ctx), "stat goals count activities")
+	var t: Array[String] = ["creative"]
+	sim.set_traits(t)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var paint := 0
+	for i in 200:
+		if Aspirations.roll_want(sim, [], rng)[0] == "paint":
+			paint += 1
+	_check(paint > 200 / Aspirations.WANTS.size(), "creative Sims want to paint more often")
 	sim.free()
