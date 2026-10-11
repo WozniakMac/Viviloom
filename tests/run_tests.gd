@@ -9,6 +9,8 @@ func _init() -> void:
 	_test_path_avoids_obstacles()
 	_test_unreachable_goal()
 	_test_blocked_goal_snaps_to_neighbour()
+	_test_needs_decay()
+	_test_needs_activity_rates()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -61,3 +63,19 @@ func _test_blocked_goal_snaps_to_neighbour() -> void:
 		var end_cell := lot.world_to_cell(path[path.size() - 1])
 		_check(end_cell != Vector2i(5, 5) and lot.is_walkable(end_cell), "ends on a free cell")
 	lot.free()
+
+
+func _test_needs_decay() -> void:
+	var needs := Needs.new()
+	needs.tick(60.0)
+	_check(is_equal_approx(needs.get_value("hunger"), 80.0 - Needs.DECAY_PER_HOUR["hunger"]), "hunger decays per hour")
+	needs.tick(60.0 * 100.0)
+	_check(needs.get_value("bladder") == 0.0, "needs clamp at zero")
+	_check(needs.mood() == "Miserable", "empty needs are miserable")
+
+
+func _test_needs_activity_rates() -> void:
+	var needs := Needs.new()
+	needs.tick(30.0, {"hunger": 40.0})
+	_check(is_equal_approx(needs.get_value("hunger"), 100.0), "eating rate restores hunger and clamps")
+	_check(needs.get_value("fun") < 80.0, "other needs still decay")

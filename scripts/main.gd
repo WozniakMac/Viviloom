@@ -6,6 +6,7 @@ extends Node3D
 var lot: Lot
 var sim: Sim
 var rig: CameraRig
+var hud: Hud
 var _marker: MeshInstance3D
 var _marker_time := 0.0
 
@@ -24,6 +25,9 @@ func _ready() -> void:
 	add_child(sim)
 	sim.global_position = lot.cell_to_world(Vector2i(3, 14))
 	sim.set_selected(true)
+	var start_needs := {"hunger": 70.0, "energy": 85.0, "bladder": 55.0, "hygiene": 80.0, "fun": 45.0, "social": 60.0}
+	for n in start_needs:
+		sim.needs.set_value(n, start_needs[n])
 
 	rig = CameraRig.new()
 	rig.name = "CameraRig"
@@ -31,7 +35,10 @@ func _ready() -> void:
 	rig.position = lot.center()
 
 	_build_marker()
-	_build_hud()
+	hud = Hud.new()
+	hud.name = "Hud"
+	add_child(hud)
+	hud.set_sim(sim)
 	_check_dev_args()
 
 
@@ -117,17 +124,6 @@ func _setup_environment() -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
 	add_child(sun)
-
-
-func _build_hud() -> void:
-	var layer := CanvasLayer.new()
-	add_child(layer)
-	var label := Label.new()
-	label.text = "Left-click: walk   WASD: pan   Q/E or middle-drag: rotate   Wheel: zoom"
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.add_theme_constant_override("outline_size", 4)
-	label.position = Vector2(16, 16)
-	layer.add_child(label)
 
 
 func _check_dev_args() -> void:

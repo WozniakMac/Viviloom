@@ -11,6 +11,7 @@ signal arrived
 @export var walk_speed := 2.0
 
 var lot: Lot
+var needs := Needs.new()
 var path := PackedVector3Array()
 var _path_index := 0
 var _walk_phase := 0.0
@@ -51,7 +52,9 @@ func set_selected(selected: bool) -> void:
 	_selection_ring.visible = selected
 
 
-func _process(delta: float) -> void:
+func _process(real_delta: float) -> void:
+	needs.tick(Clock.game_delta)
+	var delta := Clock.scaled(real_delta)
 	var moving := false
 	if _path_index < path.size():
 		var target := path[_path_index]
