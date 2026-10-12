@@ -150,6 +150,33 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 					if (i + j) % 2 == 0:
 						ci.draw_rect(Rect2(c + Vector2(-s + i * s * 0.67, -s + j * s * 0.67), Vector2(s * 0.62, s * 0.62)), col)
 			ci.draw_rect(Rect2(c - Vector2(s, s), Vector2(s * 2, s * 2)), col, false, 1.5)
+		"heart":
+			ci.draw_circle(c + Vector2(-s * 0.45, -s * 0.25), s * 0.52, col)
+			ci.draw_circle(c + Vector2(s * 0.45, -s * 0.25), s * 0.52, col)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.95, -s * 0.05), c + Vector2(s * 0.95, -s * 0.05), c + Vector2(0, s * 1.0)]), col)
+		"smile":
+			ci.draw_arc(c, s, 0, TAU, 24, col, 2.0, true)
+			ci.draw_circle(c + Vector2(-s * 0.35, -s * 0.25), s * 0.13, col)
+			ci.draw_circle(c + Vector2(s * 0.35, -s * 0.25), s * 0.13, col)
+			ci.draw_arc(c + Vector2(0, s * 0.05), s * 0.5, 0.3, PI - 0.3, 12, col, 2.0, true)
+		"bolt":
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.2, -s), c + Vector2(-s * 0.55, s * 0.15), c + Vector2(-s * 0.05, s * 0.15), c + Vector2(-s * 0.25, s), c + Vector2(s * 0.55, -s * 0.2), c + Vector2(s * 0.05, -s * 0.2)]), col)
+		"food":
+			ci.draw_arc(c + Vector2(0, s * 0.1), s * 0.75, 0, PI, 16, col, 2.0, true)
+			ci.draw_line(c + Vector2(-s, s * 0.1), c + Vector2(s, s * 0.1), col, 2.0)
+			ci.draw_line(c + Vector2(-s * 0.3, -s), c + Vector2(-s * 0.3, -s * 0.2), col, 2.0)
+			ci.draw_line(c + Vector2(s * 0.3, -s), c + Vector2(s * 0.3, -s * 0.2), col, 2.0)
+		"zzz":
+			var font := ThemeDB.fallback_font
+			ci.draw_string(font, c + Vector2(-s * 0.9, s * 0.5), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, int(s * 1.1), col)
+			ci.draw_string(font, c + Vector2(-s * 0.2, s * 0.1), "Z", HORIZONTAL_ALIGNMENT_LEFT, -1, int(s * 1.5), col)
+		"drop":
+			ci.draw_circle(c + Vector2(0, s * 0.3), s * 0.6, col)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -s), c + Vector2(-s * 0.55, s * 0.1), c + Vector2(s * 0.55, s * 0.1)]), col)
+		"soap":
+			ci.draw_circle(c + Vector2(-s * 0.35, s * 0.25), s * 0.5, col)
+			ci.draw_arc(c + Vector2(s * 0.45, -s * 0.35), s * 0.42, 0, TAU, 16, col, 2.0, true)
+			ci.draw_arc(c + Vector2(s * 0.5, s * 0.55), s * 0.25, 0, TAU, 12, col, 1.5, true)
 		"menu":
 			for x in [-0.6, 0.0, 0.6]:
 				ci.draw_circle(c + Vector2(x * s, 0), s * 0.2, col)

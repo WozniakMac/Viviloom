@@ -59,6 +59,8 @@ func _ready() -> void:
 	add_child(build)
 	hud.set_build(build, lot)
 	hud.sim_selected.connect(select_sim)
+	hud.bubbles.lot = lot
+	hud.bubbles.camera = rig.camera
 	bills = Bills.new()
 	bills.name = "Bills"
 	bills.lot = lot
@@ -874,6 +876,21 @@ func _run_scenario(scenario: String, path: String) -> void:
 			hud._show_page(4)
 			Clock.set_speed(3)
 			await get_tree().create_timer(3.0).timeout
+		"bubbles":
+			Clock.total_minutes = 9.0 * 60.0 + 1.0
+			await get_tree().create_timer(0.3).timeout
+			var jules2 := visitors.neighbour
+			jules2.global_position = lot.cell_to_world(Vector2i(10, 9))
+			jules2.clear_queue()
+			sim.global_position = lot.cell_to_world(Vector2i(13, 9))
+			sim.change_relationship(jules2, 40.0, 0.0)
+			sim.queue_social(jules2, Socials.find("Flirt"))
+			var bea := _new_sim("Bea")
+			add_to_household(bea)
+			bea.global_position = lot.cell_to_world(Vector2i(6, 14))
+			bea.needs.set_value("hunger", 5.0)
+			bea.autonomy_enabled = false
+			await get_tree().create_timer(2.6).timeout
 		"social":
 			Clock.total_minutes = 9.0 * 60.0 + 1.0
 			await get_tree().create_timer(0.3).timeout

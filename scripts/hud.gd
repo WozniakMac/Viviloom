@@ -229,6 +229,7 @@ class MemberIcon:
 var sim: Sim
 var _household: Array = []
 var pie_menu: PieMenu
+var bubbles: Bubbles
 var build: BuildMode
 
 var _root: Control
@@ -299,6 +300,11 @@ func _ready() -> void:
 	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_hint)
 	_live_ui.append(_hint)
+
+	bubbles = Bubbles.new()
+	bubbles.name = "Bubbles"
+	_root.add_child(bubbles)
+	_root.move_child(bubbles, 0)
 
 	pie_menu = PieMenu.new()
 	pie_menu.name = "PieMenu"

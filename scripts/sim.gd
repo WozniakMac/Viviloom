@@ -282,6 +282,22 @@ func change_relationship(o: Sim, d_friend: float, d_romance: float) -> void:
 		a.relationships_changed.emit()
 
 
+## The category ("Friendly", "Romance", "Mean") of the social this Sim is in, or "".
+func social_bubble() -> String:
+	if _social_with != null and _social_interaction != null:
+		return _social_interaction.social.get("category", "Friendly")
+	var cur := current_action()
+	if cur != null and cur.performing and cur.target_sim != null:
+		return cur.interaction.social.get("category", "Friendly")
+	return ""
+
+
+## The lowest need if it's desperately low, for a thought bubble.
+func desperate_need() -> String:
+	var n := needs.lowest()
+	return n if needs.get_value(n) < Needs.CRITICAL else ""
+
+
 ## Whether another Sim can start talking to this one right now.
 func can_socialize() -> bool:
 	return visible and not away and _pose != "lie" and _social_with == null
