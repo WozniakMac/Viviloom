@@ -55,6 +55,7 @@ func _ready() -> void:
 	_test_options_and_achievements()
 	_test_save_slots()
 	_test_lunar_cycle()
+	_test_room_presets_and_undo()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1089,3 +1090,27 @@ func _test_lunar_cycle() -> void:
 	_check(seen.size() == 8 and Lunar.phase(1) == 0 and Lunar.phase(5) == 4, "eight phases over the default 8-day cycle")
 	_check(Lunar.illumination(4) > 0.99 and Lunar.illumination(0) < 0.01, "full moons are bright, new moons dark")
 	_check(not Lunar.night_moodlet(4).is_empty() and Lunar.night_moodlet(2).is_empty(), "full moon nights have a mood")
+
+
+func _test_room_presets_and_undo() -> void:
+	var lot := _make_lot()
+	add_child(lot)
+	var build := BuildMode.new()
+	build.lot = lot
+	build.funds = 50000
+	var states: Array = []
+	build.snapshot = func() -> Dictionary: return {"walls": lot.walls.size(), "objects": lot.furniture.size(), "funds": build.funds}
+	build.restore = func(d: Dictionary): states.append(d)
+	var before := build.funds
+	_check(build.place_room(3, Vector2i(2, 2)), "a ready-made bathroom drops in")
+	_check(lot.walls.size() == 12 and lot.doors.size() == 1 and lot.furniture.any(func(f): return f.kind == "toilet"), "with walls, a door and its fixtures")
+	_check(before - build.funds == Catalog.room_price(Catalog.ROOM_PRESETS[3]), "and costs what the catalogue says")
+	_check(not build.place_room(3, Vector2i(2, 2)), "rooms can't overlap furniture")
+	build._begin_change()
+	build.funds -= 100
+	build._end_change()
+	_check(build._undo.size() == 1, "changes are recorded for undo")
+	build.undo()
+	_check(states.size() == 1 and build._redo.size() == 1, "undo restores and can be redone")
+	build.free()
+	lot.queue_free()

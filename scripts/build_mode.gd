@@ -15,7 +15,7 @@ signal foundation_changed(height: float)
 ## Lot traits were picked (applies to every storey).
 signal lot_traits_changed(traits: Array)
 
-enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL, FENCE, ROOM, ROOF, TERRAIN, EYEDROPPER, DESIGN }
+enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL, FENCE, ROOM, ROOF, TERRAIN, EYEDROPPER, DESIGN, ROOM_PRESET }
 
 var lot: Lot
 var sim: Sim
@@ -131,7 +131,77 @@ func start_place(kind: String) -> void:
 	_pick_up(f, true)
 
 
+## Undo / redo (Ctrl+Z / Ctrl+Y): `snapshot` returns the lot's build state and
+## `restore` puts one back; main supplies both.
+var snapshot: Callable
+var restore: Callable
+var _undo: Array = []
+var _redo: Array = []
+var _pre: Variant = null
+const UNDO_LIMIT := 30
+
+
+func _begin_change() -> void:
+	if snapshot.is_valid() and _held == null and _pre == null:
+		_pre = snapshot.call()
+
+
+## Records the change if the lot actually changed (not while holding an object).
+func _end_change() -> void:
+	if _pre == null or _held != null or not snapshot.is_valid():
+		return
+	var now: Dictionary = snapshot.call()
+	if JSON.stringify(now) != JSON.stringify(_pre):
+		_undo.append(_pre)
+		if _undo.size() > UNDO_LIMIT:
+			_undo.pop_front()
+		_redo.clear()
+	_pre = null
+
+
+func undo() -> void:
+	_cancel_held()
+	if _undo.is_empty() or not restore.is_valid():
+		return
+	_redo.append(snapshot.call())
+	restore.call(_undo.pop_back())
+
+
+func redo() -> void:
+	_cancel_held()
+	if _redo.is_empty() or not restore.is_valid():
+		return
+	_undo.append(snapshot.call())
+	restore.call(_redo.pop_back())
+
+
 func handle_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		if (event as InputEventMouseButton).pressed:
+			_begin_change()
+		_handle_input(event)
+		_end_change()
+		return
+	if event is InputEventKey and (event as InputEventKey).pressed and (event as InputEventKey).is_command_or_control_pressed():
+		match (event as InputEventKey).keycode:
+			KEY_Z:
+				undo()
+				return
+			KEY_Y:
+				redo()
+				return
+	if event is InputEventKey and (event as InputEventKey).pressed and (event as InputEventKey).keycode in [KEY_DELETE, KEY_BACKSPACE]:
+		_pre = null
+		var before: Variant = snapshot.call() if snapshot.is_valid() and _held != null else null
+		_handle_input(event)
+		if before != null:
+			_undo.append(before)
+			_redo.clear()
+		return
+	_handle_input(event)
+
+
+func _handle_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		_refresh_overlays(_ground((event as InputEventMouseMotion).position))
 	elif event is InputEventMouseButton:
@@ -233,6 +303,8 @@ func _on_press(p: Variant, screen_pos: Vector2) -> void:
 		Tool.FLOOR, Tool.POOL, Tool.ROOM, Tool.TERRAIN:
 			_floor_start = lot.world_to_cell(pt)
 			_floor_end = _floor_start
+		Tool.ROOM_PRESET:
+			place_room(_room_preset, lot.world_to_cell(pt))
 		Tool.EYEDROPPER:
 			# Pick up a new copy of whatever was clicked, in the same colour.
 			var src := _furniture_under(screen_pos)
@@ -671,7 +743,9 @@ func _build_ui() -> void:
 	tools_pill.add_theme_stylebox_override("panel", UiTheme.panel_style(28, 6))
 	tools_pill.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	tools_pill.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	tools_pill.position = Vector2(-372, 14)
+	tools_pill.position = Vector2(-400, 14)
+	# Centre the bar on its real width once laid out.
+	tools_pill.resized.connect(func(): tools_pill.position.x = (tools_pill.get_parent_area_size().x - tools_pill.size.x) * 0.5)
 	root.add_child(tools_pill)
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 6)
@@ -693,12 +767,16 @@ func _build_ui() -> void:
 		[Tool.DELETE, "sell", "Sledgehammer (K): click an object, wall or fence to sell it"],
 	]
 	for d in tool_defs:
-		var b := IconButton.make(d[1], 46, d[2])
+		var b := IconButton.make(d[1], 40, d[2])
 		b.toggle_mode = true
 		b.pressed.connect(set_tool.bind(d[0]))
 		tools.add_child(b)
 		_tool_buttons[d[0]] = b
-	var traits_btn := IconButton.make("lot_traits", 46, "Lot Traits: give this home up to %d traits" % LotTraits.MAX)
+	for u in [["undo", "Undo (Ctrl+Z)", undo], ["redo", "Redo (Ctrl+Y)", redo]]:
+		var ub := IconButton.make(u[0], 40, u[1])
+		ub.pressed.connect(u[2])
+		tools.add_child(ub)
+	var traits_btn := IconButton.make("lot_traits", 40, "Lot Traits: give this home up to %d traits" % LotTraits.MAX)
 	traits_btn.pressed.connect(open_lot_traits)
 	tools.add_child(traits_btn)
 	_ui_root = root
@@ -758,6 +836,10 @@ func _build_ui() -> void:
 	_tiles_box = HBoxContainer.new()
 	_tiles_box.add_theme_constant_override("separation", 8)
 	_tiles_scroll.add_child(_tiles_box)
+	for i in Catalog.ROOM_PRESETS.size():
+		var rt := _make_room_tile(i)
+		_room_tiles.append(rt)
+		_tiles_box.add_child(rt)
 	for kind in Catalog.KINDS:
 		_tiles[kind] = _make_tile(kind)
 		_tiles_box.add_child(_tiles[kind])
@@ -772,7 +854,7 @@ func _build_ui() -> void:
 	_swatch_box.visible = false
 	right.add_child(_swatch_box)
 	var help := Label.new()
-	help.text = "Click an item to place it.  Right-click / Esc: cancel   R or , .: rotate   Delete: sell held object   F1: back to Live"
+	help.text = "Click an item or room to place it.  Right-click / Esc: cancel   , .: rotate   Delete: sell   Ctrl+Z / Ctrl+Y: undo / redo   F1: Live"
 	help.add_theme_font_size_override("font_size", 13)
 	help.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
 	right.add_child(help)
@@ -834,7 +916,9 @@ func _show_category(cat: String) -> void:
 	for c in _category_buttons:
 		(_category_buttons[c] as Button).button_pressed = c == cat
 	for kind in _tiles:
-		(_tiles[kind] as Control).visible = cat == "all" or Catalog.CATEGORY_OF[kind] == cat
+		(_tiles[kind] as Control).visible = cat != "rooms" and (cat == "all" or Catalog.CATEGORY_OF[kind] == cat)
+	for rt in _room_tiles:
+		rt.visible = cat == "rooms"
 
 ## With the paint or floor tool, the catalogue shows finishes instead of objects.
 func _show_swatches() -> void:
@@ -1055,6 +1139,108 @@ func open_lot_traits() -> void:
 	await get_tree().process_frame
 	if _traits_panel != null:
 		_traits_panel.position = (_ui_root.size - _traits_panel.size) * 0.5
+
+
+var _room_preset := -1
+var _room_tiles: Array[Button] = []
+
+
+## Picks up a ready-made room from the Rooms catalogue.
+func start_place_room(i: int) -> void:
+	set_tool(Tool.ROOM_PRESET)
+	_room_preset = i
+
+
+## Builds preset `i` with its top-left tile at `at`: walls, a door at the bottom,
+## floor and furniture. Refuses if anything is in the way or money runs short.
+func place_room(i: int, at: Vector2i) -> bool:
+	if i < 0 or i >= Catalog.ROOM_PRESETS.size():
+		return false
+	var p: Dictionary = Catalog.ROOM_PRESETS[i]
+	var sz: Vector2i = p["size"]
+	var r := Rect2i(at, sz)
+	for x in range(r.position.x, r.end.x):
+		for y in range(r.position.y, r.end.y):
+			var c := Vector2i(x, y)
+			if not lot.in_bounds(c) or not lot.is_walkable(c) or lot.furniture_at(c) != null or lot.is_pool(c):
+				notice.emit("The room doesn't fit there.")
+				return false
+	var price := Catalog.room_price(p)
+	if price > funds:
+		notice.emit("Not enough Simoleons for the %s (§%d)." % [p["name"], price])
+		return false
+	_spend(price)
+	var corners := [r.position, Vector2i(r.end.x, r.position.y), r.end, Vector2i(r.position.x, r.end.y)]
+	for k in 4:
+		for e in Lot.wall_run(corners[k], corners[(k + 1) % 4]):
+			if not lot.walls.has(e) and lot.add_wall(e):
+				lot.paint_wall(e, int(p["wall"]))
+	lot.add_door(Vector3i(r.position.x + sz.x / 2, r.end.y, 0))
+	for x in range(r.position.x, r.end.x):
+		for y in range(r.position.y, r.end.y):
+			lot.floor_tiles[Vector2i(x, y)] = int(p["floor"])
+	lot.add_floor(Rect2i(), int(p["floor"]))
+	for o in p["objects"]:
+		if not Catalog.INFO.has(o[0]):
+			continue
+		var f := Catalog.create(o[0])
+		var cell := at + Vector2i(int(o[1]), int(o[2]))
+		if lot.can_place(f, cell, int(o[3])):
+			lot.place_furniture(f, cell, int(o[3]))
+			placed.emit(f)
+		else:
+			f.free()
+	Sfx.play("place", -4.0)
+	return true
+
+
+func _make_room_tile(i: int) -> Button:
+	var p: Dictionary = Catalog.ROOM_PRESETS[i]
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(140, 128)
+	b.tooltip_text = "%s\n%d × %d tiles, furnished" % [p["name"], p["size"].x, p["size"].y]
+	b.add_theme_stylebox_override("normal", UiTheme.pill(Color.WHITE, UiTheme.PANEL_EDGE, 10))
+	b.add_theme_stylebox_override("hover", UiTheme.pill(UiTheme.HOVER, UiTheme.ACCENT, 10))
+	b.pressed.connect(start_place_room.bind(i))
+	var v := VBoxContainer.new()
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.offset_top = 6
+	v.offset_bottom = -4
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(v)
+	var pic := RoomPic.new()
+	pic.preset = p
+	pic.custom_minimum_size = Vector2(0, 78)
+	pic.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(pic)
+	for t in [[p["name"], UiTheme.TEXT], ["§ %d" % Catalog.room_price(p), UiTheme.GREEN_DARK]]:
+		var l := Label.new()
+		l.text = t[0]
+		l.add_theme_font_size_override("font_size", 12)
+		l.add_theme_color_override("font_color", t[1])
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(l)
+	return b
+
+
+## A tiny floor plan of a room preset for its catalogue card.
+class RoomPic:
+	extends Control
+	var preset: Dictionary
+
+	func _draw() -> void:
+		var sz: Vector2i = preset["size"]
+		var cell := minf((size.x - 20) / sz.x, (size.y - 10) / sz.y)
+		var o := (size - Vector2(sz) * cell) * 0.5
+		var fl: Color = Finishes.FLOORS[preset["floor"]][1]
+		draw_rect(Rect2(o, Vector2(sz) * cell), fl)
+		draw_rect(Rect2(o, Vector2(sz) * cell), Color(0.95, 0.95, 0.93), false, 3.0)
+		draw_line(o + Vector2(sz.x / 2 * cell + 2, sz.y * cell), o + Vector2((sz.x / 2 + 1) * cell - 2, sz.y * cell), fl, 4.0)
+		for ob in preset["objects"]:
+			draw_rect(Rect2(o + Vector2(ob[1], ob[2]) * cell + Vector2(2, 2), Vector2(cell - 4, cell - 4)), Color(0.35, 0.5, 0.75, 0.8))
 
 
 func is_holding() -> bool:

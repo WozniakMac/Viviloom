@@ -215,6 +215,12 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			for k in 4:
 				var ang := -2.2 + k * 0.9
 				ci.draw_circle(c + Vector2(cos(ang), sin(ang)) * s * 0.5, s * 0.17, col)
+		"undo", "redo":
+			# A curved arrow: pointing left for undo, right for redo.
+			var dirx := -1.0 if id == "undo" else 1.0
+			ci.draw_arc(c + Vector2(0, s * 0.15), s * 0.6, PI * 1.05, PI * 1.95, 14, col, 2.5, true)
+			var tip := c + Vector2(s * 0.6 * dirx, s * 0.15)
+			ci.draw_colored_polygon(PackedVector2Array([tip + Vector2(0, s * 0.35), tip + Vector2(-s * 0.3, -s * 0.1), tip + Vector2(s * 0.3, -s * 0.1)]), col)
 		"eyedropper":
 			ci.draw_line(c + Vector2(-s * 0.8, s * 0.8), c + Vector2(s * 0.2, -s * 0.2), col, 3.0)
 			ci.draw_circle(c + Vector2(s * 0.45, -s * 0.45), s * 0.35, col)

@@ -18,6 +18,30 @@ const RECIPES := [
 	["Baked Alaska", 9, 8, 90.0, Color(0.98, 0.92, 0.85)],
 ]
 const MEAL_QUALITY: Array[String] = ["Poor", "Normal", "Good", "Excellent"]
+## Ready-made rooms for the Rooms catalogue (F3), placed in one click like the
+## reference's room presets: size, floor and wall finish, then objects as
+## [kind, x, y, rotation] relative to the room's top-left tile. The door goes in
+## the middle of the bottom wall.
+const ROOM_PRESETS := [
+	{"name": "Cosy Bedroom", "size": Vector2i(4, 4), "floor": 6, "wall": 1, "objects": [["bed", 1, 0, 0], ["lamp", 0, 0, 0], ["end_table", 3, 0, 0], ["rug", 1, 2, 0]]},
+	{"name": "Kids' Room", "size": Vector2i(4, 4), "floor": 7, "wall": 2, "objects": [["single_bed", 0, 0, 0], ["toybox", 2, 0, 0], ["activity_table", 3, 2, 0], ["dollhouse", 1, 2, 0]]},
+	{"name": "Starter Kitchen", "size": Vector2i(5, 3), "floor": 3, "wall": 0, "objects": [["fridge", 0, 0, 0], ["counter", 1, 0, 0], ["stove", 2, 0, 0], ["sink", 3, 0, 0], ["counter", 4, 0, 0]]},
+	{"name": "Simple Bathroom", "size": Vector2i(3, 3), "floor": 3, "wall": 3, "objects": [["toilet", 0, 0, 0], ["shower", 2, 0, 0]]},
+	{"name": "Living Room", "size": Vector2i(5, 4), "floor": 0, "wall": 0, "objects": [["tv", 2, 0, 0], ["sofa", 1, 2, 2], ["plant", 0, 0, 0], ["lamp", 4, 0, 0]]},
+]
+
+
+## What a preset costs: its walls, floor tiles, door and objects.
+static func room_price(p: Dictionary) -> int:
+	var sz: Vector2i = p["size"]
+	var total := 2 * (sz.x + sz.y) * WALL_PRICE + DOOR_PRICE
+	total += sz.x * sz.y * int(Finishes.FLOORS[p["floor"]][3])
+	for o in p["objects"]:
+		if INFO.has(o[0]):
+			total += int(INFO[o[0]][1])
+	return total
+
+
 ## Harvest quality, from Gardening skill, care (watering and weeding) and fertilizer.
 const PRODUCE_QUALITY: Array[String] = ["Poor", "Normal", "Good", "Excellent", "Perfect"]
 const PRODUCE_VALUE_MULT: Array[float] = [0.6, 1.0, 1.4, 1.9, 2.6]
@@ -102,7 +126,7 @@ const INFO := {
 	"meal": ["Meal", 0],
 }
 ## Build-mode catalogue sections: [id, label]; "all" lists everything.
-const CATEGORIES := [["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"], ["living", "Living"], ["outdoor", "Outdoor"]]
+const CATEGORIES := [["rooms", "Rooms"], ["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"], ["living", "Living"], ["outdoor", "Outdoor"]]
 const CATEGORY_OF := {
 	"bed": "bedroom", "fridge": "kitchen", "toilet": "bathroom", "shower": "bathroom",
 	"tv": "fun", "desk": "fun", "chess": "hobby", "easel": "hobby", "bookshelf": "hobby", "lamp": "bedroom",

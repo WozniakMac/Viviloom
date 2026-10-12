@@ -120,6 +120,11 @@ func _ready() -> void:
 			if idx >= 0:
 				owner.inventory.remove_at(idx)
 				owner.inventory_changed.emit())
+	build.snapshot = func() -> Dictionary: return {"lot": _lot_dict(), "funds": build.funds}
+	build.restore = func(d: Dictionary):
+		_apply_lot_dict(d["lot"])
+		build.funds = int(d["funds"])
+		build.funds_changed.emit(build.funds)
 	build.lot_traits_changed.connect(func(t: Array):
 		for l in levels:
 			(l as Lot).lot_traits = t.duplicate())
@@ -451,14 +456,16 @@ func _unhandled_input(event: InputEvent) -> void:
 				build.exit()
 				return
 			KEY_F2:
-				# Buy mode: the catalogue with the hand tool.
-				build.enter()
-				return
-			KEY_F3:
-				# Build mode: straight to the wall tool.
+				# Build/Buy on the object catalogue, as in the reference.
 				build.enter()
 				if build.active:
-					build.set_tool(BuildMode.Tool.WALL)
+					build._show_category("all")
+				return
+			KEY_F3:
+				# Build/Buy on the build side: the ready-made Rooms catalogue.
+				build.enter()
+				if build.active:
+					build._show_category("rooms")
 				return
 			KEY_HOME:
 				# Walls up one step (down / cutaway / up).
@@ -1371,6 +1378,10 @@ func _apply_lot_dict(d: Dictionary) -> void:
 
 
 func save_game() -> void:
+	# Like the reference, no saving in the middle of an emergency.
+	if lot.messes().any(func(m): return m.kind == "fire"):
+		hud.show_notice("You can't save right now: there's a fire on the lot!", "Can't Save")
+		return
 	if SaveGame.write(_save_data()):
 		hud.show_notice("Game saved.", "OpenSims")
 	else:
@@ -2049,6 +2060,19 @@ func _run_scenario(scenario: String, path: String) -> void:
 			await get_tree().process_frame
 			(_menu as GameMenu)._open_achievements()
 			await get_tree().create_timer(0.8).timeout
+		"rooms":
+			build.enter()
+			build._show_category("rooms")
+			build.start_place_room(2)
+			build.handle_input(_fake_click(lot.cell_to_world(Vector2i(1, 17))))
+			build.start_place_room(3)
+			build.handle_input(_fake_click(lot.cell_to_world(Vector2i(9, 17))))
+			build.start_place_room(3)
+			build.handle_input(_fake_click(lot.cell_to_world(Vector2i(16, 17))))
+			build.undo()
+			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
+			await get_tree().create_timer(1.0).timeout
+			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
 		"fullmoon":
 			Clock.total_minutes = (4 * 24 + 22) * 60.0
 			await get_tree().create_timer(1.0).timeout
@@ -2463,3 +2487,12 @@ func _run_scenario(scenario: String, path: String) -> void:
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(path)
 	get_tree().quit()
+
+
+## A left click on a ground point, for scripted build-mode screenshots.
+func _fake_click(at: Vector3) -> InputEventMouseButton:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = true
+	e.position = rig.camera.unproject_position(at)
+	return e
