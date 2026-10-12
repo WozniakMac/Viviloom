@@ -1,3 +1,4 @@
+class_name Main
 extends Node3D
 ## Game root: builds the world, the lot, the Sim and the camera, and routes clicks.
 ##
@@ -912,6 +913,9 @@ func _check_dev_args() -> void:
 			scenario = arg.trim_prefix("--scenario=")
 	if shot != "" or scenario in ["trace", "saveload", "audiocheck", "travelcheck", "inputcheck", "householdscheck"]:
 		dialogs_enabled = false
+	if scenario != "" and scenario not in ["new", "skip_cas"]:
+		# Checks and screenshots never touch the player's own saves.
+		SaveGame.dir = "user://check_saves"
 	if shot != "":
 		_run_scenario(scenario, shot)
 	elif scenario == "trace":
@@ -1066,8 +1070,18 @@ func open_main_menu() -> void:
 		_close_main_menu(menu)
 		open_create_a_sim())
 	menu.manage_pressed.connect(func():
+		# Load Game: pick a save slot, then a household in it.
 		menu.visible = false
-		_open_manage_households(menu))
+		var slots := SaveSlots.new()
+		add_child(slots)
+		slots.setup()
+		slots.back.connect(func():
+			slots.queue_free()
+			menu.visible = true)
+		slots.picked.connect(func(slot: String):
+			slots.queue_free()
+			SaveGame.current = slot
+			_open_manage_households(menu)))
 
 
 # --- several households -------------------------------------------------------------
@@ -1208,6 +1222,7 @@ func open_game_menu() -> void:
 	_menu = m
 	m.closed.connect(func(): _menu = null)
 	m.save_pressed.connect(save_game)
+	m.save_as_pressed.connect(save_game_as)
 	m.load_pressed.connect(load_game)
 	m.main_menu_pressed.connect(func(): get_tree().reload_current_scene())
 	m.manage_pressed.connect(func():
@@ -1347,6 +1362,22 @@ func _apply_lot_dict(d: Dictionary) -> void:
 
 
 func save_game() -> void:
+	if SaveGame.write(_save_data()):
+		hud.show_notice("Game saved.", "OpenSims")
+	else:
+		hud.show_notice("Couldn't save the game.", "OpenSims")
+
+
+## Save As: asks for a name and saves to a new slot.
+func save_game_as() -> void:
+	var d := EventDialog.ask(self, null, "Save As", "Name this save:", ["Save", "Cancel"] as Array[String], SaveGame.next_free_name())
+	d.answered.connect(func(i: int, text: String):
+		if i == 0:
+			if SaveGame.write_as(text, _save_data()):
+				hud.show_notice("Saved as \"%s\"." % SaveGame.current, "OpenSims"))
+
+
+func _save_data() -> Dictionary:
 	var data := _lot_dict() if location == "home" else _home_snapshot.duplicate()
 	data.merge({
 		"version": 1,
@@ -1363,10 +1394,7 @@ func save_game() -> void:
 		"tips": _tips_seen.keys(),
 		"others": other_households,
 	}, true)
-	if SaveGame.write(data):
-		hud.show_notice("Game saved.", "OpenSims")
-	else:
-		hud.show_notice("Couldn't save the game.", "OpenSims")
+	return data
 
 
 func load_game(world := {}) -> void:
@@ -1883,6 +1911,14 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_interaction(mb, mb.interactions[0])
 			Clock.set_speed(2)
 			await get_tree().create_timer(3.0).timeout
+		"loadgame":
+			SaveGame.write_as("Willow Creek Family", _save_data())
+			build.funds = 54321
+			SaveGame.write_as("Holiday Home", _save_data())
+			open_main_menu()
+			await get_tree().create_timer(0.3).timeout
+			(_menu as MainMenu).manage_pressed.emit()
+			await get_tree().create_timer(0.8).timeout
 		"title":
 			open_main_menu()
 			await get_tree().create_timer(1.5).timeout

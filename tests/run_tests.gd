@@ -53,6 +53,7 @@ func _ready() -> void:
 	_test_gardening()
 	_test_produce_quality()
 	_test_options_and_achievements()
+	_test_save_slots()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1059,3 +1060,22 @@ func _test_options_and_achievements() -> void:
 	Ages.lifespan_mult = 2.0
 	_check(Ages.stage_days("adult") == Ages.INFO["adult"]["days"] * 2, "a long lifespan doubles each life stage")
 	Ages.lifespan_mult = 1.0
+
+
+func _test_save_slots() -> void:
+	var old_dir := SaveGame.dir
+	var old_cur := SaveGame.current
+	SaveGame.dir = "user://test_slots_%d" % Time.get_ticks_msec()
+	SaveGame.current = ""
+	_check(not SaveGame.exists(), "no saves to begin with")
+	SaveGame.write({"funds": 1})
+	_check(SaveGame.current == "Save 1" and SaveGame.read()["funds"] == 1, "the first save becomes Save 1")
+	SaveGame.write_as("Holiday Home", {"funds": 2})
+	_check(SaveGame.slots().size() == 2 and SaveGame.current == "Holiday Home", "Save As starts a new slot and keeps playing it")
+	SaveGame.write({"funds": 3})
+	_check(SaveGame.read("Holiday Home")["funds"] == 3 and SaveGame.read("Save 1")["funds"] == 1, "Save writes the slot being played")
+	for f in DirAccess.get_files_at(SaveGame.dir):
+		DirAccess.remove_absolute(SaveGame.dir + "/" + f)
+	DirAccess.remove_absolute(SaveGame.dir)
+	SaveGame.dir = old_dir
+	SaveGame.current = old_cur

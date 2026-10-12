@@ -6,6 +6,7 @@ extends CanvasLayer
 ## bottom. The game is paused while it's open.
 
 signal save_pressed
+signal save_as_pressed
 signal load_pressed
 signal main_menu_pressed
 signal manage_pressed
@@ -59,7 +60,7 @@ func setup(has_save: bool, in_game := true) -> void:
 
 	var items := [
 		["Save", in_game, func(): _then(save_pressed)],
-		["Save As...", false, Callable()],
+		["Save As...", in_game, func(): _then(save_as_pressed)],
 		["Game Options", true, _open_options],
 		["Help", true, _open_help],
 		["Lessons", true, _open_lessons],
