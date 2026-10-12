@@ -102,14 +102,35 @@ class QueueIcon:
 		var r := minf(size.x, size.y) * 0.5 - 3.0
 		var col := tint if not action.autonomous else tint.lerp(Color(0.75, 0.78, 0.82), 0.55)
 		draw_circle(c, r + 3.0, Color.WHITE)
-		draw_circle(c, r, col)
+		var tex: Texture2D = null
+		if action.furniture != null:
+			tex = Thumbnails.cache.get(action.furniture.kind)
+		if tex != null:
+			# The object's picture, clipped to the circle.
+			draw_circle(c, r, Color(0.93, 0.96, 1.0) if not action.autonomous else Color(0.86, 0.88, 0.9))
+			var pts := PackedVector2Array()
+			var uvs := PackedVector2Array()
+			for i in 32:
+				var a := TAU * i / 32.0
+				var d := Vector2(cos(a), sin(a))
+				pts.append(c + d * r)
+				uvs.append(Vector2(0.5, 0.5) + d * 0.5)
+			var tint_col := Color.WHITE if not action.autonomous else Color(1, 1, 1, 0.6)
+			draw_colored_polygon(pts, tint_col, uvs, tex)
+		elif action.target_sim != null:
+			draw_circle(c, r, col)
+			IconButton.draw_icon(self, Bubbles.CATEGORY_ICONS.get(action.interaction.social.get("category", "Friendly"), "smile"), c, r * 0.5, Color.WHITE)
+		elif action.interaction == null:
+			draw_circle(c, r, col)
+			IconButton.draw_icon(self, "walk", c, r * 0.55, Color.WHITE)
+		else:
+			draw_circle(c, r, col)
+			var font := get_theme_default_font()
+			var fs := int(r * 0.75)
+			var ts := font.get_string_size(initials, HORIZONTAL_ALIGNMENT_CENTER, -1, fs)
+			draw_string(font, c + Vector2(-ts.x * 0.5, fs * 0.35), initials, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
 		if action.performing:
 			draw_arc(c, r + 1.0, -PI * 0.5, -PI * 0.5 + TAU * action.progress(), 32, UiTheme.GREEN, 4.0, true)
-		var font := get_theme_default_font()
-		var fs := int(r * 0.75)
-		var ts := font.get_string_size(initials, HORIZONTAL_ALIGNMENT_CENTER, -1, fs)
-		draw_string_outline(font, c + Vector2(-ts.x * 0.5, fs * 0.35), initials, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 3, Color(0, 0, 0, 0.35))
-		draw_string(font, c + Vector2(-ts.x * 0.5, fs * 0.35), initials, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
 		if _hover:
 			draw_circle(c, r, Color(0.8, 0.15, 0.1, 0.55))
 			IconButton.draw_icon(self, "close", c, r * 0.6, Color.WHITE)
@@ -141,13 +162,7 @@ class MoodletIcon:
 		st.shadow_color = Color(0, 0, 0, 0.25)
 		st.shadow_size = 3
 		draw_style_box(st, r)
-		var font := get_theme_default_font()
-		var txt := Hud.initials(moodlet.label)
-		var fs := 15
-		var ts := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-		var at := size * 0.5 + Vector2(-ts.x * 0.5, fs * 0.3)
-		draw_string_outline(font, at, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 3, Color(0, 0, 0, 0.3))
-		draw_string(font, at, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+		IconButton.draw_icon(self, Hud.moodlet_icon(moodlet), size * 0.5 + Vector2(0, -3), minf(size.x, size.y) * 0.24, Color.WHITE)
 		# Weight pips along the bottom.
 		for i in mini(moodlet.weight, 4):
 			draw_circle(Vector2(size.x * 0.5 + (i - (mini(moodlet.weight, 4) - 1) * 0.5) * 7.0, size.y - 9.0), 2.3, Color.WHITE)
@@ -1292,6 +1307,30 @@ func _process(delta: float) -> void:
 		_refresh_relationships()
 	if _pages[1].visible:
 		_refresh_skills()
+
+
+## A pictogram for a moodlet: needs show the need, everything else its emotion.
+static func moodlet_icon(m: Emotions.Moodlet) -> String:
+	if m.id.begins_with("need_"):
+		for n in Bubbles.NEED_ICONS:
+			if m.label.to_lower().contains({"hunger": "hungry", "energy": "tired", "bladder": "toilet", "hygiene": "grimy", "fun": "bored", "social": "lonely"}[n]):
+				return Bubbles.NEED_ICONS[n]
+		if m.id in ["need_starving"]:
+			return "food"
+		if m.id in ["need_exhausted"]:
+			return "zzz"
+		if m.id in ["need_bursting"]:
+			return "drop"
+		if m.id in ["need_stinky"]:
+			return "soap"
+		if m.id in ["need_very_bored"]:
+			return "smile"
+		return "relationships"
+	return {
+		"happy": "smile", "inspired": "bulb", "focused": "target", "energized": "bolt", "playful": "smile",
+		"confident": "aspiration", "flirty": "heart", "sad": "rain", "tense": "spiral", "angry": "steam",
+		"embarrassed": "blush", "bored": "zzz", "uncomfortable": "spiral", "fine": "smile",
+	}.get(m.emotion, "smile")
 
 
 static func initials(text: String) -> String:

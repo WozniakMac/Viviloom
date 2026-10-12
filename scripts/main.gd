@@ -1343,6 +1343,10 @@ func _run_scenario(scenario: String, path: String) -> void:
 	await get_tree().create_timer(0.5).timeout
 	match scenario:
 		"menu":
+			# Wait for the catalogue thumbnails (the queue shows them).
+			await get_tree().create_timer(2.5).timeout
+			sim.emotions.add("lit_inspired", "inspired", 1, "Inspired by Literature", "", 120.0)
+			sim.needs.set_value("hunger", 25.0)
 			var desk := find_furniture("desk")
 			sim.queue_interaction(find_furniture("fridge"), find_furniture("fridge").interactions[0])
 			sim.queue_interaction(desk, desk.interactions[1])

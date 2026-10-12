@@ -193,6 +193,46 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			var dirn := -1.0 if id == "level_up" else 1.0
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, s * 0.8 * dirn), c + Vector2(-s * 0.8, -s * 0.2 * dirn), c + Vector2(s * 0.8, -s * 0.2 * dirn)]), col)
 			ci.draw_rect(Rect2(c + Vector2(-s * 0.8, (-s * 0.7 if dirn > 0 else s * 0.5)), Vector2(s * 1.6, s * 0.22)), col)
+		"bulb":
+			ci.draw_circle(c + Vector2(0, -s * 0.2), s * 0.62, col)
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.28, s * 0.4), Vector2(s * 0.56, s * 0.45)), col)
+			for k in 3:
+				var a := -PI * 0.5 + (k - 1) * 0.7
+				ci.draw_line(c + Vector2(cos(a), sin(a)) * s * 0.85 + Vector2(0, -s * 0.2), c + Vector2(cos(a), sin(a)) * s * 1.15 + Vector2(0, -s * 0.2), col, 1.5)
+		"target":
+			ci.draw_arc(c, s, 0, TAU, 24, col, 2.0, true)
+			ci.draw_arc(c, s * 0.55, 0, TAU, 20, col, 2.0, true)
+			ci.draw_circle(c, s * 0.18, col)
+		"rain":
+			ci.draw_circle(c + Vector2(-s * 0.35, -s * 0.25), s * 0.42, col)
+			ci.draw_circle(c + Vector2(s * 0.25, -s * 0.35), s * 0.5, col)
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.75, -s * 0.3), Vector2(s * 1.4, s * 0.35)), col)
+			for x in [-0.45, 0.0, 0.45]:
+				ci.draw_line(c + Vector2(s * x, s * 0.3), c + Vector2(s * (x - 0.15), s * 0.85), col, 1.6)
+		"spiral":
+			var pts := PackedVector2Array()
+			for i in 40:
+				var a := i * 0.45
+				pts.append(c + Vector2(cos(a), sin(a)) * s * (0.1 + i * 0.022))
+			ci.draw_polyline(pts, col, 1.8, true)
+		"steam":
+			ci.draw_arc(c + Vector2(0, s * 0.25), s * 0.6, PI, TAU, 16, col, 2.0, true)
+			ci.draw_line(c + Vector2(-s * 0.6, s * 0.25), c + Vector2(s * 0.6, s * 0.25), col, 2.0)
+			for x in [-0.4, 0.4]:
+				ci.draw_line(c + Vector2(s * x, -s * 0.2), c + Vector2(s * (x * 1.4), -s * 0.9), col, 2.0)
+		"blush":
+			ci.draw_arc(c, s, 0, TAU, 24, col, 2.0, true)
+			ci.draw_circle(c + Vector2(-s * 0.45, s * 0.15), s * 0.2, col)
+			ci.draw_circle(c + Vector2(s * 0.45, s * 0.15), s * 0.2, col)
+			ci.draw_line(c + Vector2(-s * 0.3, -s * 0.3), c + Vector2(-s * 0.1, -s * 0.3), col, 1.5)
+			ci.draw_line(c + Vector2(s * 0.1, -s * 0.3), c + Vector2(s * 0.3, -s * 0.3), col, 1.5)
+		"walk":
+			ci.draw_circle(c + Vector2(s * 0.1, -s * 0.75), s * 0.22, col)
+			ci.draw_line(c + Vector2(s * 0.05, -s * 0.5), c + Vector2(-s * 0.1, s * 0.15), col, 2.2)
+			ci.draw_line(c + Vector2(-s * 0.1, s * 0.15), c + Vector2(-s * 0.45, s * 0.9), col, 2.2)
+			ci.draw_line(c + Vector2(-s * 0.1, s * 0.15), c + Vector2(s * 0.35, s * 0.9), col, 2.2)
+			ci.draw_line(c + Vector2(s * 0.0, -s * 0.3), c + Vector2(-s * 0.45, -s * 0.05), col, 2.0)
+			ci.draw_line(c + Vector2(s * 0.0, -s * 0.3), c + Vector2(s * 0.45, -s * 0.15), col, 2.0)
 		"menu":
 			for x in [-0.6, 0.0, 0.6]:
 				ci.draw_circle(c + Vector2(x * s, 0), s * 0.2, col)

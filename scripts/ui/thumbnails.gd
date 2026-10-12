@@ -8,6 +8,8 @@ signal ready_for(kind: String, texture: Texture2D)
 const SIZE := 128
 
 var textures := {}
+## The latest renders, shared with the HUD's action queue.
+static var cache := {}
 
 
 func render_all(kinds: Array[String]) -> void:
@@ -45,6 +47,7 @@ func render_all(kinds: Array[String]) -> void:
 		await RenderingServer.frame_post_draw
 		var tex := ImageTexture.create_from_image(vp.get_texture().get_image())
 		textures[kind] = tex
+		cache[kind] = tex
 		ready_for.emit(kind, tex)
 		f.queue_free()
 		await get_tree().process_frame
