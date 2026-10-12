@@ -284,7 +284,53 @@ def build_hair(mats):
     bpy.context.view_layer.objects.active = bun
     bpy.ops.object.join()
     styles.append(bun)
+
+    def join_into(base, others):
+        bpy.ops.object.select_all(action="DESELECT")
+        base.select_set(True)
+        for o in others:
+            o.select_set(True)
+        bpy.context.view_layer.objects.active = base
+        bpy.ops.object.join()
+        return base
+
+    pony = sphere("Hair_Ponytail", (0, -0.008, 1.705), (0.127, 0.135, 0.145), mats["Hair"], 32, 20)
+    cut_below(pony, 1.7, keep_back_below=1.63)
+    tie = sphere("Tie", (0, -0.13, 1.74), (0.035, 0.035, 0.035), mats["Hair"], 12, 8)
+    tail = sphere("Tail", (0, -0.17, 1.62), (0.04, 0.045, 0.13), mats["Hair"], 16, 10)
+    styles.append(join_into(pony, [tie, tail]))
+
+    buzz = sphere("Hair_Buzz", (0, -0.004, 1.698), (0.121, 0.129, 0.143), mats["Hair"], 32, 20)
+    cut_below(buzz, 1.7, keep_back_below=1.62, front=1.775)
+    styles.append(buzz)
+
+    curly = sphere("Hair_Curly", (0, -0.015, 1.73), (0.16, 0.165, 0.165), mats["Hair"], 32, 20)
+    cut_below(curly, 1.69, keep_back_below=1.58, front=1.765)
+    curls = []
+    for k in range(10):
+        a = k * 0.63
+        curls.append(sphere("Curl", (math.cos(a) * 0.13, -0.02 + math.sin(a) * 0.12, 1.78 + 0.04 * math.sin(k * 1.7)), (0.055, 0.055, 0.055), mats["Hair"], 10, 8))
+    styles.append(join_into(curly, curls))
+
+    bob = sphere("Hair_Bob", (0, -0.01, 1.705), (0.135, 0.142, 0.15), mats["Hair"], 32, 20)
+    cut_below(bob, 1.62, keep_back_below=1.6)
+    styles.append(bob)
     return styles
+
+
+def build_skirt(mats):
+    """An A-line skirt from the waist to the knee (shown instead of trousers)."""
+    bpy.ops.mesh.primitive_cone_add(vertices=32, radius1=0.24, radius2=0.155, depth=0.42, location=(0, 0, 0.72), end_fill_type="NOTHING")
+    o = bpy.context.active_object
+    o.name = "Skirt"
+    o.scale = (1.0, 0.82, 1.0)
+    bpy.ops.object.transform_apply(scale=True)
+    m = o.modifiers.new("Solid", "SOLIDIFY")
+    m.thickness = 0.01
+    bpy.ops.object.modifier_apply(modifier="Solid")
+    bpy.ops.object.shade_smooth()
+    o.data.materials.append(mats["Pants"])
+    return o
 
 
 # --- armature ---------------------------------------------------------------------
@@ -335,14 +381,15 @@ def skin_to_rig(rig, body, rigid):
     rig.select_set(True)
     bpy.context.view_layer.objects.active = rig
     bpy.ops.object.parent_set(type="ARMATURE_AUTO")
-    # Head and hair follow the head bone only.
+    # Head and hair follow the head bone only; the skirt follows the hips.
     for o in rigid:
+        bone = "hips" if o.name == "Skirt" else "head"
         bpy.ops.object.select_all(action="DESELECT")
         o.select_set(True)
         rig.select_set(True)
         bpy.context.view_layer.objects.active = rig
         bpy.ops.object.parent_set(type="ARMATURE_NAME")
-        vg = o.vertex_groups.get("head") or o.vertex_groups.new(name="head")
+        vg = o.vertex_groups.get(bone) or o.vertex_groups.new(name=bone)
         vg.add(list(range(len(o.data.vertices))), 1.0, "REPLACE")
 
 
@@ -564,6 +611,7 @@ def main():
     head = build_head(mats)
     hairs = build_hair(mats)
     faces = build_expressions(mats)
+    faces.append(build_skirt(mats))
     rig = build_armature()
     skin_to_rig(rig, body, [head] + hairs + faces)
     assign_body_materials(body, mats)

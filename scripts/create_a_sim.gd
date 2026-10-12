@@ -149,7 +149,7 @@ func _build() -> void:
 	_heavy_slider.value_changed.connect(func(v: float): sim.set_body(v, sim.body_fit))
 	_fit_slider.value_changed.connect(func(v: float): sim.set_body(sim.body_heavy, v))
 	_sleeve_buttons = _choice_row(bv, "Sleeves", ["Short", "Long"], func(i: int): sim.set_outfit(i == 1, sim.shorts))
-	_leg_buttons = _choice_row(bv, "Legs", ["Trousers", "Shorts"], func(i: int): sim.set_outfit(sim.long_sleeves, i == 1))
+	_leg_buttons = _choice_row(bv, "Legs", ["Trousers", "Shorts", "Skirt"], func(i: int): sim.set_legs(["trousers", "shorts", "skirt"][i]))
 	_sync_body()
 
 	# Right: appearance.
@@ -212,15 +212,18 @@ func _build() -> void:
 	hl.add_theme_font_size_override("font_size", 14)
 	hl.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
 	lv.add_child(hl)
-	var hrow := HBoxContainer.new()
-	hrow.add_theme_constant_override("separation", 6)
+	var hrow := HFlowContainer.new()
+	hrow.add_theme_constant_override("h_separation", 4)
+	hrow.add_theme_constant_override("v_separation", 4)
+	hrow.custom_minimum_size = Vector2(250, 0)
 	lv.add_child(hrow)
 	for style in Sim.HAIR_STYLES:
 		var hb := Button.new()
 		hb.text = style.capitalize()
 		hb.toggle_mode = true
 		hb.focus_mode = Control.FOCUS_NONE
-		hb.custom_minimum_size = Vector2(80, 32)
+		hb.custom_minimum_size = Vector2(0, 28)
+		hb.add_theme_font_size_override("font_size", 12)
 		hb.add_theme_stylebox_override("pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
 		hb.add_theme_stylebox_override("hover_pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
 		hb.pressed.connect(_pick_hair.bind(style))
@@ -407,7 +410,9 @@ func _sync_body() -> void:
 	_fit_slider.set_value_no_signal(sim.body_fit)
 	for k in 2:
 		_sleeve_buttons[k].set_pressed_no_signal((k == 1) == sim.long_sleeves)
-		_leg_buttons[k].set_pressed_no_signal((k == 1) == sim.shorts)
+	var leg := 2 if sim.skirt else (1 if sim.shorts else 0)
+	for k in 3:
+		_leg_buttons[k].set_pressed_no_signal(k == leg)
 
 
 ## Shows and edits one outfit category; the swatches and cut apply to it.
@@ -492,7 +497,8 @@ func randomize_sim() -> void:
 	_pick_aspiration(Aspirations.ORDER[_rng.randi() % Aspirations.ORDER.size()])
 	_pick_hair(Sim.HAIR_STYLES[_rng.randi() % Sim.HAIR_STYLES.size()])
 	sim.set_body(_rng.randf() * 0.7, _rng.randf() * 0.7)
-	sim.set_outfit(_rng.randf() < 0.4, _rng.randf() < 0.3)
+	sim.set_outfit(_rng.randf() < 0.4, false)
+	sim.set_legs(["trousers", "trousers", "shorts", "skirt"][_rng.randi() % 4])
 	_sync_body()
 	_sync_swatches()
 	_refresh()

@@ -68,13 +68,14 @@ class SimAction:
 @export var body_fit := 0.0
 @export var long_sleeves := false
 @export var shorts := false
+@export var skirt := false
 
 const MODEL := preload("res://assets/sim/sim.glb")
 const PORTRAIT_LAYER := 4
 ## Emotion -> the suffix of its body-language idle and walk animations.
 const MOOD_ANIMS := {"sad": "sad", "angry": "angry", "happy": "happy", "playful": "happy", "energized": "happy",
 	"tense": "tense", "uncomfortable": "tense", "embarrassed": "tense", "flirty": "flirty", "confident": "happy"}
-const HAIR_STYLES: Array[String] = ["short", "long", "bun"]
+const HAIR_STYLES: Array[String] = ["short", "long", "bun", "ponytail", "buzz", "curly", "bob"]
 @export var walk_speed := 2.0
 
 var lot: Lot
@@ -142,6 +143,7 @@ var _anim: AnimationPlayer
 ## Hair style name -> its mesh in the model.
 var _hair_meshes := {}
 var _body_mesh: MeshInstance3D
+var _skirt_mesh: MeshInstance3D
 ## Mouth and brow shapes by name ("Mouth_Smile", "Brows_Angry"...).
 var _face_meshes := {}
 var _expression := ""
@@ -217,7 +219,7 @@ var outfit := "everyday"
 
 ## The outfit the Sim is wearing, saved into its category.
 func _store_outfit() -> void:
-	outfits[outfit] = {"shirt": shirt_color, "pants": pants_color, "long_sleeves": long_sleeves, "shorts": shorts}
+	outfits[outfit] = {"shirt": shirt_color, "pants": pants_color, "long_sleeves": long_sleeves, "shorts": shorts, "skirt": skirt}
 
 
 ## Fills in missing categories from the everyday outfit.
@@ -244,6 +246,7 @@ func change_outfit(category: String, spin := true) -> void:
 	pants_color = o["pants"]
 	long_sleeves = o["long_sleeves"]
 	shorts = o["shorts"]
+	skirt = o.get("skirt", false)
 	for part in ["shirt", "pants"]:
 		if _materials.has(part):
 			(_materials[part] as BaseMaterial3D).albedo_color = shirt_color if part == "shirt" else pants_color
@@ -306,7 +309,17 @@ func _apply_outfit() -> void:
 	if _materials.has("sleeve"):
 		(_materials["sleeve"] as BaseMaterial3D).albedo_color = shirt_color if long_sleeves else skin_color
 	if _materials.has("shin"):
-		(_materials["shin"] as BaseMaterial3D).albedo_color = skin_color if shorts else pants_color
+		(_materials["shin"] as BaseMaterial3D).albedo_color = skin_color if shorts or skirt else pants_color
+	if _skirt_mesh != null:
+		_skirt_mesh.visible = skirt
+
+
+## Trousers, shorts or a skirt.
+func set_legs(style: String) -> void:
+	shorts = style == "shorts"
+	skirt = style == "skirt"
+	_apply_outfit()
+	_store_outfit()
 
 
 func set_outfit(p_long_sleeves: bool, p_shorts: bool) -> void:
@@ -492,7 +505,7 @@ func to_dict() -> Dictionary:
 		"name": sim_name,
 		"colors": {"shirt": shirt_color.to_html(), "pants": pants_color.to_html(), "skin": skin_color.to_html(), "hair": hair_color.to_html(), "eyes": eye_color.to_html()},
 		"hair_style": hair_style,
-		"body": [body_heavy, body_fit, long_sleeves, shorts],
+		"body": [body_heavy, body_fit, long_sleeves, shorts, skirt],
 		"outfit": outfit,
 		"outfits": _outfits_dict(),
 		"age": [age_stage, age_days, pregnant_days],
@@ -518,10 +531,12 @@ func from_dict(d: Dictionary, others: Array) -> void:
 	var bd: Array = d.get("body", [0.0, 0.0, false, false])
 	set_body(bd[0], bd[1])
 	set_outfit(bd[2], bd[3])
+	if bd.size() > 4 and bd[4]:
+		set_legs("skirt")
 	outfits.clear()
 	for k in d.get("outfits", {}):
 		var o: Dictionary = d["outfits"][k]
-		outfits[k] = {"shirt": Color.html(o["shirt"]), "pants": Color.html(o["pants"]), "long_sleeves": o["long_sleeves"], "shorts": o["shorts"]}
+		outfits[k] = {"shirt": Color.html(o["shirt"]), "pants": Color.html(o["pants"]), "long_sleeves": o["long_sleeves"], "shorts": o["shorts"], "skirt": o.get("skirt", false)}
 	_default_outfits()
 	var wearing: String = d.get("outfit", "everyday")
 	outfit = ""
@@ -562,7 +577,7 @@ func _outfits_dict() -> Dictionary:
 	var out := {}
 	for k in outfits:
 		var o: Dictionary = outfits[k]
-		out[k] = {"shirt": (o["shirt"] as Color).to_html(), "pants": (o["pants"] as Color).to_html(), "long_sleeves": o["long_sleeves"], "shorts": o["shorts"]}
+		out[k] = {"shirt": (o["shirt"] as Color).to_html(), "pants": (o["pants"] as Color).to_html(), "long_sleeves": o["long_sleeves"], "shorts": o["shorts"], "skirt": o.get("skirt", false)}
 	return out
 
 
@@ -1345,6 +1360,8 @@ func _build_visual() -> void:
 		mi.layers = 1 | PORTRAIT_LAYER
 		if mi.name == "Body":
 			_body_mesh = mi
+		if mi.name == "Skirt":
+			_skirt_mesh = mi
 		if mi.name.begins_with("Mouth_") or mi.name.begins_with("Brows_"):
 			_face_meshes[mi.name] = mi
 		if mi.name.begins_with("Hair_"):

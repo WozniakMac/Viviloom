@@ -21,7 +21,7 @@ func _initialize() -> void:
 	root3d.add_child(sun)
 	var scene: PackedScene = load("res://assets/sim/sim.glb")
 	var names := ["idle", "walk", "sit", "sit_use", "lie", "talk", "use"]
-	if args.size() > 4 and args[4] == "faces":
+	if args.size() > 4 and (args[4] == "faces" or args[4] == "hair"):
 		names = ["idle", "idle", "idle", "idle", "idle", "idle", "idle"]
 	if args.size() > 4 and args[4] == "moods":
 		names = ["idle_sad", "idle_angry", "idle_happy", "idle_tense", "idle_flirty", "walk_sad", "walk_angry"]
@@ -30,13 +30,21 @@ func _initialize() -> void:
 		root3d.add_child(inst)
 		inst.position = Vector3((i - 3) * 0.9, 0, 0)
 		inst.rotation.y = deg_to_rad(yaw)
-		for hair in ["Hair_Long", "Hair_Bun"]:
-			var h := inst.find_child(hair, true, false) as Node3D
-			if h != null:
-				h.visible = i % 3 == ["Hair_Short", "Hair_Long", "Hair_Bun"].find(hair)
-		var hs := inst.find_child("Hair_Short", true, false) as Node3D
-		if hs != null:
-			hs.visible = i % 3 == 0
+		if args.size() > 4 and args[4] == "hair":
+			var styles := ["Short", "Long", "Bun", "Ponytail", "Buzz", "Curly", "Bob"]
+			for m in inst.find_children("Hair_*", "MeshInstance3D", true, false):
+				m.visible = m.name == "Hair_" + styles[i]
+			var sk := inst.find_child("Skirt", true, false) as Node3D
+			if sk != null:
+				sk.visible = i % 2 == 1
+		else:
+			# Cycle the three basic styles; hide the rest and the skirt.
+			var basic := ["Hair_Short", "Hair_Long", "Hair_Bun"]
+			for m in inst.find_children("Hair_*", "MeshInstance3D", true, false):
+				m.visible = m.name == basic[i % 3]
+			var sk2 := inst.find_child("Skirt", true, false) as Node3D
+			if sk2 != null:
+				sk2.visible = false
 		if args.size() > 4 and args[4] == "faces":
 			var faces := [["Smile", "Neutral"], ["Smile", "Neutral"], ["Frown", "Sad"], ["Frown", "Angry"], ["Neutral", "Sad"], ["Smile", "Neutral"], ["Neutral", "Neutral"]]
 			for m in inst.find_children("*", "MeshInstance3D", true, false):
