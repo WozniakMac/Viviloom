@@ -803,6 +803,12 @@ func _harvest(planter: Furniture, lvl: int) -> void:
 	announced.emit("%s harvested %d %s %s!" % [sim_name, count, Catalog.PRODUCE_QUALITY[q].to_lower(), info[0].to_lower()])
 
 
+func _add_part(text: String) -> void:
+	inventory.append({"kind": "upgrade_part", "name": "Upgrade Part", "value": 15})
+	inventory_changed.emit()
+	announced.emit(text)
+
+
 ## A fishing trip may land something: better anglers catch rarer, pricier fish.
 func _catch_fish(lvl: int) -> void:
 	if _rng.randf() > 0.55 + lvl * 0.04:
@@ -1448,9 +1454,14 @@ func _begin_perform(a: SimAction) -> void:
 		var want := outfit_for(a.interaction)
 		if want != "everyday":
 			change_outfit(want)
-	if a.interaction.effect == "upgrade" and skills.level("handiness") < 2:
-		_fail(a, "%s needs Handiness level 2 to upgrade the %s." % [sim_name, a.furniture.display_name])
-		return
+	if a.interaction.effect.begins_with("upgrade:"):
+		var u: Array = a.interaction.get_meta("upgrade")
+		if skills.level("handiness") < int(u[2]):
+			_fail(a, "%s needs Handiness level %d for %s." % [sim_name, u[2], u[1]])
+			return
+		if not inventory.any(func(it): return it.get("kind") == "upgrade_part"):
+			_fail(a, "%s needs an upgrade part. Search a trash can, or repair broken things to find one." % sim_name)
+			return
 	if a.interaction.cost > 0 and wallet != null:
 		if wallet.funds < a.interaction.cost:
 			_fail(a, "%s can't afford that (§%d)." % [sim_name, a.interaction.cost])
@@ -1459,7 +1470,7 @@ func _begin_perform(a: SimAction) -> void:
 		Sfx.play("cash", -8.0)
 	# Inexperienced cooks sometimes set the kitchen on fire.
 	if a.interaction.skill == "cooking" and (a.interaction.leaves_mess != "" or a.interaction.recipe != "") and lot != null \
-			and skills.level("cooking") < Catalog.FIRE_SKILL and _rng.randf() < Catalog.FIRE_CHANCE:
+			and skills.level("cooking") < Catalog.FIRE_SKILL and not a.furniture.has_upgrade_effect("fireproof") and _rng.randf() < Catalog.FIRE_CHANCE:
 		var fire := lot.add_mess("fire", a.furniture.global_position + (a.furniture.global_basis * Vector3(0, 0, 1.2)))
 		fire.set_meta("source", a.furniture)
 		a.furniture.set_broken(true)
@@ -1583,6 +1594,18 @@ func _end_perform(a: SimAction, finished := false) -> void:
 	elif finished and traits.has("slob") and lot != null and a.furniture.blocks and _rng.randf() < 0.25:
 		# Slobs leave a little mess wherever they go.
 		lot.add_mess("dishes", a.spot if a.spot != Vector3.ZERO else global_position)
+	if finished and a.interaction.effect.begins_with("upgrade:"):
+		for k in inventory.size():
+			if inventory[k].get("kind") == "upgrade_part":
+				inventory.remove_at(k)
+				break
+		inventory_changed.emit()
+		announced.emit("%s installed %s on the %s." % [sim_name, (a.interaction.get_meta("upgrade") as Array)[1], a.furniture.display_name])
+	if finished and a.interaction.creates == "upgrade_part":
+		if _rng.randf() < 0.45 + skills.level("handiness") * 0.05:
+			_add_part("%s dug an upgrade part out of the trash!" % sim_name)
+		else:
+			announced.emit("%s rummaged through the trash but found nothing useful." % sim_name)
 	if finished and a.interaction.effect == "assign":
 		# This side of the bed is now theirs.
 		var item: Dictionary = a.furniture.get_meta("item", {}).duplicate()
@@ -1596,6 +1619,8 @@ func _end_perform(a: SimAction, finished := false) -> void:
 	if finished and a.interaction.fixes:
 		a.furniture.set_broken(false)
 		announced.emit("%s repaired the %s." % [sim_name, a.furniture.display_name])
+		if _rng.randf() < Catalog.PART_FROM_REPAIR:
+			_add_part("%s found a spare upgrade part while fixing the %s." % [sim_name, a.furniture.display_name])
 	elif finished and lot != null and Catalog.BREAKABLE.has(a.furniture.kind) and not a.furniture.is_upgraded() and _rng.randf() < Catalog.BREAK_CHANCE * LotTraits.break_mult(lot.lot_traits):
 		a.furniture.set_broken(true)
 		Sfx.play("demolish", -6.0)

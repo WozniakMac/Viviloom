@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter", "dresser", "burglar_alarm", "pine", "flower_shrub", "flower_bed"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter", "dresser", "burglar_alarm", "trash_can", "pine", "flower_shrub", "flower_bed"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -40,6 +40,25 @@ static func room_price(p: Dictionary) -> int:
 		if INFO.has(o[0]):
 			total += int(INFO[o[0]][1])
 	return total
+
+
+## Object upgrades, as in the reference: each uses one upgrade part and needs a
+## Handiness level. kind -> [[id, label, handiness, effect]]
+## effects: "unbreakable", "rate:<need>" (that need restores 30% faster), "fireproof".
+const UPGRADES := {
+	"bed": [["better_mattress", "Better Mattress", 2, "rate:energy"]],
+	"single_bed": [["better_mattress", "Better Mattress", 2, "rate:energy"]],
+	"tv": [["unbreakable", "Unbreakable", 2, "unbreakable"], ["better_picture", "Better Picture", 4, "rate:fun"]],
+	"desk": [["unbreakable", "Unbreakable", 2, "unbreakable"], ["better_processor", "Better Processor", 4, "rate:fun"]],
+	"stove": [["unbreakable", "Unbreakable", 2, "unbreakable"], ["fireproof", "Fireproof", 4, "fireproof"]],
+	"fridge": [["unbreakable", "Unbreakable", 2, "unbreakable"]],
+	"shower": [["unbreakable", "Unbreakable", 2, "unbreakable"], ["water_heater", "Better Water Heater", 4, "rate:hygiene"]],
+	"toilet": [["unbreakable", "Unbreakable", 2, "unbreakable"]],
+	"treadmill": [["unbreakable", "Unbreakable", 2, "unbreakable"]],
+	"sink": [["unbreakable", "Unbreakable", 2, "unbreakable"]],
+}
+## Chance that repairing something turns up a spare part.
+const PART_FROM_REPAIR := 0.35
 
 
 ## Harvest quality, from Gardening skill, care (watering and weeding) and fertilizer.
@@ -117,6 +136,7 @@ const INFO := {
 	"planter": ["Garden Planter", 150],
 	"dresser": ["Dresser", 300],
 	"burglar_alarm": ["Burglar Alarm", 375],
+	"trash_can": ["Outdoor Trash Can", 80],
 	"piano": ["Upright Piano", 1200],
 	"telescope": ["Telescope", 700],
 	"pond": ["Fishing Pond", 500],
@@ -138,7 +158,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "pine": "outdoor", "flower_shrub": "outdoor", "flower_bed": "outdoor", "planter": "outdoor", "dresser": "bedroom", "burglar_alarm": "living",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "pine": "outdoor", "flower_shrub": "outdoor", "flower_bed": "outdoor", "planter": "outdoor", "dresser": "bedroom", "burglar_alarm": "living", "trash_can": "outdoor",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -179,6 +199,7 @@ const DESCRIPTIONS := {
 	"dollhouse": "Endless make-believe. Builds a toddler's Imagination.",
 	"activity_table": "Crayons and blocks for little hands.",
 	"rug": "Ties the room together. Sims can walk on it.",
+	"trash_can": "A big outdoor bin. Handy Sims rummage through it for upgrade parts.",
 	"burglar_alarm": "Hangs on a wall. Calls the police the moment a burglar sets foot inside.",
 	"dresser": "Drawers full of clothes. Change into any outfit here.",
 	"planter": "Plant seeds, water them every day and harvest fresh produce to sell.",
@@ -669,6 +690,16 @@ static func create(kind: String) -> Furniture:
 			f.add_box(Vector3(1.5, 0.017, 1.5), Vector3(0, 0.009, 0), Color(0.92, 0.82, 0.65))
 			f.add_box(Vector3(0.9, 0.019, 0.9), Vector3(0, 0.01, 0), Color(0.3, 0.45, 0.6))
 			f.decor = 2
+		"trash_can":
+			f.display_name = "Outdoor Trash Can"
+			f.height = 1.1
+			f.add_box(Vector3(0.6, 0.95, 0.6), Vector3(0, 0.48, 0), Color(0.2, 0.38, 0.28))
+			f.add_box(Vector3(0.66, 0.08, 0.66), Vector3(0, 1.0, -0.02), Color(0.16, 0.3, 0.22))
+			f.add_box(Vector3(0.3, 0.04, 0.04), Vector3(0, 1.06, 0.2), Color(0.1, 0.1, 0.1))
+			f.spots = [Vector3(0, 0, 0.8)]
+			var dig := Interaction.new("Search for Upgrade Parts", {"fun": 6.0, "hygiene": -15.0}, 30.0, "", "stand", true).practices("handiness", 30.0)
+			dig.creates = "upgrade_part"
+			f.interactions = [dig]
 		"burglar_alarm":
 			f.display_name = "Burglar Alarm"
 			f.wall_mounted = true

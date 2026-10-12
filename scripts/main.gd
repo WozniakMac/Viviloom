@@ -653,13 +653,16 @@ func open_menu(f: Furniture, screen_pos: Vector2) -> void:
 			var sub_names: Array[String] = []
 			for i in sub:
 				sub_names.append((i as Interaction).name)
+			var sub_icons: Array[String] = []
+			for i in sub:
+				sub_icons.append((i as Interaction).icon)
 			_on_pie_choice(func(j: int): sim.queue_interaction(f, sub[j]))
-			hud.pie_menu.open(screen_pos, top[idx], sub_names)
+			hud.pie_menu.open(screen_pos, top[idx], sub_names, sub_icons)
 		else:
 			_queue_with_partner(f, top[idx]))
 	var icons: Array[String] = []
 	for t in top:
-		icons.append("" if t is String else (t as Interaction).icon)
+		icons.append(("wrench" if t == "Upgrade..." else "") if t is String else (t as Interaction).icon)
 	hud.pie_menu.open(screen_pos, f.display_name, names, icons)
 
 
@@ -2275,6 +2278,19 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"upgrademenu":
+			var st := find_furniture("stove")
+			rig.frame(st.global_position, deg_to_rad(20.0), deg_to_rad(-50.0), 12.0)
+			await get_tree().create_timer(0.5).timeout
+			var at := rig.camera.unproject_position(st.global_position + Vector3(0, 0.5, 0))
+			open_menu(st, at)
+			await get_tree().create_timer(0.4).timeout
+			var labels: Array = []
+			for c in hud.pie_menu._items:
+				if c is Button:
+					labels.append((c as Button).text)
+			hud.pie_menu.chosen.emit(labels.find("Upgrade..."))
+			await get_tree().create_timer(0.6).timeout
 		"piemenu":
 			var bed := find_furniture("desk") if "--desk" in OS.get_cmdline_user_args() else find_furniture("bed")
 			rig.frame(bed.global_position, deg_to_rad(20.0), deg_to_rad(-50.0), 12.0)

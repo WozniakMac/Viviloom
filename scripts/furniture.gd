@@ -240,8 +240,9 @@ func available_interactions() -> Array[Interaction]:
 		var gs := garden_state()
 		var list := interactions.filter(func(i: Interaction): return not (i.needs_on and not on) and not (i.needs_off and on) \
 			and (i.garden_state == "" or i.garden_state == gs))
+		var have := upgrades()
 		for x in extra_interactions():
-			if x.effect != "upgrade" or not is_upgraded():
+			if not x.effect.begins_with("upgrade:") or not have.has(x.effect.trim_prefix("upgrade:")):
 				list.append(x)
 		var typed: Array[Interaction] = []
 		typed.assign(list)
@@ -265,24 +266,52 @@ func extra_interactions() -> Array[Interaction]:
 		var assign := Interaction.new("Assign Bed", {}, 2.0, "", "stand", true)
 		assign.effect = "assign"
 		_extra_interactions.append(assign)
-	if kind in ["bed", "single_bed"] or Catalog.BREAKABLE.has(kind):
-		var up := Interaction.new("Upgrade...", {"fun": 6.0}, 90.0, "", "stand", true).practices("handiness", 90.0).grants("upgraded_it", "confident", 1, "Handy Upgrade", "Better than new!", 180.0)
-		up.effect = "upgrade"
+	for u in Catalog.UPGRADES.get(kind, []):
+		var up := Interaction.new(u[1], {"fun": 6.0}, 90.0, "", "stand", true).practices("handiness", 90.0).grants("upgraded_it", "confident", 1, "Handy Upgrade", "Better than new!", 180.0)
+		up.effect = "upgrade:" + u[0]
 		up.icon = "wrench"
+		up.menu = "Upgrade..."
+		up.set_meta("upgrade", u)
 		_extra_interactions.append(up)
 	return _extra_interactions
 
 
-## Upgraded beds give a deeper sleep; upgraded appliances never break.
+func upgrades() -> Array:
+	var item: Dictionary = get_meta("item", {})
+	var list: Array = item.get("upgrades", []).duplicate()
+	# Saves from before upgrade types had a single "upgraded" flag.
+	if item.get("upgraded", false):
+		for u in Catalog.UPGRADES.get(kind, []).slice(0, 1):
+			if not list.has(u[0]):
+				list.append(u[0])
+	return list
+
+
+func has_upgrade_effect(effect: String) -> bool:
+	for u in Catalog.UPGRADES.get(kind, []):
+		if u[3] == effect and upgrades().has(u[0]):
+			return true
+	return false
+
+
+## Puts every installed upgrade into effect ("rate:" upgrades speed up a need).
 func _apply_upgrade() -> void:
-	if kind in ["bed", "single_bed"]:
-		for i in interactions:
-			if i.rates.has("energy") and i.pose == "lie":
-				i.rates["energy"] = i.rates["energy"] * 1.3
+	for id in upgrades():
+		if get_meta("applied_" + id, false):
+			continue
+		for u in Catalog.UPGRADES.get(kind, []):
+			if u[0] != id or not (u[3] as String).begins_with("rate:"):
+				continue
+			var need: String = (u[3] as String).trim_prefix("rate:")
+			for i in interactions:
+				if i.rates.has(need) and i.rates[need] > 0.0:
+					i.rates[need] = i.rates[need] * 1.3
+		set_meta("applied_" + id, true)
 
 
+## Unbreakable (or upgraded at all, for beds which never break anyway).
 func is_upgraded() -> bool:
-	return get_meta("item", {}).get("upgraded", false)
+	return has_upgrade_effect("unbreakable") or (kind.contains("bed") and not upgrades().is_empty())
 
 
 func owner_name() -> String:
@@ -360,9 +389,12 @@ func apply_effect(e: String) -> void:
 		set_meta("item", {"crop": e.trim_prefix("plant:"), "growth": 0.0, "watered": Clock.day()})
 		refresh_garden()
 		return
-	if e == "upgrade":
+	if e.begins_with("upgrade:"):
 		var item: Dictionary = get_meta("item", {}).duplicate()
-		item["upgraded"] = true
+		var list: Array = item.get("upgrades", []).duplicate()
+		if not list.has(e.trim_prefix("upgrade:")):
+			list.append(e.trim_prefix("upgrade:"))
+		item["upgrades"] = list
 		set_meta("item", item)
 		_apply_upgrade()
 		return
