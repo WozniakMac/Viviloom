@@ -1109,6 +1109,10 @@ static func create(kind: String) -> Furniture:
 		_:
 			push_error("Unknown furniture kind: %s" % kind)
 	f.price = INFO[kind][1]
+	f.surface_height = {"counter": 0.92, "dining_table": 0.78, "desk": 0.76, "coffee_table": 0.45, "end_table": 0.53}.get(kind, 0.0)
+	if kind in ["microwave", "coffee_maker"]:
+		f.small = true
+		f.blocks = false
 	_use_model(f, kind)
 	if kind == "bed" or kind == "single_bed":
 		# A duvet that covers whoever is sleeping (hidden while the bed is empty).

@@ -588,7 +588,8 @@ func _apply_foundation() -> void:
 		(walls[e] as Node3D).position.y = h if (_interior.has(a) or _interior.has(b)) else 0.0
 	for f in furniture:
 		if not f.wall_mounted and f.kind != "pool":
-			f.position.y = floor_height(f.cell)
+			var host := surface_at(f.cell) if f.small else null
+			f.position.y = floor_height(f.cell) + (host.surface_height if host != null else 0.0)
 		elif f.wall_mounted:
 			f.position.y = 1.45 + floor_height(f.cell)
 	_rebuild_floor()
@@ -1026,13 +1027,35 @@ func position_furniture(f: Furniture, at_cell: Vector2i, rot_steps: int) -> void
 		f.rotation.y = f.rot_steps * PI * 0.5
 		return
 	var fp := f.rotated_footprint()
-	f.position = Vector3((at_cell.x + fp.x * 0.5) * CELL, floor_height(at_cell), (at_cell.y + fp.y * 0.5) * CELL)
+	var y := floor_height(at_cell)
+	if f.small:
+		var host := surface_at(at_cell)
+		if host != null and host != f:
+			y += host.surface_height
+	f.position = Vector3((at_cell.x + fp.x * 0.5) * CELL, y, (at_cell.y + fp.y * 0.5) * CELL)
 	f.rotation.y = f.rot_steps * PI * 0.5
+
+
+## The counter or table standing on `c`, if any.
+func surface_at(c: Vector2i) -> Furniture:
+	var o: Furniture = _occupant.get(c)
+	return o if o != null and o.surface_height > 0.0 else null
+
+
+## Small objects already standing on `c`.
+func small_at(c: Vector2i) -> Furniture:
+	for f in furniture:
+		if f.small and f.cell == c:
+			return f
+	return null
 
 
 ## Whether `f` fits with its top-left tile at `at_cell`: inside the lot, on free tiles and
 ## not straddling a wall. Tiles in `avoid` (where a Sim stands) count as taken.
 func can_place(f: Furniture, at_cell: Vector2i, rot_steps: int, avoid: Array[Vector2i] = []) -> bool:
+	if f.small:
+		# Counter-top objects, as in the reference: on a free spot of a counter or table.
+		return in_bounds(at_cell) and surface_at(at_cell) != null and small_at(at_cell) == null and not avoid.has(at_cell)
 	var fp := f.footprint if posmod(rot_steps, 2) == 0 else Vector2i(f.footprint.y, f.footprint.x)
 	var rect := Rect2i(at_cell, fp)
 	for x in range(rect.position.x, rect.end.x):
@@ -1061,6 +1084,15 @@ func place_furniture(f: Furniture, at_cell: Vector2i, rot_steps := 0) -> void:
 		for y in range(rect.position.y, rect.end.y):
 			_occupant[Vector2i(x, y)] = f
 	furniture.append(f)
+	for r in f.get_meta("riders", []):
+		if not is_instance_valid(r):
+			continue
+		r.reparent(self)
+		var steps := posmod(roundi(r.global_rotation.y / (PI * 0.5)), 4)
+		position_furniture(r, world_to_cell(r.global_position), steps)
+		furniture.append(r)
+	if f.has_meta("riders"):
+		f.remove_meta("riders")
 
 
 ## Removes every wall, door, floor, decoration and object, leaving an empty lot.
@@ -1116,6 +1148,13 @@ func remove_furniture(f: Furniture) -> void:
 		furniture.erase(f)
 		return
 	var rect := f.footprint_rect()
+	# Whatever stands on a counter or table travels with it (or goes with it when sold).
+	if f.surface_height > 0.0:
+		var riders: Array = furniture.filter(func(r): return r.small and rect.has_point(r.cell))
+		for r in riders:
+			furniture.erase(r)
+			r.reparent(f)
+		f.set_meta("riders", riders)
 	set_rect_blocked(rect, false)
 	for x in range(rect.position.x, rect.end.x):
 		for y in range(rect.position.y, rect.end.y):

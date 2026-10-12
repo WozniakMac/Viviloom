@@ -109,6 +109,10 @@ func set_romp(on: bool) -> void:
 	hearts.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(hearts)
 	_romp_hearts = hearts
+## Counters and tables: small objects can stand on top at this height (0: not a surface).
+var surface_height := 0.0
+## Goes on a counter or table rather than the floor (microwave, coffee maker).
+var small := false
 ## How much this object adds to a room's look (environment score).
 var decor := 0
 ## Colour swatch (0 = the original colours).

@@ -876,6 +876,7 @@ func _place_house(layout := "cottage") -> void:
 	_place("lamp", Vector2i(5, 9))
 	_place("counter", Vector2i(14, 3))
 	_place("stove", Vector2i(15, 3))
+	_place("microwave", Vector2i(14, 3))
 	_place("sofa", Vector2i(11, 5), 2)
 	_place("plant", Vector2i(17, 11))
 	_place("treadmill", Vector2i(16, 9))
@@ -2283,6 +2284,10 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"countertop":
+			var mw := find_furniture("microwave")
+			rig.frame(mw.global_position, deg_to_rad(15.0), deg_to_rad(-35.0), 5.0)
+			await get_tree().create_timer(1.0).timeout
 		"showroom2":
 			lot.add_floor(Rect2i(2, 15, 18, 4), 3)
 			for e in Lot.wall_run(Vector2i(2, 15), Vector2i(20, 15)):
