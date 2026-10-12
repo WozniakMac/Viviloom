@@ -32,6 +32,16 @@ static func all() -> Array[Interaction]:
 	out.append(_make("Try for Baby", 60.0, {"social": 100.0, "fun": 30.0}, {"category": "Romance", "romance": 5.0, "min_romance": 60.0, "baby": true,
 		"actor_moodlet": ["in_love", "flirty", 2, "In Love", "Life together is wonderful.", 360.0],
 		"target_moodlet": ["in_love", "flirty", 2, "In Love", "Life together is wonderful.", 360.0]}))
+	out.append(_make("Cheer Up", 30.0, {"social": 90.0}, {"category": "Friendly", "friendship": 10.0, "target_mood": "sad", "cheer": true,
+		"target_moodlet": ["cheered_up", "happy", 2, "Cheered Up", "A friend made everything better.", 240.0]}))
+	out.append(_make("Share Ideas", 30.0, {"social": 90.0, "fun": 15.0}, {"category": "Friendly", "friendship": 8.0, "actor_mood": "inspired",
+		"actor_moodlet": ["brainstorm", "inspired", 1, "Brainstorm", "Ideas bouncing back and forth.", 180.0],
+		"target_moodlet": ["brainstorm", "inspired", 1, "Brainstorm", "Ideas bouncing back and forth.", 180.0]}))
+	out.append(_make("Brag", 15.0, {"social": 70.0}, {"category": "Friendly", "friendship": 3.0, "actor_mood": "confident", "risky": true,
+		"actor_moodlet": ["bragged", "confident", 1, "Showed Off", "They were clearly impressed.", 120.0]}))
+	out.append(_make("Argue", 20.0, {"social": 60.0}, {"category": "Mean", "friendship": -12.0, "actor_mood": "angry",
+		"actor_moodlet": ["vented", "fine", 0, "Vented", "Feels good to get that out.", 60.0],
+		"target_moodlet": ["argued", "angry", 1, "Had an Argument", "Who do they think they are?", 180.0]}))
 	out.append(_make("Insult", 10.0, {"social": 30.0}, {"category": "Mean", "friendship": -15.0,
 		"actor_moodlet": ["mean", "confident", 1, "Got That Off My Chest", "They had it coming.", 90.0],
 		"target_moodlet": ["insulted", "angry", 2, "Insulted", "How rude!", 180.0]}))
@@ -64,12 +74,16 @@ static func friendship_label(friendship: float, romance: float) -> String:
 
 ## Socials worth offering right now; ones that would surely be rejected are still
 ## shown (that's part of the fun) except kissing before any romance at all.
-static func available(friendship: float, romance: float, actor_stage := "young_adult", target_stage := "young_adult") -> Array[Interaction]:
+static func available(friendship: float, romance: float, actor_stage := "young_adult", target_stage := "young_adult", actor_mood := "fine", target_mood := "fine") -> Array[Interaction]:
 	var out: Array[Interaction] = []
 	for i in all():
 		if i.social.get("category", "") == "Romance" and not Ages.romance_ok(actor_stage, target_stage):
 			continue
 		if not Ages.allows(actor_stage, i):
+			continue
+		if i.social.has("actor_mood") and actor_mood != i.social["actor_mood"]:
+			continue
+		if i.social.has("target_mood") and target_mood != i.social["target_mood"]:
 			continue
 		if i.name == "Try for Baby" and (romance < 50.0 or actor_stage == "elder" or actor_stage == "teen"):
 			continue

@@ -28,6 +28,7 @@ func _ready() -> void:
 	_test_life_cycle()
 	_test_messes()
 	_test_repairs_and_fire()
+	_test_moods_and_rewards()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -434,3 +435,32 @@ func _test_repairs_and_fire() -> void:
 	var fire := Catalog.create("fire")
 	_check(not fire.blocks and fire.interactions[0].consumes, "fires can be put out")
 	fire.free()
+
+
+func _test_moods_and_rewards() -> void:
+	var a := Sim.new()
+	var b := Sim.new()
+	var none: Array = Socials.available(30.0, 0.0, "adult", "adult", "fine", "fine").filter(func(i): return i.name == "Cheer Up")
+	_check(none.is_empty(), "Cheer Up only shows for sad Sims")
+	var cheer: Array = Socials.available(30.0, 0.0, "adult", "adult", "fine", "sad").filter(func(i): return i.name == "Cheer Up")
+	_check(cheer.size() == 1, "Cheer Up shows when the other Sim is sad")
+	b.emotions.add("down", "sad", 3, "Down", "", 300.0)
+	b.emotions.clear_emotion("sad")
+	_check(b.emotions.mood() == Emotions.FINE, "clearing an emotion removes its moodlets")
+	var bed := Catalog.create("bed")
+	var cry: Interaction = bed.interactions.filter(func(i): return i.name == "Cry It Out")[0]
+	_check(not Ages.allows_for(a, cry), "crying isn't offered when not sad")
+	a.emotions.add("down", "sad", 2, "Down", "", 300.0)
+	_check(Ages.allows_for(a, cry) and cry.clears_emotion == "sad", "sad Sims can cry it out")
+	bed.free()
+	var t := AspirationTracker.new()
+	t.sim = a
+	t.satisfaction = 1600
+	Rewards.buy("fast_learner", a, t)
+	var paint: Interaction = Interaction.new("Paint", {}, 60.0).practices("painting", 60.0)
+	a.emotions.clear_emotion("sad")
+	_check(a.perks.has("fast_learner") and t.satisfaction == 100 and is_equal_approx(a.skill_gain(paint, 60.0), 75.0), "Fast Learner costs points and speeds up skills")
+	_check(Rewards.buy("fast_learner", a, t).contains("already"), "perks can't be bought twice")
+	t.free()
+	a.free()
+	b.free()

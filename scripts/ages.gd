@@ -31,6 +31,13 @@ static func is_adult(stage: String) -> bool:
 	return stage in ["young_adult", "adult", "elder"]
 
 
+## Age rules plus mood: some interactions only appear in a certain emotion.
+static func allows_for(sim: Sim, interaction: Interaction) -> bool:
+	if interaction.requires_mood != "" and sim.emotions.mood() != interaction.requires_mood:
+		return false
+	return allows(sim.age_stage, interaction)
+
+
 ## Whether a Sim at `stage` can do `interaction` (romance and jobs are for grown-ups).
 static func allows(stage: String, interaction: Interaction) -> bool:
 	if stage == "toddler":

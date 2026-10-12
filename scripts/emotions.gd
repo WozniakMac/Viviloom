@@ -72,6 +72,14 @@ func remove(id: String, notify := true) -> void:
 				changed.emit()
 
 
+## Removes every moodlet of an emotion (crying sadness away, cheering someone up).
+func clear_emotion(emotion: String) -> void:
+	for i in range(moodlets.size() - 1, -1, -1):
+		if moodlets[i].emotion == emotion:
+			moodlets.remove_at(i)
+	changed.emit()
+
+
 func has(id: String) -> bool:
 	return get_moodlet(id) != null
 
@@ -121,7 +129,8 @@ func sync_needs(needs: Needs) -> void:
 func totals() -> Dictionary:
 	var t := {}
 	for m in moodlets:
-		t[m.emotion] = t.get(m.emotion, 0) + m.weight
+		if m.emotion != FINE and m.weight > 0:
+			t[m.emotion] = t.get(m.emotion, 0) + m.weight
 	return t
 
 

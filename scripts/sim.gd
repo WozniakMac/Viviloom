@@ -76,6 +76,8 @@ var relationships := {}
 var is_visitor := false
 ## Lifelong goal (see Aspirations) and counters it can check, e.g. "paintings_sold".
 var aspiration := "renaissance"
+## Lasting perks bought in the Rewards Store.
+var perks: Array = []
 ## Life stage (see Ages) and days lived in it; days of pregnancy (-1 = not expecting).
 var age_stage := "young_adult"
 var age_days := 0
@@ -279,6 +281,7 @@ func to_dict() -> Dictionary:
 		"hair_style": hair_style,
 		"body": [body_heavy, body_fit, long_sleeves, shorts],
 		"age": [age_stage, age_days, pregnant_days],
+		"perks": perks.duplicate(),
 		"traits": traits,
 		"aspiration": aspiration,
 		"needs": needs.values.duplicate(),
@@ -298,6 +301,7 @@ func from_dict(d: Dictionary, others: Array) -> void:
 	var bd: Array = d.get("body", [0.0, 0.0, false, false])
 	set_body(bd[0], bd[1])
 	set_outfit(bd[2], bd[3])
+	perks = d.get("perks", []).duplicate()
 	var ag: Array = d.get("age", ["young_adult", 0, -1])
 	age_days = int(ag[1])
 	pregnant_days = int(ag[2])
@@ -466,7 +470,7 @@ func _process(real_delta: float) -> void:
 	if cur != null and cur.performing:
 		rates = cur.interaction.rates
 		_practise(cur.interaction, Clock.game_delta)
-	needs.tick(Clock.game_delta, rates, Traits.decay_mult(traits))
+	needs.tick(Clock.game_delta, rates, _decay_mult())
 	emotions.tick(Clock.game_delta)
 	emotions.sync_needs(needs)
 	_update_traits(Clock.game_delta)
@@ -516,7 +520,7 @@ func _check_limits() -> void:
 
 func _sleep_it_off(delta: float) -> void:
 	_passed_out -= Clock.game_delta
-	needs.tick(Clock.game_delta, {"energy": 25.0}, Traits.decay_mult(traits))
+	needs.tick(Clock.game_delta, {"energy": 25.0}, _decay_mult())
 	emotions.tick(Clock.game_delta)
 	if _passed_out <= 0.0 or needs.get_value("energy") >= 70.0:
 		_passed_out = 0.0
@@ -551,11 +555,19 @@ func _listen(delta: float) -> void:
 	_face_toward(partner.global_position)
 	_chatter(delta)
 	var rates: Dictionary = _social_interaction.rates if _social_interaction != null else {}
-	needs.tick(Clock.game_delta, rates, Traits.decay_mult(traits))
+	needs.tick(Clock.game_delta, rates, _decay_mult())
 	emotions.tick(Clock.game_delta)
 	emotions.sync_needs(needs)
 	_update_traits(Clock.game_delta)
 	_animate(delta, false, null)
+
+
+## Need decay multipliers from traits and perks.
+func _decay_mult() -> Dictionary:
+	var m := Traits.decay_mult(traits)
+	if perks.has("steel_bladder"):
+		m["bladder"] = m.get("bladder", 1.0) * 0.5
+	return m
 
 
 ## Makes the Sim decide what to do on their next update instead of waiting.
@@ -676,6 +688,8 @@ func _social_result(a: SimAction) -> void:
 		count_stat(stat)
 	activity_done.emit(a.interaction.name)
 	if a.outcome:
+		if s.get("cheer", false):
+			t.emotions.clear_emotion("sad")
 		change_relationship(t, s.get("friendship", 0.0), s.get("romance", 0.0))
 		var am: Array = s.get("actor_moodlet", [])
 		if not am.is_empty():
@@ -730,6 +744,8 @@ func skill_gain(interaction: Interaction, minutes: float) -> float:
 	if interaction.skill == "":
 		return 0.0
 	var gain := interaction.skill_rate * minutes / 60.0 * Traits.skill_mult(traits, interaction.skill)
+	if perks.has("fast_learner"):
+		gain *= 1.25
 	if emotions.mood() == Skills.boosting_emotion(interaction.skill):
 		gain *= Skills.EMOTION_BONUS
 	return gain
@@ -774,6 +790,8 @@ func _end_perform(a: SimAction, finished := false) -> void:
 	a.furniture.user = null
 	if finished and a.interaction.leaves_mess != "" and lot != null:
 		lot.add_mess(a.interaction.leaves_mess, a.spot if a.spot != Vector3.ZERO else global_position)
+	if finished and a.interaction.clears_emotion != "":
+		emotions.clear_emotion(a.interaction.clears_emotion)
 	if finished and a.interaction.fixes:
 		a.furniture.set_broken(false)
 		announced.emit("%s repaired the %s." % [sim_name, a.furniture.display_name])

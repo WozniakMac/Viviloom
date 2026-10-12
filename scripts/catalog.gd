@@ -145,6 +145,7 @@ static func create(kind: String) -> Furniture:
 			f.use_facing = Vector3(0, 0, 1)
 			var sleep_rates := {"energy": 13.0, "hunger": -3.0, "bladder": -4.0, "hygiene": -2.0, "fun": 0.0, "social": -2.0}
 			f.interactions = [
+				_cry(),
 				Interaction.new("Sleep", sleep_rates, 600.0, "energy", "lie").grants("well_rested", "energized", 1, "Well Rested", "Ready to take on the day!", 240.0),
 				Interaction.new("Nap", sleep_rates, 90.0, "energy", "lie"),
 			]
@@ -173,6 +174,8 @@ static func create(kind: String) -> Furniture:
 			f.use_facing = Vector3(0, 0, 1)
 			f.interactions = [
 				Interaction.new("Take a Shower", {"hygiene": 220.0}, 40.0, "hygiene", "stand", true).grants("fresh", "happy", 1, "Freshly Showered", "Clean and refreshed.", 120.0),
+				Interaction.new("Take a Thinking Shower", {"hygiene": 180.0}, 50.0, "hygiene", "stand", true).when_feeling("inspired").grants("shower_thoughts", "inspired", 2, "Shower Thoughts", "Had a brilliant idea in the shower!", 240.0),
+				Interaction.new("Take a Steamy Shower", {"hygiene": 180.0, "fun": 10.0}, 40.0, "hygiene", "stand", true).when_feeling("flirty").grants("steamy", "flirty", 1, "Steamy", "Feeling irresistible.", 180.0),
 			]
 		"tv":
 			f.display_name = "Television"
@@ -288,6 +291,7 @@ static func create(kind: String) -> Furniture:
 			f.use_facing = Vector3(0, 0, 1)
 			f.interactions = [
 				Interaction.new("Sit", {"fun": 6.0, "energy": 3.0}, 60.0, "", "sit"),
+				Interaction.new("Sulk", {"fun": 4.0}, 45.0, "", "sit").when_feeling("angry").clearing("angry").grants("calmed", "fine", 0, "Calmed Down", "Got it out of their system.", 60.0),
 				Interaction.new("Nap", {"energy": 9.0, "hunger": -3.0, "bladder": -4.0}, 90.0, "energy", "lie"),
 			]
 		"dining_table":
@@ -395,6 +399,7 @@ static func create(kind: String) -> Furniture:
 			f.interactions = [
 				Interaction.new("Practise Speech", {"fun": 8.0, "social": 6.0}, 45.0, "", "stand", true).practices("charisma", 60.0).grants("confident_talk", "confident", 1, "Feeling Charming", "Ready to win anyone over.", 180.0),
 				Interaction.new("Admire Self", {"fun": 10.0}, 10.0, "", "stand").grants("looking_good", "confident", 1, "Looking Good", "Not bad at all.", 90.0),
+				Interaction.new("Give Self a Pep Talk", {"fun": 5.0}, 15.0, "", "stand").when_feeling("tense").clearing("tense").grants("pep_talk", "confident", 1, "Pep Talk", "You've got this.", 180.0),
 			]
 		"guitar":
 			f.display_name = "Acoustic Guitar"
@@ -508,3 +513,9 @@ static func _use_model(f: Furniture, kind: String) -> void:
 static func _dishes(i: Interaction) -> Interaction:
 	i.leaves_mess = "dishes"
 	return i
+
+
+## Crying on the bed while sad makes the sadness go away.
+static func _cry() -> Interaction:
+	return Interaction.new("Cry It Out", {"energy": -4.0}, 40.0, "", "lie").when_feeling("sad").clearing("sad") \
+		.grants("cried", "fine", 0, "Feeling Better", "A good cry really helps.", 120.0)

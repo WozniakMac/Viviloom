@@ -29,6 +29,20 @@ var leaves_mess := ""
 var consumes := false
 ## Repairing: finishing fixes the object.
 var fixes := false
+## Only offered while the Sim feels this emotion ("" = any time).
+var requires_mood := ""
+## Finishing removes every moodlet of this emotion (e.g. crying away sadness).
+var clears_emotion := ""
+
+
+func when_feeling(emotion: String) -> Interaction:
+	requires_mood = emotion
+	return self
+
+
+func clearing(emotion: String) -> Interaction:
+	clears_emotion = emotion
+	return self
 ## Set for social interactions between two Sims (see Socials).
 var social := {}
 

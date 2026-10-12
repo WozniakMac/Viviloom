@@ -301,7 +301,7 @@ func open_menu(f: Furniture, screen_pos: Vector2) -> void:
 	var names: Array[String] = []
 	var allowed: Array[Interaction] = []
 	for i in f.available_interactions():
-		if Ages.allows(sim.age_stage, i) or i.fixes:
+		if Ages.allows_for(sim, i) or i.fixes:
 			names.append(i.name)
 			allowed.append(i)
 	if allowed.is_empty():
@@ -314,7 +314,7 @@ func open_menu(f: Furniture, screen_pos: Vector2) -> void:
 ## Social pie menu for another Sim: first a ring of categories, then the socials in
 ## the chosen one.
 func open_sim_menu(other: Sim, screen_pos: Vector2) -> void:
-	var options := Socials.available(sim.friendship_with(other), sim.romance_with(other), sim.age_stage, other.age_stage)
+	var options := Socials.available(sim.friendship_with(other), sim.romance_with(other), sim.age_stage, other.age_stage, sim.emotions.mood(), other.emotions.mood())
 	var cats: Array[String] = []
 	for i in options:
 		var c: String = i.social["category"]
@@ -1168,6 +1168,11 @@ func _run_scenario(scenario: String, path: String) -> void:
 			dialogs_enabled = true
 			visitors.bring(visitors.townies[2], INF)
 			_on_doorbell(visitors.townies[2])
+			await get_tree().create_timer(0.8).timeout
+		"store":
+			aspirations.satisfaction = 2300
+			hud._show_page(5)
+			hud._open_store()
 			await get_tree().create_timer(0.8).timeout
 		"fire":
 			var stove := find_furniture("stove")

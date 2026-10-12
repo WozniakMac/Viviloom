@@ -889,6 +889,7 @@ func _rebuild_wants() -> void:
 func _refresh_aspiration() -> void:
 	if aspirations == null or not _pages[5].visible:
 		return
+	_asp_refresh = 1.0
 	for c in _aspiration_box.get_children():
 		c.queue_free()
 	var a := sim.aspiration
@@ -901,6 +902,14 @@ func _refresh_aspiration() -> void:
 	sub.add_theme_font_size_override("font_size", 13)
 	sub.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
 	_aspiration_box.add_child(sub)
+	var store := Button.new()
+	store.text = "Rewards Store"
+	store.focus_mode = Control.FOCUS_NONE
+	store.add_theme_stylebox_override("normal", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+	store.add_theme_color_override("font_color", Color.WHITE)
+	store.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	store.pressed.connect(_open_store)
+	_aspiration_box.add_child(store)
 	var ms: Array = info["milestones"]
 	for i in ms.size():
 		var title := Label.new()
@@ -929,6 +938,49 @@ func _refresh_aspiration() -> void:
 			gl.add_theme_font_size_override("font_size", 13)
 			row.add_child(gl)
 			_aspiration_box.add_child(row)
+
+
+## Spend satisfaction points on potions and perks.
+func _open_store() -> void:
+	for c in _aspiration_box.get_children():
+		c.queue_free()
+	var head := UiTheme.title(Label.new(), 17)
+	head.text = "Rewards Store  ·  %d points" % aspirations.satisfaction
+	_aspiration_box.add_child(head)
+	for id in Rewards.ORDER:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var col := VBoxContainer.new()
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_theme_constant_override("separation", 0)
+		row.add_child(col)
+		var n := UiTheme.title(Label.new(), 14)
+		n.text = Rewards.name_of(id)
+		col.add_child(n)
+		var d := Label.new()
+		d.text = Rewards.INFO[id][2]
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		d.custom_minimum_size = Vector2(250, 0)
+		d.add_theme_font_size_override("font_size", 12)
+		d.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+		col.add_child(d)
+		var b := Button.new()
+		b.text = "%d" % Rewards.price(id)
+		b.focus_mode = Control.FOCUS_NONE
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		b.disabled = aspirations.satisfaction < Rewards.price(id) or (Rewards.PERKS.has(id) and sim.perks.has(id))
+		b.pressed.connect(func():
+			show_notice(Rewards.buy(id, sim, aspirations), "Rewards Store")
+			_open_store())
+		row.add_child(b)
+		_aspiration_box.add_child(row)
+	var back := Button.new()
+	back.text = "Back to Aspiration"
+	back.focus_mode = Control.FOCUS_NONE
+	back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	back.pressed.connect(_refresh_aspiration)
+	_aspiration_box.add_child(back)
+	_asp_refresh = 1e9
 
 
 func set_work(w: Work) -> void:
