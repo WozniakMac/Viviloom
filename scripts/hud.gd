@@ -23,6 +23,8 @@ signal sim_selected(sim: Sim)
 signal phone_invite(townie: Sim)
 signal phone_travel(destination: String)
 signal phone_service(service: String)
+## Hang inventory item `index` of the active Sim on a wall.
+signal hang_item(index: int)
 
 const NOTICE_SECONDS := 7.0
 const MAX_NOTICES := 4
@@ -275,6 +277,7 @@ var _skill_rows := {}
 var _traits_box: VBoxContainer
 var _rel_box: VBoxContainer
 var _career_box: VBoxContainer
+var _inventory_box: VBoxContainer
 var _aspiration_box: VBoxContainer
 var _wants_box: HBoxContainer
 var aspirations: AspirationTracker
@@ -552,6 +555,10 @@ func _build_info_panel() -> void:
 	_aspiration_box.add_theme_constant_override("separation", 8)
 	v.add_child(_aspiration_box)
 	_pages.append(_aspiration_box)
+	_inventory_box = VBoxContainer.new()
+	_inventory_box.add_theme_constant_override("separation", 8)
+	v.add_child(_inventory_box)
+	_pages.append(_inventory_box)
 
 	var tabs_pill := PanelContainer.new()
 	tabs_pill.add_theme_stylebox_override("panel", UiTheme.panel_style(26, 5))
@@ -560,8 +567,8 @@ func _build_info_panel() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 6)
 	tabs_pill.add_child(tabs)
-	var defs := [["aspiration", "Aspiration"], ["career", "Career"], ["skills", "Skills"], ["relationships", "Relationships"], ["simology", "Simology"], ["needs", "Needs"]]
-	var page_of := {"needs": 0, "skills": 1, "simology": 2, "relationships": 3, "career": 4, "aspiration": 5}
+	var defs := [["inventory", "Inventory"], ["aspiration", "Aspiration"], ["career", "Career"], ["skills", "Skills"], ["relationships", "Relationships"], ["simology", "Simology"], ["needs", "Needs"]]
+	var page_of := {"needs": 0, "skills": 1, "simology": 2, "relationships": 3, "career": 4, "aspiration": 5, "inventory": 6}
 	for d in defs:
 		var b := IconButton.make(d[0], 42, d[1])
 		b.toggle_mode = true
@@ -573,7 +580,7 @@ func _build_info_panel() -> void:
 
 
 func _tab_for_page(index: int) -> IconButton:
-	var id: String = ["needs", "skills", "simology", "relationships", "career", "aspiration"][index]
+	var id: String = ["needs", "skills", "simology", "relationships", "career", "aspiration", "inventory"][index]
 	for b in _tabs:
 		if b.icon_id == id:
 			return b
@@ -593,7 +600,9 @@ func _on_tab(index: int) -> void:
 
 func _show_page(index: int) -> void:
 	_info_panel.visible = true
-	_info_title.text = ["Needs", "Skills", "Simology", "Relationships", "Career", "Aspiration"][index]
+	_info_title.text = ["Needs", "Skills", "Simology", "Relationships", "Career", "Aspiration", "Inventory"][index]
+	if index == 6:
+		_refresh_inventory()
 	if index == 5:
 		_refresh_aspiration()
 	if index == 4:
@@ -738,6 +747,8 @@ func set_sim(s: Sim) -> void:
 	sim.queue_changed.connect(_rebuild_queue)
 	sim.emotions.changed.connect(_rebuild_moodlets)
 	sim.panel_requested.connect(_on_panel_requested)
+	if not sim.inventory_changed.is_connected(_refresh_inventory):
+		sim.inventory_changed.connect(_refresh_inventory)
 	_skill_rows.clear()
 	for c in _skills_box.get_children():
 		c.queue_free()
@@ -893,6 +904,43 @@ func _rebuild_moodlets() -> void:
 		icon.custom_minimum_size = Vector2(46, 46)
 		icon.tooltip_text = m.label
 		_moodlet_box.add_child(icon)
+
+
+## Inventory tab: the active Sim's items with Sell and Hang buttons.
+func _refresh_inventory() -> void:
+	for c in _inventory_box.get_children():
+		c.queue_free()
+	if sim.inventory.is_empty():
+		var none := Label.new()
+		none.text = "%s isn't carrying anything. Paintings from the easel end up here." % sim.sim_name
+		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		none.custom_minimum_size = Vector2(350, 0)
+		none.add_theme_font_size_override("font_size", 14)
+		none.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+		_inventory_box.add_child(none)
+		return
+	for i in sim.inventory.size():
+		var item: Dictionary = sim.inventory[i]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var l := Label.new()
+		l.text = "%s Painting  ·  §%d" % [Catalog.PAINTING_QUALITY[item.get("quality", 0)], item.get("value", 0)]
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.add_theme_font_size_override("font_size", 14)
+		row.add_child(l)
+		var sell := Button.new()
+		sell.text = "Sell"
+		sell.focus_mode = Control.FOCUS_NONE
+		sell.pressed.connect(func():
+			sim.sell_item(i)
+			_refresh_inventory())
+		row.add_child(sell)
+		var hang := Button.new()
+		hang.text = "Hang"
+		hang.focus_mode = Control.FOCUS_NONE
+		hang.pressed.connect(func(): hang_item.emit(i))
+		row.add_child(hang)
+		_inventory_box.add_child(row)
 
 
 func set_aspirations(t: AspirationTracker) -> void:

@@ -52,6 +52,7 @@ const INFO := {
 	"fire": ["Fire!", 0],
 	"pool": ["Swimming Pool", 0],
 	"tombstone": ["Tombstone", 0],
+	"painting": ["Painting", 0],
 }
 ## Build-mode catalogue sections: [id, label]; "all" lists everything.
 const CATEGORIES := [["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"], ["living", "Living"], ["outdoor", "Outdoor"]]
@@ -248,7 +249,7 @@ static func create(kind: String) -> Furniture:
 			f.add_box(Vector3(0.18, 0.3, 0.01), Vector3(0.15, 1.05, -0.04), Color(0.9, 0.55, 0.2))
 			f.spots = [Vector3(0, 0, 0.9)]
 			f.interactions = [
-				Interaction.new("Paint", {"fun": 25.0}, 180.0, "", "stand", true).practices("painting", 65.0).grants("proud_painter", "confident", 1, "Proud Painter", "Finished a painting worth showing off.", 180.0).pays(25, 30),
+				Interaction.new("Paint", {"fun": 25.0}, 180.0, "", "stand", true).practices("painting", 65.0).grants("proud_painter", "confident", 1, "Proud Painter", "Finished a painting worth showing off.", 180.0).makes("painting"),
 			]
 		"chess":
 			f.display_name = "Chess Table"
@@ -475,6 +476,14 @@ static func create(kind: String) -> Furniture:
 			for x in [-0.47, 0.47]:
 				var rail := f.add_box(Vector3(0.04, 0.04, 3.4), Vector3(x, Lot.WALL_HEIGHT * 0.5 + 0.9, 0), DARK)
 				rail.rotation.x = atan2(Lot.WALL_HEIGHT, 3.0)
+		"painting":
+			# Its picture and value come from make_painting().
+			f.display_name = "Painting"
+			f.wall_mounted = true
+			f.blocks = false
+			f.height = 0.6
+			f.spots = [Vector3(0, -1.45, 1.1)]
+			f.interactions = [Interaction.new("View", {"fun": 20.0}, 15.0, "", "stand").grants("art", "inspired", 1, "Inspired by Art", "What a lovely painting.", 120.0)]
 		"tombstone":
 			f.display_name = "Tombstone"
 			f.height = 1.0
@@ -594,3 +603,31 @@ static func _dishes(i: Interaction) -> Interaction:
 static func _cry() -> Interaction:
 	return Interaction.new("Cry It Out", {"energy": -4.0}, 40.0, "", "lie").when_feeling("sad").clearing("sad") \
 		.grants("cried", "fine", 0, "Feeling Better", "A good cry really helps.", 120.0)
+
+
+const PAINTING_QUALITY: Array[String] = ["Poor", "Decent", "Good", "Masterpiece"]
+
+
+## A finished painting from inventory data: an abstract picture drawn from its
+## seed in a wooden frame, worth `value`.
+static func make_painting(item: Dictionary) -> Furniture:
+	var f := create("painting")
+	var seed: int = item.get("seed", 1)
+	var q: int = item.get("quality", 0)
+	f.price = item.get("value", 20)
+	f.display_name = "%s Painting" % PAINTING_QUALITY[q]
+	f.set_meta("item", item.duplicate())
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	var frame := WOOD.darkened(0.3) if q < 3 else Color(0.85, 0.68, 0.25)
+	f.add_box(Vector3(0.82, 0.62, 0.04), Vector3(0, 0, 0), frame)
+	f.add_box(Vector3(0.72, 0.52, 0.01), Vector3(0, 0, 0.022), Color.from_hsv(rng.randf(), 0.15, 0.95))
+	# Better painters use more, bolder shapes.
+	for k in 2 + q * 2:
+		var w := rng.randf_range(0.08, 0.32)
+		var h := rng.randf_range(0.06, 0.26)
+		var col := Color.from_hsv(rng.randf(), rng.randf_range(0.4, 0.85), rng.randf_range(0.5, 0.95))
+		f.add_box(Vector3(w, h, 0.004), Vector3(rng.randf_range(-0.3 + w * 0.5, 0.3 - w * 0.5), rng.randf_range(-0.2 + h * 0.5, 0.2 - h * 0.5), 0.03 + k * 0.001), col)
+	if q >= 2:
+		f.interactions[0].moodlet = ["art", "inspired", q, "Inspired by Art", "What a wonderful painting.", 180.0]
+	return f

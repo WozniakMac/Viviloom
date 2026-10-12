@@ -90,6 +90,26 @@ func _ready() -> void:
 	hud.set_build(build, lot)
 	hud.sim_selected.connect(select_sim)
 	hud.level_change.connect(func(step: int): set_level(active_level + step))
+	hud.hang_item.connect(func(index: int):
+		if location != "home":
+			hud.show_notice("You can only hang paintings at home.", "Inventory")
+			return
+		var item: Dictionary = sim.inventory[index]
+		var painting := Catalog.make_painting(item)
+		painting.set_meta("owner", sim)
+		build.enter()
+		build.start_place_object(painting))
+	build.placed.connect(func(f: Furniture):
+		if f.has_meta("owner"):
+			var owner: Sim = f.get_meta("owner")
+			f.remove_meta("owner")
+			var idx := -1
+			for i in owner.inventory.size():
+				if owner.inventory[i] == f.get_meta("item"):
+					idx = i
+			if idx >= 0:
+				owner.inventory.remove_at(idx)
+				owner.inventory_changed.emit())
 	build.entered.connect(func(): tip("build", "Build Mode", "Time stops while you build. Use the tools at the top for walls, doors, windows, paint and floors, and buy objects from the catalogue at the bottom. Press F1 to go back to Live Mode."))
 	hud.bubbles.lot = lot
 	hud.bubbles.camera = rig.camera
@@ -928,7 +948,7 @@ func _lot_dict() -> Dictionary:
 	for f in lot.furniture:
 		if f.kind == "fire" or f.kind == "pool":
 			continue
-		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps, f.broken, f.variant])
+		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps, f.broken, f.variant, f.get_meta("item", {})])
 	var pool_rects: Array = []
 	for r in lot.pools:
 		pool_rects.append([r.position.x, r.position.y, r.size.x, r.size.y])
@@ -992,6 +1012,10 @@ func _apply_lot_dict(d: Dictionary) -> void:
 	for p in d.get("pools", []):
 		lot.add_pool(Rect2i(int(p[0]), int(p[1]), int(p[2]), int(p[3])))
 	for o in d.get("objects", []):
+		if o[0] == "painting":
+			var art := Catalog.make_painting(o[6] if o.size() > 6 else {})
+			lot.place_furniture(art, Vector2i(int(o[1]), int(o[2])), int(o[3]))
+			continue
 		if Catalog.INFO.has(o[0]) and o[0] != "pool":
 			var placed := _place(o[0], Vector2i(int(o[1]), int(o[2])), int(o[3]))
 			if o.size() > 4 and o[4]:
@@ -1675,6 +1699,22 @@ func _run_scenario(scenario: String, path: String) -> void:
 			build._show_object_swatches()
 			build._refresh_overlays(Vector3(12, 0, 14))
 			await get_tree().create_timer(2.5).timeout
+		"paintings":
+			sim.skills.add_xp("painting", Skills.xp_for_level(7))
+			var easel := find_furniture("easel")
+			var paint: Interaction = easel.interactions[0]
+			for k in 3:
+				sim._reward(paint, 999.0, true)
+			var items: Array = sim.inventory.duplicate()
+			for k in 2:
+				var art := Catalog.make_painting(items[k])
+				var spots := [[Vector2i(7, 2), 0], [Vector2i(12, 2), 0]]
+				if lot.can_hang(art, spots[k][0], spots[k][1]):
+					lot.place_furniture(art, spots[k][0], spots[k][1])
+				sim.inventory.erase(items[k])
+			hud._show_page(6)
+			await get_tree().create_timer(1.0).timeout
+			print("PAINT inventory=%d hung=%d" % [sim.inventory.size(), lot.furniture.filter(func(f): return f.kind == "painting").size()])
 		"store":
 			aspirations.satisfaction = 2300
 			hud._show_page(5)

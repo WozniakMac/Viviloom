@@ -96,6 +96,9 @@ var perks: Array = []
 var wallet: BuildMode
 ## Married partner, if any.
 var spouse: Sim
+## Things the Sim carries: paintings and the like (dictionaries with a "kind").
+var inventory: Array = []
+signal inventory_changed
 ## Life stage (see Ages) and days lived in it; days of pregnancy (-1 = not expecting).
 var age_stage := "young_adult"
 var age_days := 0
@@ -462,6 +465,7 @@ func to_dict() -> Dictionary:
 		"outfits": _outfits_dict(),
 		"age": [age_stage, age_days, pregnant_days],
 		"perks": perks.duplicate(),
+		"inventory": inventory.duplicate(true),
 		"spouse": spouse.sim_name if spouse != null and is_instance_valid(spouse) else "",
 		"traits": traits,
 		"aspiration": aspiration,
@@ -491,6 +495,7 @@ func from_dict(d: Dictionary, others: Array) -> void:
 	outfit = ""
 	change_outfit(wearing, false)
 	perks = d.get("perks", []).duplicate()
+	inventory = d.get("inventory", []).duplicate(true)
 	var ag: Array = d.get("age", ["young_adult", 0, -1])
 	age_days = int(ag[1])
 	pregnant_days = int(ag[2])
@@ -527,6 +532,19 @@ func _outfits_dict() -> Dictionary:
 		var o: Dictionary = outfits[k]
 		out[k] = {"shirt": (o["shirt"] as Color).to_html(), "pants": (o["pants"] as Color).to_html(), "long_sleeves": o["long_sleeves"], "shorts": o["shorts"]}
 	return out
+
+
+## Sells an inventory item for its value.
+func sell_item(index: int) -> void:
+	if index < 0 or index >= inventory.size():
+		return
+	var item: Dictionary = inventory[index]
+	inventory.remove_at(index)
+	if item.get("kind") == "painting":
+		count_stat("paintings_sold")
+	earned.emit(item.get("value", 0))
+	announced.emit("%s sold a painting for §%d." % [sim_name, item.get("value", 0)])
+	inventory_changed.emit()
 
 
 func count_stat(stat: String, amount := 1) -> void:
@@ -1049,6 +1067,12 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 	if not i.moodlet.is_empty():
 		var m := i.moodlet
 		emotions.add(m[0], m[1], m[2] + lvl / 4, m[3], m[4], m[5])
+	if finished and i.creates == "painting":
+		var q := clampi(lvl / 3, 0, 3)
+		var value := 20 + lvl * 22 + q * 15 + _rng.randi_range(0, 20)
+		inventory.append({"kind": "painting", "seed": _rng.randi(), "quality": q, "value": value})
+		inventory_changed.emit()
+		announced.emit("%s finished a %s painting worth §%d. It's in their inventory." % [sim_name, Catalog.PAINTING_QUALITY[q].to_lower(), value])
 	if finished and i.opens_panel != "":
 		panel_requested.emit(i.opens_panel)
 	if i.earns > 0 and finished:

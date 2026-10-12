@@ -326,8 +326,10 @@ func _drop() -> void:
 	if not _can_drop():
 		notice.emit("That doesn't fit there.")
 		return
-	if _held_is_new and not _spend(_held.price):
+	if _held_is_new and not _held.get_meta("free", false) and not _spend(_held.price):
 		return
+	if _held.has_meta("free"):
+		_held.remove_meta("free")
 	lot.place_furniture(_held, _held_cell, _held_rot)
 	Sfx.play("place")
 	_held.set_ghost(false)
@@ -368,7 +370,28 @@ func _rotate_held(dir: int) -> void:
 	_update_footprint()
 
 
+## Which side of tile `c` a hanging object goes on: the nearest one with a wall.
+func _nearest_wall_side(c: Vector2i, pt: Vector3) -> int:
+	var local := Vector2(pt.x - c.x, pt.z - c.y)
+	var dist := [local.y, local.x, 1.0 - local.y, 1.0 - local.x]
+	var best := -1
+	for r in 4:
+		if lot.walls.has(Lot.wall_edge_for(c, r)) and (best < 0 or dist[r] < dist[best]):
+			best = r
+	return best if best >= 0 else 0
+
+
+## Hangs an item from a Sim's inventory (no charge); `placed` reports it.
+func start_place_object(f: Furniture) -> void:
+	set_tool(Tool.PLACE)
+	f.set_meta("free", true)
+	lot.add_child(f)
+	_pick_up(f, true)
+
+
 func _can_drop() -> bool:
+	if _held.wall_mounted:
+		return lot.can_hang(_held, _held_cell, _held_rot)
 	var avoid: Array[Vector2i] = []
 	for m in household:
 		avoid.append(lot.world_to_cell(m.global_position))
@@ -380,7 +403,13 @@ func _refresh_overlays(p: Variant) -> void:
 	_wall_preview.visible = false
 	if not active:
 		return
-	if _held != null and p != null:
+	if _held != null and p != null and _held.wall_mounted:
+		var pt: Vector3 = p
+		_held_cell = lot.world_to_cell(pt)
+		_held_rot = _nearest_wall_side(_held_cell, pt)
+		lot.position_furniture(_held, _held_cell, _held_rot)
+		_footprint.visible = false
+	elif _held != null and p != null:
 		var pt: Vector3 = p
 		var fp := _held.footprint if _held_rot % 2 == 0 else Vector2i(_held.footprint.y, _held.footprint.x)
 		_held_cell = Vector2i(floori(pt.x - fp.x * 0.5 + 0.5), floori(pt.z - fp.y * 0.5 + 0.5))

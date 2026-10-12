@@ -34,6 +34,7 @@ func _ready() -> void:
 	_test_outfits()
 	_test_more_traits()
 	_test_swatches()
+	_test_paintings()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -554,3 +555,28 @@ func _test_swatches() -> void:
 	_check(other.swatch_colors()[0] == cols[0], "recolouring one sofa leaves others alone")
 	sofa.free()
 	other.free()
+
+
+func _test_paintings() -> void:
+	var lot := _make_lot()
+	for e in Lot.wall_run(Vector2i(0, 4), Vector2i(10, 4)):
+		lot.add_wall(e)
+	var art := Catalog.make_painting({"seed": 5, "quality": 2, "value": 150})
+	_check(art.wall_mounted and art.price == 150, "paintings hang on walls and are worth their value")
+	_check(lot.can_hang(art, Vector2i(3, 4), 0), "a painting can hang on a plain wall")
+	_check(not lot.can_hang(art, Vector2i(3, 6), 0), "not where there is no wall")
+	lot.place_furniture(art, Vector2i(3, 4), 0)
+	_check(lot.is_walkable(Vector2i(3, 4)), "hanging art doesn't block the floor")
+	var other := Catalog.make_painting({"seed": 6})
+	_check(not lot.can_hang(other, Vector2i(3, 4), 0), "one painting per spot")
+	lot.remove_wall(Vector3i(3, 4, 0))
+	_check(not lot.furniture.has(art), "knocking the wall down takes the painting with it")
+	var s := Sim.new()
+	s.inventory.append({"kind": "painting", "seed": 1, "quality": 1, "value": 80})
+	var paid: Array = []
+	s.earned.connect(func(a): paid.append(a))
+	s.sell_item(0)
+	_check(paid == [80] and s.inventory.is_empty() and s.stats.get("paintings_sold", 0) == 1, "selling a painting pays its value")
+	s.free()
+	other.free()
+	lot.free()

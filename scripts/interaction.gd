@@ -80,6 +80,15 @@ func pays(base: int, per_level: int) -> Interaction:
 	return self
 
 
+## An item put in the Sim's inventory when this finishes ("painting").
+var creates := ""
+
+
+func makes(item: String) -> Interaction:
+	creates = item
+	return self
+
+
 func is_social() -> bool:
 	return not social.is_empty()
 

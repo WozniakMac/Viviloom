@@ -233,6 +233,11 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			ci.draw_line(c + Vector2(-s * 0.1, s * 0.15), c + Vector2(s * 0.35, s * 0.9), col, 2.2)
 			ci.draw_line(c + Vector2(s * 0.0, -s * 0.3), c + Vector2(-s * 0.45, -s * 0.05), col, 2.0)
 			ci.draw_line(c + Vector2(s * 0.0, -s * 0.3), c + Vector2(s * 0.45, -s * 0.15), col, 2.0)
+		"inventory":
+			# A backpack.
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.75, -s * 0.5), Vector2(s * 1.5, s * 1.5)), col)
+			ci.draw_arc(c + Vector2(0, -s * 0.5), s * 0.45, PI, TAU, 12, col, 2.0, true)
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.45, s * 0.15), Vector2(s * 0.9, s * 0.5)), Color(1, 1, 1, 0.75), false, 1.5)
 		"menu":
 			for x in [-0.6, 0.0, 0.6]:
 				ci.draw_circle(c + Vector2(x * s, 0), s * 0.2, col)

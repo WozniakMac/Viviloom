@@ -39,6 +39,9 @@ const MATERIAL_FAMILY := {
 }
 ## Messes (dirty dishes, puddles) sit on a tile without blocking it.
 var blocks := true
+## Hangs on a wall: `cell` is the tile it faces and `rot_steps` which edge of
+## that tile it hangs on (0 north, 1 west, 2 south, 3 east).
+var wall_mounted := false
 ## Broken objects can only be repaired until fixed.
 var broken := false
 var _smoke: CPUParticles3D

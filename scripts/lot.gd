@@ -221,6 +221,10 @@ func remove_wall(e: Vector3i) -> bool:
 	if not walls.has(e):
 		return false
 	(walls[e] as Node3D).queue_free()
+	for f in furniture.duplicate():
+		if f.wall_mounted and wall_edge_for(f.cell, f.rot_steps) == e:
+			remove_furniture(f)
+			f.queue_free()
 	walls.erase(e)
 	doors.erase(e)
 	windows.erase(e)
@@ -667,9 +671,41 @@ func has_line_of_sight(a: Vector3, b: Vector3) -> bool:
 # --- Furniture ----------------------------------------------------------------
 
 ## Snaps `f` into position without claiming its tiles (used for placement previews).
+## The wall edge a wall-mounted object at `cell`/`rot` hangs on.
+static func wall_edge_for(cell: Vector2i, rot: int) -> Vector3i:
+	match posmod(rot, 4):
+		0:
+			return Vector3i(cell.x, cell.y, 0)
+		1:
+			return Vector3i(cell.x, cell.y, 1)
+		2:
+			return Vector3i(cell.x, cell.y + 1, 0)
+		_:
+			return Vector3i(cell.x + 1, cell.y, 1)
+
+
+## Whether a wall-mounted object fits: a plain wall (no door or window) with
+## nothing else hanging on that side.
+func can_hang(f: Furniture, cell: Vector2i, rot: int) -> bool:
+	var e := wall_edge_for(cell, rot)
+	if not walls.has(e) or doors.has(e) or windows.has(e):
+		return false
+	for o in furniture:
+		if o != f and o.wall_mounted and o.cell == cell and o.rot_steps == posmod(rot, 4):
+			return false
+	return true
+
+
 func position_furniture(f: Furniture, at_cell: Vector2i, rot_steps: int) -> void:
 	f.rot_steps = posmod(rot_steps, 4)
 	f.cell = at_cell
+	if f.wall_mounted:
+		# Against the wall, at eye level, facing into the tile.
+		var c := Vector3((at_cell.x + 0.5) * CELL, 1.45, (at_cell.y + 0.5) * CELL)
+		var back := Vector3.FORWARD.rotated(Vector3.UP, f.rot_steps * PI * 0.5)
+		f.position = c + back * (CELL * 0.5 - WALL_THICKNESS * 0.5 - 0.03)
+		f.rotation.y = f.rot_steps * PI * 0.5
+		return
 	var fp := f.rotated_footprint()
 	f.position = Vector3((at_cell.x + fp.x * 0.5) * CELL, 0.0, (at_cell.y + fp.y * 0.5) * CELL)
 	f.rotation.y = f.rot_steps * PI * 0.5
@@ -697,7 +733,7 @@ func place_furniture(f: Furniture, at_cell: Vector2i, rot_steps := 0) -> void:
 	position_furniture(f, at_cell, rot_steps)
 	if f.get_parent() == null:
 		add_child(f)
-	if not f.blocks:
+	if not f.blocks or f.wall_mounted:
 		furniture.append(f)
 		return
 	var rect := f.footprint_rect()
@@ -749,7 +785,7 @@ func add_mess(kind: String, near: Vector3) -> Furniture:
 func remove_furniture(f: Furniture) -> void:
 	if not furniture.has(f):
 		return
-	if not f.blocks:
+	if not f.blocks or f.wall_mounted:
 		furniture.erase(f)
 		return
 	var rect := f.footprint_rect()
