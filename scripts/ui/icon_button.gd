@@ -206,6 +206,10 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 				hex.append(c + Vector2(cos(ang), sin(ang)) * s)
 			ci.draw_polyline(hex, col, 2.5, true)
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.45, s * 0.4), c + Vector2(-s * 0.45, -s * 0.05), c + Vector2(0, -s * 0.45), c + Vector2(s * 0.45, -s * 0.05), c + Vector2(s * 0.45, s * 0.4)]), col)
+		"terrain":
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s, s * 0.7), c + Vector2(-s * 0.3, -s * 0.3), c + Vector2(0, s * 0.1), c + Vector2(s * 0.45, -s * 0.6), c + Vector2(s, s * 0.7)]), col)
+			for k in 3:
+				ci.draw_line(c + Vector2(-s * 0.6 + k * s * 0.5, s * 0.95), c + Vector2(-s * 0.5 + k * s * 0.5, s * 0.75), col, 2.0)
 		"room":
 			ci.draw_rect(Rect2(c - Vector2(s * 0.8, s * 0.8), Vector2(s * 1.6, s * 1.6)), col, false, 3.0)
 			for d in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:

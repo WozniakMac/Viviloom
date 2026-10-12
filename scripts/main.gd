@@ -1109,7 +1109,7 @@ func _lot_dict() -> Dictionary:
 	var fences: Array = []
 	for e in lot.fences:
 		fences.append([e.x, e.y, e.z, lot.gates.has(e)])
-	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "fences": fences, "roof": [lot.roof_style, lot.roof_color], "foundation": lot.foundation, "lot_traits": lot.lot_traits.duplicate(), "upper": _level_dict(upper)}
+	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "fences": fences, "roof": [lot.roof_style, lot.roof_color], "foundation": lot.foundation, "terrain": lot.terrain_tiles.keys().map(func(c): return [c.x, c.y, lot.terrain_tiles[c]]), "lot_traits": lot.lot_traits.duplicate(), "upper": _level_dict(upper)}
 
 
 ## Raises (or lowers) the house onto a foundation; the upper storey moves with it.
@@ -1176,6 +1176,9 @@ func _apply_lot_dict(d: Dictionary) -> void:
 			lot.floor_tiles[Vector2i(int(f[0]), int(f[1]))] = int(f[2])
 		lot.add_floor(Rect2i(), 0)
 	set_foundation(d.get("foundation", 0.0))
+	for t in d.get("terrain", []):
+		lot.terrain_tiles[Vector2i(int(t[0]), int(t[1]))] = int(t[2])
+	lot.paint_terrain(Vector2i(-1, -1), 0)
 	var roof: Array = d.get("roof", [0, 0])
 	for l in levels:
 		(l as Lot).set_roof(int(roof[0]), int(roof[1]))
@@ -1828,6 +1831,13 @@ func _run_scenario(scenario: String, path: String) -> void:
 			lot.wall_view = Lot.WallView.CUTAWAY
 			rig.frame(pn.global_position, deg_to_rad(25.0), deg_to_rad(-35.0), 8.0)
 			await get_tree().create_timer(4.0).timeout
+		"terrain":
+			for x in range(1, 23):
+				for y in range(14, 19):
+					lot.terrain_tiles[Vector2i(x, y)] = 3 if (x + y) % 7 < 3 else (1 if x < 8 else (2 if x < 15 else 4))
+			lot.paint_terrain(Vector2i(-1, -1), 0)
+			rig.frame(lot.cell_to_world(Vector2i(11, 16)), deg_to_rad(10.0), deg_to_rad(-40.0), 12.0)
+			await get_tree().create_timer(1.0).timeout
 		"foundationcut":
 			set_foundation(Lot.FOUNDATION_HEIGHT)
 			lot.wall_view = Lot.WallView.CUTAWAY

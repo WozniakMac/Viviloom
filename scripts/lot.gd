@@ -54,6 +54,9 @@ const FENCE_HEIGHT := 0.9
 ## Vector2i tile -> Finishes.FLOORS index.
 var floor_tiles := {}
 var _floor_mesh: MeshInstance3D
+## Terrain paint per tile (Finishes.TERRAIN index, never 0 = lawn).
+var terrain_tiles := {}
+var _terrain_mesh: MeshInstance3D
 ## Pools: Rect2i -> their Pool object; tiles under a pool have no ground.
 var pools := {}
 var _ground_mesh: MeshInstance3D
@@ -396,6 +399,39 @@ func clear_floor(rect: Rect2i) -> void:
 
 
 ## Builds one mesh for all floor tiles; the colour carries the finish and pattern.
+func paint_terrain(c: Vector2i, style: int) -> void:
+	if style <= 0:
+		terrain_tiles.erase(c)
+	else:
+		terrain_tiles[c] = style
+	_rebuild_terrain()
+
+
+func _rebuild_terrain() -> void:
+	if _terrain_mesh == null:
+		_terrain_mesh = MeshInstance3D.new()
+		_terrain_mesh.name = "Terrain"
+		_terrain_mesh.material_override = Finishes.floor_material()
+		add_child(_terrain_mesh)
+	if terrain_tiles.is_empty():
+		_terrain_mesh.mesh = null
+		return
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_normal(Vector3.UP)
+	for c in terrain_tiles:
+		var t: Array = Finishes.TERRAIN[clampi(terrain_tiles[c], 0, Finishes.TERRAIN.size() - 1)]
+		var col: Color = t[1]
+		col.a = float(t[2]) / 8.0
+		st.set_color(col)
+		var x0: float = c.x * CELL
+		var z0: float = c.y * CELL
+		var y := 0.012
+		for v in [Vector3(x0, y, z0), Vector3(x0 + CELL, y, z0), Vector3(x0 + CELL, y, z0 + CELL), Vector3(x0, y, z0), Vector3(x0 + CELL, y, z0 + CELL), Vector3(x0, y, z0 + CELL)]:
+			st.add_vertex(v)
+	_terrain_mesh.mesh = st.commit()
+
+
 func _rebuild_floor() -> void:
 	_dirty = true
 	if _floor_mesh == null:
@@ -1010,6 +1046,8 @@ func clear_build() -> void:
 	lot_traits = []
 	floor_tiles.clear()
 	_rebuild_floor()
+	terrain_tiles.clear()
+	_rebuild_terrain()
 	pools.clear()
 	_rebuild_pools()
 	for n in _built:

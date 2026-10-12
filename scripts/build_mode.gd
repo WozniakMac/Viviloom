@@ -15,7 +15,7 @@ signal foundation_changed(height: float)
 ## Lot traits were picked (applies to every storey).
 signal lot_traits_changed(traits: Array)
 
-enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL, FENCE, ROOM, ROOF }
+enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL, FENCE, ROOM, ROOF, TERRAIN }
 
 var lot: Lot
 var sim: Sim
@@ -145,6 +145,8 @@ func handle_input(event: InputEvent) -> void:
 				_finish_pool()
 			elif tool == Tool.ROOM and _floor_start != null:
 				_finish_room()
+			elif tool == Tool.TERRAIN and _floor_start != null:
+				_finish_terrain()
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			if _held != null:
 				_cancel_held()
@@ -210,7 +212,7 @@ func _on_press(p: Variant, screen_pos: Vector2) -> void:
 						if not _spend(price):
 							break
 						lot.paint_wall(t, wall_style)
-		Tool.FLOOR, Tool.POOL, Tool.ROOM:
+		Tool.FLOOR, Tool.POOL, Tool.ROOM, Tool.TERRAIN:
 			_floor_start = lot.world_to_cell(pt)
 			_floor_end = _floor_start
 		Tool.DELETE:
@@ -285,6 +287,29 @@ func _finish_pool() -> void:
 		return
 	_spend(price)
 	Sfx.play("place")
+
+
+## Terrain paint over the dragged rectangle (outdoor ground only shows it).
+var terrain_style := 1
+
+
+func _finish_terrain() -> void:
+	var r := _floor_rect()
+	var price: int = Finishes.TERRAIN[terrain_style][3]
+	for x in range(r.position.x, r.end.x):
+		for y in range(r.position.y, r.end.y):
+			var c := Vector2i(x, y)
+			if not lot.in_bounds(c) or lot.terrain_tiles.get(c, 0) == terrain_style:
+				continue
+			if not _spend(price):
+				break
+			if terrain_style <= 0:
+				lot.terrain_tiles.erase(c)
+			else:
+				lot.terrain_tiles[c] = terrain_style
+	lot.paint_terrain(Vector2i(-1, -1), 0)
+	_floor_start = null
+	_wall_preview.visible = false
 
 
 ## Room tool: four walls around the dragged rectangle in one go.
@@ -490,7 +515,7 @@ func _refresh_overlays(p: Variant) -> void:
 					_wall_preview.visible = true
 			else:
 				_show_vertex(_vertex(at))
-		Tool.FLOOR, Tool.POOL, Tool.ROOM:
+		Tool.FLOOR, Tool.POOL, Tool.ROOM, Tool.TERRAIN:
 			if _floor_start != null:
 				_floor_end = lot.world_to_cell(at)
 				var r := _floor_rect()
@@ -603,7 +628,7 @@ func _build_ui() -> void:
 	tools_pill.add_theme_stylebox_override("panel", UiTheme.panel_style(28, 6))
 	tools_pill.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	tools_pill.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	tools_pill.position = Vector2(-294, 14)
+	tools_pill.position = Vector2(-320, 14)
 	root.add_child(tools_pill)
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 6)
@@ -618,6 +643,7 @@ func _build_ui() -> void:
 		[Tool.WINDOW, "window", "Window tool: click a wall to add a window (§%d)" % Finishes.WINDOW_PRICE],
 		[Tool.PAINT, "paint", "Wall paint: pick a finish below, click a wall (Shift: every wall)"],
 		[Tool.FLOOR, "floor", "Floor tool: pick a finish below, drag over tiles"],
+		[Tool.TERRAIN, "terrain", "Terrain paint: pick a ground finish below, drag over the yard"],
 		[Tool.POOL, "pool", "Pool tool: drag out a swimming pool (§60 per tile)"],
 		[Tool.DELETE, "sell", "Sledgehammer: click an object, wall or fence to sell it"],
 	]
@@ -769,7 +795,7 @@ func _show_category(cat: String) -> void:
 func _show_swatches() -> void:
 	if _swatch_box == null:
 		return
-	var painting := tool == Tool.PAINT or tool == Tool.FLOOR or tool == Tool.ROOF
+	var painting := tool == Tool.PAINT or tool == Tool.FLOOR or tool == Tool.ROOF or tool == Tool.TERRAIN
 	_tiles_scroll.visible = not painting
 	_swatch_box.visible = painting
 	for c in _swatch_box.get_children():
@@ -779,8 +805,8 @@ func _show_swatches() -> void:
 	if tool == Tool.ROOF:
 		_show_roof_swatches()
 		return
-	var list: Array = Finishes.WALLS if tool == Tool.PAINT else Finishes.FLOORS
-	var current := wall_style if tool == Tool.PAINT else floor_style
+	var list: Array = Finishes.WALLS if tool == Tool.PAINT else (Finishes.TERRAIN if tool == Tool.TERRAIN else Finishes.FLOORS)
+	var current := wall_style if tool == Tool.PAINT else (terrain_style if tool == Tool.TERRAIN else floor_style)
 	for i in list.size():
 		var f: Array = list[i]
 		var b := Button.new()
@@ -817,6 +843,8 @@ func _show_swatches() -> void:
 		b.pressed.connect(func():
 			if tool == Tool.PAINT:
 				wall_style = i
+			elif tool == Tool.TERRAIN:
+				terrain_style = i
 			else:
 				floor_style = i
 			_show_swatches())

@@ -28,6 +28,16 @@ const FLOORS := [
 	["Rose Carpet", Color(0.82, 0.55, 0.6), 3, 3],
 	["Concrete", Color(0.66, 0.66, 0.64), 0, 1],
 ]
+## Terrain paints: [name, colour, pattern, price per tile]; the first one erases
+## back to plain lawn.
+const TERRAIN := [
+	["Lawn", Color(0.42, 0.62, 0.3), 0, 0],
+	["Dirt", Color(0.45, 0.33, 0.22), 5, 1],
+	["Gravel", Color(0.62, 0.6, 0.56), 6, 2],
+	["Wildflowers", Color(0.38, 0.6, 0.28), 7, 3],
+	["Sand", Color(0.86, 0.78, 0.58), 5, 1],
+	["Moss", Color(0.28, 0.45, 0.22), 3, 1],
+]
 const WINDOW_PRICE := 90
 
 static var _wall_shader: Shader
@@ -113,6 +123,30 @@ void fragment() {
 		rough = 0.25;
 	} else if (pattern == 3) {
 		c *= 0.92 + 0.12 * hash(floor(p * 60.0));
+		rough = 1.0;
+	} else if (pattern == 5) {
+		// Earthy ground: big soft blotches and fine grain.
+		float big = hash(floor(p * 3.0)) * 0.5 + hash(floor(p * 7.0)) * 0.5;
+		c *= 0.82 + 0.25 * big;
+		c *= 0.93 + 0.1 * hash(floor(p * 80.0));
+		rough = 1.0;
+	} else if (pattern == 6) {
+		// Gravel: speckled stones.
+		vec2 g = floor(p * 28.0);
+		float h = hash(g);
+		c *= 0.7 + 0.5 * h;
+		c = mix(c, vec3(0.3, 0.29, 0.27), step(0.9, hash(g + 3.1)));
+		rough = 0.95;
+	} else if (pattern == 7) {
+		// Grass sprinkled with little flowers.
+		c *= 0.9 + 0.15 * hash(floor(p * 40.0));
+		vec2 cell = floor(p * 5.0);
+		vec2 f = fract(p * 5.0) - 0.5;
+		float h = hash(cell);
+		if (h > 0.45 && length(f - vec2(hash(cell + 1.0) - 0.5, hash(cell + 2.0) - 0.5) * 0.5) < 0.17) {
+			float k = hash(cell + 5.0);
+			c = pow(k < 0.33 ? vec3(0.98, 0.82, 0.15) : (k < 0.66 ? vec3(0.97, 0.97, 0.97) : vec3(0.88, 0.3, 0.6)), vec3(2.2));
+		}
 		rough = 1.0;
 	}
 	ALBEDO = c;

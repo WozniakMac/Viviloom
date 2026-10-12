@@ -47,6 +47,7 @@ func _ready() -> void:
 	_test_townie_lives()
 	_test_child_skills()
 	_test_foundation()
+	_test_terrain()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -935,4 +936,29 @@ func _test_foundation() -> void:
 	_check(not lot.find_path(lot.cell_to_world(Vector2i(3, 9)), lot.cell_to_world(Vector2i(4, 4))).is_empty(), "Sims can still walk in")
 	lot.set_foundation(0.0)
 	_check(chair.position.y == 0.0 and lot._steps.is_empty(), "removing the foundation lowers everything")
+	lot.queue_free()
+
+
+func _test_terrain() -> void:
+	var lot := _make_lot()
+	add_child(lot)
+	var build := BuildMode.new()
+	build.lot = lot
+	build.funds = 1000
+	build.tool = BuildMode.Tool.TERRAIN
+	build._wall_preview = MeshInstance3D.new()
+	build.terrain_style = 2
+	build._floor_start = Vector2i(1, 1)
+	build._floor_end = Vector2i(3, 2)
+	build._finish_terrain()
+	_check(lot.terrain_tiles.size() == 6 and lot.terrain_tiles[Vector2i(2, 2)] == 2, "terrain paint covers the dragged area")
+	_check(build.funds == 1000 - 6 * Finishes.TERRAIN[2][3], "terrain paint costs a little per tile")
+	_check(lot._terrain_mesh.mesh != null, "painted ground is drawn")
+	build.terrain_style = 0
+	build._floor_start = Vector2i(1, 1)
+	build._floor_end = Vector2i(3, 2)
+	build._finish_terrain()
+	_check(lot.terrain_tiles.is_empty(), "painting lawn erases")
+	build._wall_preview.free()
+	build.free()
 	lot.queue_free()
