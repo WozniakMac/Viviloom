@@ -1403,7 +1403,7 @@ func _social_result(a: SimAction) -> void:
 	if a.outcome and (s.get("move_in", false) or s.get("marry", false)):
 		moving_in.emit(t)
 	count_stat("socials")
-	var stat: String = {"Tell a Joke": "jokes", "Flirt": "flirts", "Kiss": "kisses", "Make Out": "kisses"}.get(a.interaction.name, "")
+	var stat: String = {"Tell a Joke": "jokes", "Flirt": "flirts", "Kiss": "kisses", "Make Out": "kisses", "Prank": "pranks"}.get(a.interaction.name, "")
 	if stat != "" and a.outcome:
 		count_stat(stat)
 	activity_done.emit(a.interaction.name)

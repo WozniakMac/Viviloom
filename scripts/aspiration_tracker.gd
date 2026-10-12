@@ -59,11 +59,16 @@ func is_complete() -> bool:
 	return milestone >= milestones().size()
 
 
+## Kept up to date by main (for family goals).
+var household_size := 1
+
+
 func context() -> Dictionary:
 	return {
 		"sim": sim,
 		"funds": build.funds if build != null else 0,
 		"career_level": (work.level + 1) if work != null and work.has_job() else 0,
+		"household": household_size,
 	}
 
 

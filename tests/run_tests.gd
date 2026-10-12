@@ -65,6 +65,7 @@ func _ready() -> void:
 	_test_everyday_objects()
 	_test_counter_tops()
 	_test_surface_decor()
+	_test_more_aspirations()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1285,3 +1286,17 @@ func _test_surface_decor() -> void:
 	_check(lot.can_place(vase, Vector2i(5, 4), 0), "decor goes on a dining table")
 	vase.free()
 	lot.queue_free()
+
+
+func _test_more_aspirations() -> void:
+	_check(Aspirations.ORDER.size() >= 19 and Aspirations.ORDER.all(func(a): return Aspirations.INFO.has(a)), "a wide choice of aspirations")
+	var cats := {}
+	for a in Aspirations.ORDER:
+		cats[Aspirations.INFO[a]["category"]] = true
+	_check(cats.size() >= 10, "in many categories, as in the reference")
+	var s := Sim.new()
+	s.skills.add_xp("piano", Skills.xp_for_level(5))
+	_check(Aspirations.goal_met({"any_of": ["guitar", "piano"], "level": 5}, {"sim": s}), "either instrument counts for Musical Genius")
+	_check(not Aspirations.goal_met({"all_of": ["guitar", "piano"], "level": 4}, {"sim": s}), "but both are needed for the third milestone")
+	_check(Aspirations.goal_met({"household": 3}, {"sim": s, "household": 3}), "family goals count the household")
+	s.free()

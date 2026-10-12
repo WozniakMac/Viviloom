@@ -257,6 +257,12 @@ func _ready() -> void:
 	add_child(social_event)
 	social_event.changed.connect(func(): hud.show_event(social_event))
 	social_event.finished.connect(func(medal: int, title: String):
+		for m in household:
+			(m as Sim).count_stat("events")
+			if medal >= 2:
+				(m as Sim).count_stat("event_silver")
+			if medal == 3:
+				(m as Sim).count_stat("event_gold")
 		var reward: int = SocialEvent.REWARD[medal]
 		if reward > 0:
 			build.earn(reward)
@@ -763,6 +769,8 @@ func _furniture_at(screen_pos: Vector2) -> Furniture:
 
 func _process(delta: float) -> void:
 	_autosave(delta)
+	for t in trackers.values():
+		(t as AspirationTracker).household_size = household.size()
 	if _burglar_tonight and location == "home" and Clock.hour() >= 2 and Clock.hour() < 4:
 		_burglar_tonight = false
 		send_burglar()

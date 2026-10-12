@@ -52,6 +52,160 @@ const INFO := {
 			[{"text": "Have §75,000", "funds": 75000}],
 		],
 	},
+	"bodybuilder": {
+		"label": "Bodybuilder",
+		"category": "Athletic",
+		"description": "Wants the perfect physique.",
+		"milestones": [
+			[{"text": "Reach Fitness level 2", "skill": "fitness", "level": 2}],
+			[{"text": "Reach Fitness level 4", "skill": "fitness", "level": 4}],
+			[{"text": "Reach Fitness level 7", "skill": "fitness", "level": 7}],
+			[{"text": "Reach Fitness level 10", "skill": "fitness", "level": 10}],
+		],
+	},
+	"musical_genius": {
+		"label": "Musical Genius",
+		"category": "Creativity",
+		"description": "Hears music everywhere and wants to master it.",
+		"milestones": [
+			[{"text": "Reach Guitar or Piano level 2", "any_of": ["guitar", "piano"], "level": 2}],
+			[{"text": "Reach Guitar or Piano level 5", "any_of": ["guitar", "piano"], "level": 5}],
+			[{"text": "Reach level 4 in both Guitar and Piano", "all_of": ["guitar", "piano"], "level": 4}],
+			[{"text": "Reach Guitar or Piano level 10", "any_of": ["guitar", "piano"], "level": 10}],
+		],
+	},
+	"bestselling_author": {
+		"label": "Bestselling Author",
+		"category": "Creativity",
+		"description": "Has stories to tell the whole world.",
+		"milestones": [
+			[{"text": "Reach Writing level 2", "skill": "writing", "level": 2}],
+			[{"text": "Reach Writing level 4", "skill": "writing", "level": 4}],
+			[{"text": "Reach Writing level 7", "skill": "writing", "level": 7}],
+			[{"text": "Reach Writing level 10", "skill": "writing", "level": 10}],
+		],
+	},
+	"chief_of_mischief": {
+		"label": "Chief of Mischief",
+		"category": "Deviance",
+		"description": "Lives for a good prank.",
+		"milestones": [
+			[{"text": "Pull 3 pranks", "stat": "pranks", "count": 3}],
+			[{"text": "Reach Mischief level 4", "skill": "mischief", "level": 4}],
+			[{"text": "Pull 15 pranks", "stat": "pranks", "count": 15}],
+			[{"text": "Reach Mischief level 10", "skill": "mischief", "level": 10}],
+		],
+	},
+	"big_happy_family": {
+		"label": "Big Happy Family",
+		"category": "Family",
+		"description": "Wants a home full of love and children.",
+		"milestones": [
+			[{"text": "Become Sweethearts with someone", "romance": 60.0}],
+			[{"text": "Have a household of 2", "household": 2}],
+			[{"text": "Have a household of 3", "household": 3}],
+			[{"text": "Have a household of 4", "household": 4}],
+		],
+	},
+	"master_chef": {
+		"label": "Master Chef",
+		"category": "Food",
+		"description": "Dreams of running the finest kitchen.",
+		"milestones": [
+			[{"text": "Reach Cooking level 2", "skill": "cooking", "level": 2}],
+			[{"text": "Reach Cooking level 5", "skill": "cooking", "level": 5}],
+			[{"text": "Reach Cooking level 8", "skill": "cooking", "level": 8}],
+			[{"text": "Reach Cooking level 10", "skill": "cooking", "level": 10}],
+		],
+	},
+	"master_mixologist": {
+		"label": "Master Mixologist",
+		"category": "Food",
+		"description": "Shaken, stirred, and perfected.",
+		"milestones": [
+			[{"text": "Reach Mixology level 2", "skill": "mixology", "level": 2}],
+			[{"text": "Reach Mixology level 5", "skill": "mixology", "level": 5}],
+			[{"text": "Reach Mixology level 8", "skill": "mixology", "level": 8}],
+			[{"text": "Reach Mixology level 10", "skill": "mixology", "level": 10}],
+		],
+	},
+	"computer_whiz": {
+		"label": "Computer Whiz",
+		"category": "Knowledge",
+		"description": "At home behind a keyboard.",
+		"milestones": [
+			[{"text": "Reach Programming level 2", "skill": "programming", "level": 2}],
+			[{"text": "Reach Video Gaming level 4", "skill": "gaming", "level": 4}],
+			[{"text": "Reach Programming level 7", "skill": "programming", "level": 7}],
+			[{"text": "Reach Programming level 10", "skill": "programming", "level": 10}],
+		],
+	},
+	"nerd_brain": {
+		"label": "Nerd Brain",
+		"category": "Knowledge",
+		"description": "Fascinated by how everything works.",
+		"milestones": [
+			[{"text": "Reach Logic level 2", "skill": "logic", "level": 2}],
+			[{"text": "Reach Handiness level 3", "skill": "handiness", "level": 3}],
+			[{"text": "Reach Logic level 6", "skill": "logic", "level": 6}],
+			[{"text": "Reach Logic level 10", "skill": "logic", "level": 10}],
+		],
+	},
+	"serial_romantic": {
+		"label": "Serial Romantic",
+		"category": "Love",
+		"description": "In love with being in love.",
+		"milestones": [
+			[{"text": "Flirt 5 times", "stat": "flirts", "count": 5}],
+			[{"text": "Kiss 5 times", "stat": "kisses", "count": 5}],
+			[{"text": "Flirt 20 times", "stat": "flirts", "count": 20}],
+			[{"text": "Kiss 20 times", "stat": "kisses", "count": 20}],
+		],
+	},
+	"freelance_botanist": {
+		"label": "Freelance Botanist",
+		"category": "Nature",
+		"description": "Has a green thumb and wants to prove it.",
+		"milestones": [
+			[{"text": "Reach Gardening level 2", "skill": "gardening", "level": 2}],
+			[{"text": "Harvest 5 times", "stat": "harvests", "count": 5}],
+			[{"text": "Reach Gardening level 6", "skill": "gardening", "level": 6}],
+			[{"text": "Harvest 25 times", "stat": "harvests", "count": 25}],
+		],
+	},
+	"angling_ace": {
+		"label": "Angling Ace",
+		"category": "Nature",
+		"description": "Happiest with a rod in hand.",
+		"milestones": [
+			[{"text": "Catch 3 fish", "stat": "fish", "count": 3}],
+			[{"text": "Reach Fishing level 4", "skill": "fishing", "level": 4}],
+			[{"text": "Catch 20 fish", "stat": "fish", "count": 20}],
+			[{"text": "Reach Fishing level 10", "skill": "fishing", "level": 10}],
+		],
+	},
+	"joke_star": {
+		"label": "Joke Star",
+		"category": "Popularity",
+		"description": "Born to make people laugh.",
+		"milestones": [
+			[{"text": "Tell 5 jokes", "stat": "jokes", "count": 5}],
+			[{"text": "Reach Comedy level 4", "skill": "comedy", "level": 4}],
+			[{"text": "Tell 25 jokes", "stat": "jokes", "count": 25}],
+			[{"text": "Reach Comedy level 10", "skill": "comedy", "level": 10}],
+		],
+	},
+	"party_animal": {
+		"label": "Party Animal",
+		"category": "Popularity",
+		"description": "Never misses a good party.",
+		"milestones": [
+			[{"text": "Throw a social event", "stat": "events", "count": 1}],
+			[{"text": "Earn a silver or gold event medal", "stat": "event_silver", "count": 1}],
+			[{"text": "Earn 3 gold event medals", "stat": "event_gold", "count": 3}],
+			[{"text": "Have 200 social interactions", "stat": "socials", "count": 200}],
+		],
+	},
 	"soulmate": {
 		"label": "Soulmate",
 		"category": "Love",
@@ -64,7 +218,9 @@ const INFO := {
 		],
 	},
 }
-const ORDER: Array[String] = ["renaissance", "painter", "friend_of_world", "wealthy", "soulmate"]
+const ORDER: Array[String] = ["bodybuilder", "painter", "musical_genius", "bestselling_author", "chief_of_mischief", "big_happy_family",
+	"master_chef", "master_mixologist", "wealthy", "renaissance", "computer_whiz", "nerd_brain", "soulmate", "serial_romantic",
+	"freelance_botanist", "angling_ace", "friend_of_world", "joke_star", "party_animal"]
 const MILESTONE_POINTS := 500
 const WANT_POINTS := 100
 
@@ -112,6 +268,12 @@ static func goal_met(goal: Dictionary, ctx: Dictionary) -> bool:
 			if sim.skills.level(s) >= goal["any_skills"]:
 				n += 1
 		return n >= goal["count"]
+	if goal.has("any_of"):
+		return (goal["any_of"] as Array).any(func(k): return sim.skills.level(k) >= goal["level"])
+	if goal.has("all_of"):
+		return (goal["all_of"] as Array).all(func(k): return sim.skills.level(k) >= goal["level"])
+	if goal.has("household"):
+		return ctx.get("household", 1) >= goal["household"]
 	if goal.has("stat"):
 		return sim.stats.get(goal["stat"], 0) >= goal["count"]
 	if goal.has("friendship"):
