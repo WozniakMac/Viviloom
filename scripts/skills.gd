@@ -19,8 +19,15 @@ const INFO := {
 	"gardening": ["Gardening", "focused"],
 	"writing": ["Writing", "focused"],
 	"handiness": ["Handiness", "focused"],
+	"comedy": ["Comedy", "playful"],
+	"mischief": ["Mischief", "playful"],
+	"mixology": ["Mixology", "confident"],
+	"programming": ["Programming", "focused"],
+	"piano": ["Piano", "inspired"],
+	"fishing": ["Fishing", "focused"],
 }
-const ORDER: Array[String] = ["cooking", "logic", "painting", "gaming", "fitness", "charisma", "guitar", "gardening", "writing", "handiness"]
+const ORDER: Array[String] = ["cooking", "logic", "painting", "gaming", "fitness", "charisma", "guitar", "gardening", "writing", "handiness",
+	"comedy", "mischief", "mixology", "programming", "piano", "fishing"]
 const EMOTION_BONUS := 1.5
 
 var xp := {}

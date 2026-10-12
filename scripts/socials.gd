@@ -72,9 +72,15 @@ static func all() -> Array[Interaction]:
 	return out
 
 
+## Socials in these categories practise a skill.
+const CATEGORY_SKILL := {"Funny": "comedy", "Mischief": "mischief"}
+
+
 static func _make(p_name: String, minutes: float, rates: Dictionary, social: Dictionary) -> Interaction:
 	var i := Interaction.new(p_name, rates, minutes, "", "stand", true)
 	i.social = social
+	if CATEGORY_SKILL.has(social.get("category", "")):
+		i.practices(CATEGORY_SKILL[social["category"]], 80.0)
 	return i
 
 

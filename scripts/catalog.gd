@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -18,6 +18,8 @@ const RECIPES := [
 	["Baked Alaska", 9, 8, 90.0, Color(0.98, 0.92, 0.85)],
 ]
 const MEAL_QUALITY: Array[String] = ["Poor", "Normal", "Good", "Excellent"]
+## Fish from the pond, commonest first: [name, base value].
+const FISH := [["Minnow", 4], ["Perch", 9], ["Bass", 15], ["Trout", 22], ["Catfish", 30], ["Salmon", 42], ["Golden Koi", 75]]
 ## Objects that wear out and sometimes break when used.
 const BREAKABLE: Array[String] = ["tv", "desk", "stove", "fridge", "shower", "toilet", "treadmill", "sink"]
 const BREAK_CHANCE := 0.04
@@ -58,6 +60,9 @@ const INFO := {
 	"bar": ["Bar Counter", 1400],
 	"stereo": ["Stereo", 350],
 	"toybox": ["Toy Box", 120],
+	"piano": ["Upright Piano", 1200],
+	"telescope": ["Telescope", 700],
+	"pond": ["Fishing Pond", 500],
 	"car": ["Car", 0],
 	"pizza": ["Pizza", 0],
 	"dishes": ["Dirty Dishes", 0],
@@ -76,7 +81,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -106,6 +111,9 @@ const DESCRIPTIONS := {
 	"treadmill": "Run for miles without leaving the room.",
 	"mirror": "Practise speeches until you believe them.",
 	"guitar": "Strum, practise, maybe even get good.",
+	"piano": "Polished keys for budding virtuosos. Practise to play for tips.",
+	"telescope": "Gaze at the stars and ponder the universe. Good for Logic.",
+	"pond": "A little stocked pond. Cast a line and see what bites.",
 	"toybox": "Blocks, dolls and a squeaky duck. Little ones love it.",
 	"stereo": "Turn it up and dance the night away.",
 	"bar": "A bar with stools. Drinks cost a few Simoleons each.",
@@ -239,6 +247,8 @@ static func create(kind: String) -> Furniture:
 				Interaction.new("Chat Online", {"social": 25.0, "fun": 8.0}, 180.0, "social", "sit", true),
 				Interaction.new("Write a Book", {"fun": 10.0}, 240.0, "", "sit", true).practices("writing", 55.0).pays(40, 35).grants("author", "confident", 1, "Published Author", "Their words are out in the world.", 240.0),
 				Interaction.new("Play Games", {"fun": 45.0, "energy": -6.0}, 180.0, "fun", "sit", true).practices("gaming", 60.0).grants("gamer_high", "playful", 1, "Game On", "That was a great match.", 120.0),
+				Interaction.new("Practise Programming", {"fun": 5.0}, 120.0, "", "sit", true).practices("programming", 60.0).grants("in_the_zone", "focused", 1, "In the Zone", "Code is flowing.", 120.0),
+				Interaction.new("Troll the Forums", {"fun": 25.0, "social": 10.0}, 60.0, "", "sit", true).practices("mischief", 50.0).grants("trolled", "playful", 1, "Stirred the Pot", "Hehe. They took the bait.", 120.0),
 			]
 		"bookshelf":
 			f.display_name = "Bookshelf"
@@ -252,8 +262,8 @@ static func create(kind: String) -> Furniture:
 					f.add_box(Vector3(0.12, h, 0.26), Vector3(-0.3 + b * 0.15, 0.17 + shelf * 0.47 + h * 0.5, -0.24), book_colors[(b + shelf) % 4])
 			f.spots = [Vector3(0, 0, 0.9)]
 			f.interactions = [
-				Interaction.new("Browse Books", {"fun": 30.0}, 60.0, "fun", "stand", true).grants("lit_inspired", "inspired", 1, "Inspired by Literature", "Browsing books sparked some new ideas.", 120.0),
-				Interaction.new("Study", {"fun": 8.0}, 120.0, "", "stand", true).practices("logic", 55.0).grants("studied", "focused", 1, "Studious", "Facts are sticking today.", 120.0),
+				Interaction.new("Browse Books", {"fun": 30.0}, 60.0, "fun", "stand", true).holding("book").grants("lit_inspired", "inspired", 1, "Inspired by Literature", "Browsing books sparked some new ideas.", 120.0),
+				Interaction.new("Study", {"fun": 8.0}, 120.0, "", "stand", true).holding("book").practices("logic", 55.0).grants("studied", "focused", 1, "Studious", "Facts are sticking today.", 120.0),
 			]
 		"easel":
 			f.display_name = "Easel"
@@ -428,6 +438,7 @@ static func create(kind: String) -> Furniture:
 			f.spots = [Vector3(0, 0, 0.8)]
 			f.interactions = [
 				Interaction.new("Practise Speech", {"fun": 8.0, "social": 6.0}, 45.0, "", "stand", true).practices("charisma", 60.0).grants("confident_talk", "confident", 1, "Feeling Charming", "Ready to win anyone over.", 180.0),
+				Interaction.new("Practise Comedy Routine", {"fun": 15.0}, 45.0, "", "stand", true).practices("comedy", 60.0).grants("routine", "playful", 1, "Got Some Material", "That bit is going to kill.", 120.0),
 				Interaction.new("Admire Self", {"fun": 10.0}, 10.0, "", "stand").grants("looking_good", "confident", 1, "Looking Good", "Not bad at all.", 90.0),
 				Interaction.new("Give Self a Pep Talk", {"fun": 5.0}, 15.0, "", "stand").when_feeling("tense").clearing("tense").grants("pep_talk", "confident", 1, "Pep Talk", "You've got this.", 180.0),
 			]
@@ -456,9 +467,65 @@ static func create(kind: String) -> Furniture:
 			f.footprint = Vector2i(2, 1)
 			f.height = 1.3
 			f.spots = [Vector3(0, 0, 1.3), Vector3(-0.7, 0, 1.3), Vector3(0.7, 0, 1.3)]
-			var drink := Interaction.new("Order a Drink", {"fun": 30.0, "social": 15.0}, 30.0, "", "stand", true).grants("bubbly", "playful", 1, "Bubbly", "That drink hit the spot.", 120.0)
+			var drink := Interaction.new("Order a Drink", {"fun": 30.0, "social": 15.0}, 30.0, "", "stand", true).holding("drink").grants("bubbly", "playful", 1, "Bubbly", "That drink hit the spot.", 120.0)
 			drink.cost = 12
-			f.interactions = [drink, Interaction.new("Chat with the Bartender", {"social": 70.0}, 30.0, "social", "stand", true)]
+			var mix := Interaction.new("Mix a Drink", {"fun": 20.0, "social": 5.0}, 30.0, "", "stand", true).holding("drink").practices("mixology", 65.0).grants("mixed", "confident", 1, "Shaken, Not Stirred", "Mixed a mean drink.", 120.0)
+			mix.cost = 5
+			f.interactions = [drink, mix, Interaction.new("Chat with the Bartender", {"social": 70.0}, 30.0, "social", "stand", true)]
+		"piano":
+			f.display_name = "Upright Piano"
+			f.footprint = Vector2i(2, 1)
+			f.height = 1.3
+			var lacquer := Color(0.12, 0.08, 0.07)
+			f.add_box(Vector3(1.6, 1.25, 0.5), Vector3(0, 0.63, -0.22), lacquer)
+			f.add_box(Vector3(1.6, 0.08, 0.32), Vector3(0, 0.74, 0.18), lacquer)
+			f.add_box(Vector3(1.4, 0.03, 0.18), Vector3(0, 0.79, 0.16), Color(0.96, 0.95, 0.9))
+			for k in 10:
+				if k % 7 != 2 and k % 7 != 6:
+					f.add_box(Vector3(0.05, 0.03, 0.1), Vector3(-0.6 + k * 0.135, 0.815, 0.12), Color(0.05, 0.05, 0.05))
+			for x in [-0.72, 0.72]:
+				f.add_box(Vector3(0.08, 0.7, 0.36), Vector3(x, 0.35, 0.16), lacquer)
+			f.add_box(Vector3(0.9, 0.06, 0.32), Vector3(0, 0.45, 0.62), Color(0.2, 0.13, 0.1))
+			f.spots = [Vector3(0, 0, 1.1)]
+			f.use_position = Vector3(0, 0.0, 0.6)
+			f.use_facing = Vector3(0, 0, -1)
+			f.interactions = [
+				Interaction.new("Practise Piano", {"fun": 30.0}, 90.0, "fun", "sit", true).practices("piano", 60.0).grants("serenade", "inspired", 1, "Music in the Air", "Those chords were beautiful.", 180.0),
+				Interaction.new("Play for Tips", {"fun": 20.0}, 90.0, "", "sit", true).practices("piano", 40.0).pays(12, 18),
+			]
+		"telescope":
+			f.display_name = "Telescope"
+			f.height = 1.6
+			var brass := Color(0.75, 0.6, 0.3)
+			for k in 3:
+				var leg := f.add_box(Vector3(0.04, 1.1, 0.04), Vector3(0.18 * cos(k * TAU / 3.0), 0.52, 0.18 * sin(k * TAU / 3.0)), Color(0.3, 0.3, 0.32))
+				leg.rotation = Vector3(-0.2 * sin(k * TAU / 3.0), 0, 0.2 * cos(k * TAU / 3.0))
+			var tube := f.add_box(Vector3(0.14, 0.14, 0.9), Vector3(0, 1.2, 0.05), Color(0.92, 0.92, 0.95))
+			tube.rotation.x = 0.6
+			var lens := f.add_box(Vector3(0.17, 0.17, 0.05), Vector3(0, 1.45, -0.3), brass)
+			lens.rotation.x = 0.6
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Stargaze", {"fun": 35.0}, 60.0, "fun", "stand", true).practices("logic", 45.0).grants("starry", "inspired", 1, "Starstruck", "The universe is so big.", 180.0),
+			]
+		"pond":
+			f.display_name = "Fishing Pond"
+			f.footprint = Vector2i(3, 2)
+			f.height = 0.2
+			var stone := Color(0.6, 0.6, 0.58)
+			f.add_box(Vector3(2.9, 0.12, 1.9), Vector3(0, 0.06, 0), stone)
+			var water := f.add_box(Vector3(2.6, 0.06, 1.6), Vector3(0, 0.1, 0), Color(0.25, 0.55, 0.7))
+			var wm := StandardMaterial3D.new()
+			wm.albedo_color = Color(0.25, 0.55, 0.72)
+			wm.roughness = 0.05
+			wm.metallic_specular = 1.0
+			water.material_override = wm
+			for p in [Vector3(-1.1, 0.14, -0.6), Vector3(0.9, 0.14, 0.5)]:
+				f.add_box(Vector3(0.3, 0.02, 0.3), p, Color(0.3, 0.6, 0.3))
+			f.spots = [Vector3(0, 0, 1.4), Vector3(-1.0, 0, 1.4), Vector3(1.0, 0, 1.4), Vector3(0, 0, -1.4)]
+			f.interactions = [
+				Interaction.new("Go Fishing", {"fun": 30.0}, 90.0, "", "stand", true).practices("fishing", 60.0).makes("fish").holding("rod"),
+			]
 		"toybox":
 			f.display_name = "Toy Box"
 			f.height = 0.55

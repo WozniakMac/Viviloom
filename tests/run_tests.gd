@@ -37,6 +37,7 @@ func _ready() -> void:
 	_test_fences()
 	_test_romance()
 	_test_room_and_roof()
+	_test_new_skills()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -260,7 +261,7 @@ func _test_career_day() -> void:
 	w.performance = 100.0
 	w._try_promotion()
 	_check(w.level == 0, "no promotion without the skill")
-	sim.skills.add_xp("logic", Skills.xp_for_level(2))
+	sim.skills.add_xp(Careers.INFO["tech"]["skill"], Skills.xp_for_level(2))
 	w._try_promotion()
 	_check(w.level == 1 and sim.emotions.has("promoted"), "full performance and skill earn a promotion")
 	w.free()
@@ -703,3 +704,34 @@ func _test_room_and_roof() -> void:
 	build._wall_preview.free()
 	build.free()
 	lot.queue_free()
+
+
+func _test_new_skills() -> void:
+	for sk in ["comedy", "mischief", "mixology", "programming", "piano", "fishing"]:
+		_check(Skills.ORDER.has(sk), "%s is a skill" % sk)
+	_check(Socials.find("Tell a Joke").skill == "comedy" and Socials.find("Prank").skill == "mischief", "funny and mischievous socials train their skills")
+	var a := Sim.new()
+	var b := Sim.new()
+	var act := Sim.SimAction.new()
+	act.target_sim = b
+	act.interaction = Socials.find("Tell a Joke")
+	act.outcome = true
+	act.elapsed = 999.0
+	a._social_result(act)
+	_check(a.skills.xp["comedy"] > 0.0, "telling jokes builds Comedy")
+	var pond := Catalog.create("pond")
+	_check(pond.interactions[0].creates == "fish", "ponds are for fishing")
+	a._rng.seed = 3
+	for k in 12:
+		a._catch_fish(10)
+	var fish := a.inventory.filter(func(it): return it.get("kind") == "fish")
+	_check(not fish.is_empty() and fish[0].get("value", 0) > 0, "fishing lands fish worth Simoleons")
+	a.sell_item(a.inventory.find(fish[0]))
+	_check(a.inventory.size() == fish.size() - 1, "fish can be sold")
+	for kind in ["piano", "telescope"]:
+		var f := Catalog.create(kind)
+		_check(not f.interactions.is_empty(), "%s has something to do" % kind)
+		f.free()
+	pond.free()
+	a.free()
+	b.free()

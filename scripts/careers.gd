@@ -13,7 +13,7 @@ const INFO := {
 	},
 	"tech": {
 		"label": "Tech Guru",
-		"skill": "logic",
+		"skill": "programming",
 		"start": 9, "end": 17,
 		"levels": [["Tech Support", 16], ["Junior Developer", 24], ["Developer", 36], ["Senior Developer", 55], ["Chief Technologist", 80]],
 		"description": "Fix printers today, design systems tomorrow. Logic helps you rise.",

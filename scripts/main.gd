@@ -1313,6 +1313,8 @@ func _place_community(dest: String) -> void:
 	_place("grill", Vector2i(6, 3), 0)
 	_place("grill", Vector2i(21, 14), 0)
 	_place("chess", Vector2i(17, 3))
+	_place("pond", Vector2i(3, 15))
+	_place("telescope", Vector2i(19, 5))
 	for c in [Vector2i(1, 1), Vector2i(8, 1), Vector2i(15, 1), Vector2i(21, 2), Vector2i(2, 13), Vector2i(7, 15), Vector2i(20, 8), Vector2i(4, 7)]:
 		_place("tree", c)
 	for c in [Vector2i(9, 13), Vector2i(14, 6), Vector2i(1, 17), Vector2i(22, 17), Vector2i(5, 11)]:
@@ -1361,6 +1363,7 @@ func _place_venue(dest: String) -> void:
 			_place("sofa", Vector2i(5, 8), 1)
 			_place("sofa", Vector2i(17, 9), 3)
 			_place("guitar", Vector2i(18, 4))
+			_place("piano", Vector2i(5, 4))
 			_place("chess", Vector2i(10, 10))
 			_place("plant", Vector2i(4, 6))
 			_place("plant", Vector2i(20, 6))
@@ -1756,6 +1759,22 @@ func _run_scenario(scenario: String, path: String) -> void:
 			Clock.set_speed(1)
 			rig.frame(lot.cell_to_world(Vector2i(15, 13)), deg_to_rad(20.0), deg_to_rad(-38.0), 14.0)
 			await get_tree().create_timer(5.0).timeout
+		"fishing":
+			Clock.total_minutes = 11.0 * 60.0
+			await travel("park")
+			var pond := find_furniture("pond")
+			sim.queue_interaction(pond, pond.interactions[0])
+			Clock.set_speed(2)
+			rig.frame(pond.global_position, deg_to_rad(20.0), deg_to_rad(-25.0), 7.0)
+			await get_tree().create_timer(2.5).timeout
+		"piano":
+			await travel("lounge")
+			var pn := find_furniture("piano")
+			sim.queue_interaction(pn, pn.interactions[0])
+			Clock.set_speed(2)
+			lot.wall_view = Lot.WallView.CUTAWAY
+			rig.frame(pn.global_position, deg_to_rad(25.0), deg_to_rad(-35.0), 8.0)
+			await get_tree().create_timer(4.0).timeout
 		"rooftool":
 			build.enter()
 			build.set_tool(BuildMode.Tool.ROOF)

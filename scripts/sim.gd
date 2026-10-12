@@ -142,6 +142,10 @@ var _voice_high := false
 
 var _body: Node3D
 var _anim: AnimationPlayer
+## The right hand, for holding props (fishing rods, books, drinks).
+var _hand: BoneAttachment3D
+var _prop_kind := ""
+var _prop: Node3D
 ## Hair style name -> its mesh in the model.
 var _hair_meshes := {}
 var _body_mesh: MeshInstance3D
@@ -630,8 +634,23 @@ func sell_item(index: int) -> void:
 	if item.get("kind") == "painting":
 		count_stat("paintings_sold")
 	earned.emit(item.get("value", 0))
-	announced.emit("%s sold a painting for §%d." % [sim_name, item.get("value", 0)])
+	var what: String = item.get("name", "fish").to_lower() if item.get("kind") == "fish" else "painting"
+	announced.emit("%s sold a %s for §%d." % [sim_name, what, item.get("value", 0)])
 	inventory_changed.emit()
+
+
+## A fishing trip may land something: better anglers catch rarer, pricier fish.
+func _catch_fish(lvl: int) -> void:
+	if _rng.randf() > 0.55 + lvl * 0.04:
+		announced.emit("%s didn't catch anything this time." % sim_name)
+		return
+	var best := mini(Catalog.FISH.size() - 1, 1 + lvl / 2)
+	var pick: Array = Catalog.FISH[_rng.randi_range(0, best)]
+	var value: int = pick[1] + _rng.randi_range(0, 4) + lvl * 2
+	inventory.append({"kind": "fish", "name": pick[0], "value": value})
+	inventory_changed.emit()
+	count_stat("fish")
+	announced.emit("%s caught a %s worth §%d!" % [sim_name, pick[0], value])
 
 
 func count_stat(stat: String, amount := 1) -> void:
@@ -840,6 +859,43 @@ func _process(real_delta: float) -> void:
 			_end_perform(cur, true)
 			_complete(cur)
 	_animate(delta, moving, cur)
+
+
+## Puts `kind` in the Sim's right hand ("" to empty it).
+func _set_prop(kind: String) -> void:
+	_prop_kind = kind
+	if _prop != null:
+		_prop.queue_free()
+		_prop = null
+	if kind == "" or _hand == null:
+		return
+	_prop = Node3D.new()
+	_prop.name = "Prop"
+	_hand.add_child(_prop)
+	var add := func(sz: Vector3, pos: Vector3, col: Color) -> MeshInstance3D:
+		var m := MeshInstance3D.new()
+		var b := BoxMesh.new()
+		b.size = sz
+		m.mesh = b
+		m.position = pos
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = col
+		m.material_override = mat
+		m.layers = 1 | PORTRAIT_LAYER
+		_prop.add_child(m)
+		return m
+	match kind:
+		"rod":
+			# Gripped in the fist, reaching forward and up over the water.
+			var pole: MeshInstance3D = add.call(Vector3(0.025, 0.025, 1.6), Vector3(0, 0.05, -0.75), Color(0.35, 0.22, 0.12))
+			add.call(Vector3(0.06, 0.06, 0.08), Vector3(0, 0.05, 0.02), Color(0.2, 0.2, 0.22))
+			var line: MeshInstance3D = add.call(Vector3(0.008, 1.0, 0.008), Vector3.ZERO, Color(0.95, 0.95, 0.95))
+			line.name = "Line"
+		"book":
+			add.call(Vector3(0.16, 0.03, 0.22), Vector3(0, 0.06, -0.04), Color(0.7, 0.2, 0.2))
+			add.call(Vector3(0.15, 0.032, 0.2), Vector3(0.008, 0.06, -0.04), Color(0.96, 0.94, 0.88))
+		"drink":
+			add.call(Vector3(0.06, 0.12, 0.06), Vector3(0, 0.06, -0.03), Color(0.85, 0.5, 0.65, 1.0))
 
 
 ## Walks up or down the staircase, then carries on from the other level.
@@ -1118,6 +1174,8 @@ func _social_result(a: SimAction) -> void:
 	if stat != "" and a.outcome:
 		count_stat(stat)
 	activity_done.emit(a.interaction.name)
+	if a.interaction.skill != "":
+		skills.add_xp(a.interaction.skill, skill_gain(a.interaction, a.interaction.max_minutes) * (1.0 if a.outcome else 0.5))
 	if a.outcome:
 		if s.get("cheer", false):
 			t.emotions.clear_emotion("sad")
@@ -1230,6 +1288,8 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 		homework_done.emit()
 	if finished and i.recipe != "" and lot != null:
 		_serve_meal(i, lvl)
+	if finished and i.creates == "fish":
+		_catch_fish(lvl)
 	if finished and i.creates == "painting":
 		var q := clampi(lvl / 3, 0, 3)
 		var value := 20 + lvl * 22 + q * 15 + _rng.randi_range(0, 20)
@@ -1373,6 +1433,25 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 			elif busy:
 				anim = "use"
 	_update_expression()
+	var want_prop := ""
+	if cur != null and cur.performing and cur.interaction != null:
+		want_prop = cur.interaction.prop
+	if want_prop != _prop_kind:
+		_set_prop(want_prop)
+	if _prop != null:
+		# Props keep a steady world orientation: the rod reaches out over the water,
+		# books and drinks stay upright, whatever the hand bone is doing.
+		var fwd := global_basis.z * -1.0
+		var dir := (fwd * 0.85 + Vector3.UP * 0.45).normalized() if _prop_kind == "rod" else fwd
+		_prop.global_basis = Basis.looking_at(dir, Vector3.UP)
+		var line := _prop.get_node_or_null("Line") as MeshInstance3D
+		if line != null:
+			# The line hangs straight down from the rod tip into the water.
+			var tip := _prop.to_global(Vector3(0, 0.05, -1.55))
+			var drop := maxf(tip.y - 0.12 - global_position.y, 0.05)
+			line.global_basis = Basis.IDENTITY
+			line.scale = Vector3(1, drop, 1)
+			line.global_position = tip - Vector3(0, drop * 0.5, 0)
 	if _anim != null:
 		# Standing around and walking show the Sim's mood (strong feelings only).
 		if (anim == "idle" or anim == "walk") and emotions.intensity() >= 1:
@@ -1404,6 +1483,14 @@ func _build_visual() -> void:
 	var model := MODEL.instantiate() as Node3D
 	_body.add_child(model)
 	_anim = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	var skel := model.find_child("Skeleton3D", true, false) as Skeleton3D
+	if skel != null:
+		for bone_name in ["hand.R", "hand_R"]:
+			if skel.find_bone(bone_name) >= 0:
+				_hand = BoneAttachment3D.new()
+				_hand.bone_name = bone_name
+				skel.add_child(_hand)
+				break
 	if _anim != null:
 		for a in _anim.get_animation_list():
 			_anim.get_animation(a).loop_mode = Animation.LOOP_LINEAR
