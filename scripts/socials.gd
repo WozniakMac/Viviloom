@@ -42,6 +42,9 @@ static func all() -> Array[Interaction]:
 	out.append(_make("Argue", 20.0, {"social": 60.0}, {"category": "Mean", "friendship": -12.0, "actor_mood": "angry",
 		"actor_moodlet": ["vented", "fine", 0, "Vented", "Feels good to get that out.", 60.0],
 		"target_moodlet": ["argued", "angry", 1, "Had an Argument", "Who do they think they are?", 180.0]}))
+	out.append(_make("Ask to Move In", 20.0, {"social": 60.0}, {"category": "Friendly", "friendship": 5.0, "min_friendship": 60.0, "move_in": true,
+		"target_moodlet": ["new_home", "happy", 2, "New Home", "Moving in together!", 480.0]}))
+	out.append(_make("Propose", 20.0, {"social": 80.0}, {"category": "Romance", "romance": 10.0, "min_romance": 75.0, "marry": true}))
 	out.append(_make("Insult", 10.0, {"social": 30.0}, {"category": "Mean", "friendship": -15.0,
 		"actor_moodlet": ["mean", "confident", 1, "Got That Off My Chest", "They had it coming.", 90.0],
 		"target_moodlet": ["insulted", "angry", 2, "Insulted", "How rude!", 180.0]}))
@@ -88,6 +91,10 @@ static func available(friendship: float, romance: float, actor_stage := "young_a
 		if i.name == "Try for Baby" and (romance < 50.0 or actor_stage == "elder" or actor_stage == "teen"):
 			continue
 		if i.name == "Kiss" and romance < 15.0:
+			continue
+		if i.name == "Propose" and (romance < 50.0 or actor_stage == "teen"):
+			continue
+		if i.name == "Ask to Move In" and (friendship < 40.0 or not Ages.is_adult(actor_stage)):
 			continue
 		if i.name == "Hug" and friendship < 20.0:
 			continue

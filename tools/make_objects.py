@@ -414,13 +414,30 @@ def guitar(M):
     box((0.08, 0.14, 0.035), (0, 1.42, -0.1), M["wood_dark"], 0.01)
 
 
+def bar(M):
+    box((1.9, 1.05, 0.6), (0, 0.52, -0.1), M["wood_dark"], 0.03)
+    box((2.0, 0.06, 0.75), (0, 1.07, -0.05), M["counter_top"], 0.015)
+    box((1.8, 0.04, 0.1), (0, 0.15, 0.22), M["metal"], 0.01)
+    for k, col in enumerate([M["green"], M["red"], M["yellow"], M["blue"], M["green"]]):
+        cylinder(0.04, 0.26, (-0.6 + k * 0.3, 1.23, -0.32), col, 12, 0.025)
+    for x in (-0.6, 0.0, 0.6):
+        cylinder(0.17, 0.05, (x, 0.75, 0.62), M["fabric_teal"], 20)
+        cylinder(0.03, 0.72, (x, 0.37, 0.62), M["metal"], 10)
+
+
+def pizza(M):
+    box((0.42, 0.05, 0.42), (0, 0.025, 0), M["canvas"], 0.005)
+    box((0.42, 0.012, 0.42), (0, 0.06, 0), M["red"], 0.003)
+    cylinder(0.18, 0.02, (0, 0.07, 0), M["yellow"], 24)
+
+
 OBJECTS = {
     "fridge": fridge, "bed": bed, "toilet": toilet, "shower": shower, "tv": tv, "desk": desk,
     "bookshelf": bookshelf, "easel": easel, "chess": chess, "lamp": lamp, "sofa": sofa,
     "dining_table": dining_table, "chair": chair, "counter": counter, "stove": stove,
     "sink": sink, "plant": plant, "mailbox": mailbox, "bench": bench, "tree": tree, "bush": bush,
     "grill": grill, "picnic_table": picnic_table, "fountain": fountain,
-    "treadmill": treadmill, "mirror": mirror, "guitar": guitar,
+    "treadmill": treadmill, "mirror": mirror, "guitar": guitar, "bar": bar, "pizza": pizza,
 }
 
 

@@ -29,6 +29,8 @@ var leaves_mess := ""
 var consumes := false
 ## Repairing: finishing fixes the object.
 var fixes := false
+## Simoleons it costs the household each time (a drink at the bar).
+var cost := 0
 ## Only offered while the Sim feels this emotion ("" = any time).
 var requires_mood := ""
 ## Finishing removes every moodlet of this emotion (e.g. crying away sadness).

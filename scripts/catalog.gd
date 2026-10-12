@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -43,6 +43,8 @@ const INFO := {
 	"mirror": ["Standing Mirror", 150],
 	"guitar": ["Acoustic Guitar", 300],
 	"stairs": ["Staircase", 800],
+	"bar": ["Bar Counter", 1400],
+	"pizza": ["Pizza", 0],
 	"dishes": ["Dirty Dishes", 0],
 	"puddle": ["Puddle", 0],
 	"fire": ["Fire!", 0],
@@ -56,7 +58,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -86,6 +88,7 @@ const DESCRIPTIONS := {
 	"treadmill": "Run for miles without leaving the room.",
 	"mirror": "Practise speeches until you believe them.",
 	"guitar": "Strum, practise, maybe even get good.",
+	"bar": "A bar with stools. Drinks cost a few Simoleons each.",
 	"stairs": "Leads up to the next floor. The top step needs floor upstairs to land on.",
 }
 const WALL_PRICE := 14
@@ -424,6 +427,21 @@ static func create(kind: String) -> Furniture:
 			var clean := Interaction.new("Clean Up", {"fun": 2.0}, 10.0, "", "stand", true)
 			clean.consumes = true
 			f.interactions = [clean]
+		"bar":
+			f.display_name = "Bar Counter"
+			f.footprint = Vector2i(2, 1)
+			f.height = 1.3
+			f.spots = [Vector3(0, 0, 1.3), Vector3(-0.7, 0, 1.3), Vector3(0.7, 0, 1.3)]
+			var drink := Interaction.new("Order a Drink", {"fun": 30.0, "social": 15.0}, 30.0, "", "stand", true).grants("bubbly", "playful", 1, "Bubbly", "That drink hit the spot.", 120.0)
+			drink.cost = 12
+			f.interactions = [drink, Interaction.new("Chat with the Bartender", {"social": 70.0}, 30.0, "social", "stand", true)]
+		"pizza":
+			f.display_name = "Pizza"
+			f.blocks = false
+			f.height = 0.1
+			f.spots = [Vector3(0, 0, 0.0)]
+			f.set_meta("servings", 4)
+			f.interactions = [_dishes(Interaction.new("Have a Slice", {"hunger": 90.0, "fun": 5.0}, 15.0, "hunger", "stand", true).grants("pizza", "happy", 1, "Pizza Night", "Nothing like a hot slice.", 120.0))]
 		"stairs":
 			f.display_name = "Staircase"
 			f.footprint = Vector2i(1, 3)

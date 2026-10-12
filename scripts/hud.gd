@@ -22,6 +22,7 @@ signal level_change(step: int)
 signal sim_selected(sim: Sim)
 signal phone_invite(townie: Sim)
 signal phone_travel(destination: String)
+signal phone_service(service: String)
 
 const NOTICE_SECONDS := 7.0
 const MAX_NOTICES := 4
@@ -770,6 +771,18 @@ func _fill_phone() -> void:
 				_phone_panel.visible = false
 				phone_invite.emit(townie))
 			_phone_list.add_child(b)
+	var t3 := UiTheme.title(Label.new(), 17)
+	t3.text = "Services"
+	_phone_list.add_child(t3)
+	var pizza := Button.new()
+	pizza.text = "Order Pizza  ·  §40"
+	pizza.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	pizza.focus_mode = Control.FOCUS_NONE
+	pizza.add_theme_font_size_override("font_size", 13)
+	pizza.pressed.connect(func():
+		_phone_panel.visible = false
+		phone_service.emit("pizza"))
+	_phone_list.add_child(pizza)
 	var t2 := UiTheme.title(Label.new(), 17)
 	t2.text = "Travel"
 	_phone_list.add_child(t2)

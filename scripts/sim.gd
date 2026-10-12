@@ -12,6 +12,8 @@ signal earned(amount: int)
 signal relationships_changed
 ## A "Try for Baby" went well with `partner`.
 signal baby_tried(partner: Sim)
+## A Move In or Propose went well; main brings `other` into the household.
+signal moving_in(other: Sim)
 ## Asks the HUD to show a panel ("career"...).
 signal panel_requested(panel: String)
 ## An activity or social was done long enough to count (for wants and goals).
@@ -85,6 +87,10 @@ var is_visitor := false
 var aspiration := "renaissance"
 ## Lasting perks bought in the Rewards Store.
 var perks: Array = []
+## The household's funds pay for things that cost money (null for townies).
+var wallet: BuildMode
+## Married partner, if any.
+var spouse: Sim
 ## Life stage (see Ages) and days lived in it; days of pregnancy (-1 = not expecting).
 var age_stage := "young_adult"
 var age_days := 0
@@ -346,6 +352,7 @@ func to_dict() -> Dictionary:
 		"body": [body_heavy, body_fit, long_sleeves, shorts],
 		"age": [age_stage, age_days, pregnant_days],
 		"perks": perks.duplicate(),
+		"spouse": spouse.sim_name if spouse != null and is_instance_valid(spouse) else "",
 		"traits": traits,
 		"aspiration": aspiration,
 		"needs": needs.values.duplicate(),
@@ -385,7 +392,10 @@ func from_dict(d: Dictionary, others: Array) -> void:
 	var pos: Array = d.get("position", [global_position.x, global_position.z])
 	global_position = Vector3(pos[0], 0.0, pos[1])
 	relationships.clear()
+	spouse = null
 	for o in others:
+		if o != self and o.sim_name == d.get("spouse", "") and d.get("spouse", "") != "":
+			spouse = o
 		if o != self and d.get("relationships", {}).has(o.sim_name):
 			var r: Array = d["relationships"][o.sim_name]
 			relationships[o] = Vector2(r[0], r[1])
@@ -405,6 +415,8 @@ func romance_with(o: Sim) -> float:
 
 
 func relationship_label(o: Sim) -> String:
+	if spouse == o:
+		return "Spouse"
 	return Socials.friendship_label(friendship_with(o), romance_with(o))
 
 
@@ -784,6 +796,14 @@ func _social_result(a: SimAction) -> void:
 	var s: Dictionary = a.interaction.social
 	if a.outcome and s.get("baby", false):
 		baby_tried.emit(t)
+	if a.outcome and s.get("marry", false):
+		spouse = t
+		t.spouse = self
+		emotions.add("married", "happy", 3, "Just Married!", "Happily ever after starts now.", 1440.0)
+		t.emotions.add("married", "happy", 3, "Just Married!", "Happily ever after starts now.", 1440.0)
+		announced.emit("%s and %s are now married!" % [sim_name, t.sim_name])
+	if a.outcome and (s.get("move_in", false) or s.get("marry", false)):
+		moving_in.emit(t)
 	count_stat("socials")
 	var stat: String = {"Tell a Joke": "jokes", "Flirt": "flirts", "Kiss": "kisses"}.get(a.interaction.name, "")
 	if stat != "" and a.outcome:
@@ -815,6 +835,12 @@ func _begin_perform(a: SimAction) -> void:
 	if a.target_sim != null:
 		_begin_social(a)
 		return
+	if a.interaction.cost > 0 and wallet != null:
+		if wallet.funds < a.interaction.cost:
+			_fail(a, "%s can't afford that (§%d)." % [sim_name, a.interaction.cost])
+			return
+		wallet.earn(-a.interaction.cost)
+		Sfx.play("cash", -8.0)
 	# Inexperienced cooks sometimes set the kitchen on fire.
 	if a.interaction.skill == "cooking" and a.interaction.leaves_mess != "" and lot != null \
 			and skills.level("cooking") < Catalog.FIRE_SKILL and _rng.randf() < Catalog.FIRE_CHANCE:
@@ -905,6 +931,13 @@ func _end_perform(a: SimAction, finished := false) -> void:
 		a.furniture.set_broken(true)
 		Sfx.play("demolish", -6.0)
 		announced.emit("Oh no, the %s broke! Click it to repair it." % a.furniture.display_name)
+	if finished and a.furniture.has_meta("servings") and lot != null:
+		var left: int = a.furniture.get_meta("servings") - 1
+		a.furniture.set_meta("servings", left)
+		if left <= 0:
+			lot.remove_furniture(a.furniture)
+			a.furniture.queue_free()
+			return
 	if finished and a.interaction.consumes and lot != null:
 		lot.remove_furniture(a.furniture)
 		a.furniture.queue_free()

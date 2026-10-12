@@ -37,6 +37,9 @@ var dialogs_enabled := true
 var _tips_seen := {}
 const COMMUNITY_LOTS := {
 	"park": {"name": "Willow Park", "description": "Benches, a fountain, grills and picnic tables."},
+	"gym": {"name": "Iron Works Gym", "description": "Treadmills and mirrors for working out and showing off."},
+	"library": {"name": "Maple Library", "description": "Shelves of books, computers and a quiet chess corner."},
+	"lounge": {"name": "The Blue Note Lounge", "description": "A bar, sofas and live guitar. Drinks cost a few Simoleons."},
 }
 var aspirations: AspirationTracker
 ## Everyone in the player's household; `sim`, `work` and `aspirations` are the
@@ -137,6 +140,16 @@ func _ready() -> void:
 			hud.show_notice("%s is on their way over!" % t.sim_name, "Phone")
 			visitors.invite(t))
 	hud.phone_travel.connect(travel)
+	hud.phone_service.connect(func(service: String):
+		if service == "pizza":
+			if location != "home":
+				hud.show_notice("Pizza can only be delivered to your home.", "Phone")
+			elif build.funds < 40:
+				hud.show_notice("Not enough Simoleons for pizza.", "Phone")
+			else:
+				build.earn(-40)
+				_pizza_due = Clock.total_minutes + 45.0
+				hud.show_notice("Pizza is on its way! It'll arrive in about 45 minutes.", "Phone"))
 	hud.set_phone(visitors, COMMUNITY_LOTS)
 	hud.set_others(lot)
 
@@ -167,6 +180,8 @@ func add_to_household(s: Sim) -> void:
 		lot.sims.append(s)
 	s.earned.connect(build.earn)
 	s.baby_tried.connect(func(p: Sim): life.try_for_baby(s, p))
+	s.wallet = build
+	s.moving_in.connect(_on_moving_in)
 	s.panel_requested.connect(func(p: String):
 		if p == "pay_bills":
 			bills.pay())
@@ -226,6 +241,22 @@ func tip(id: String, title: String, text: String) -> void:
 		return
 	_tips_seen[id] = true
 	EventDialog.ask(self, null, title, text, ["Got it"] as Array[String])
+
+
+## A townie said yes to moving in (or marrying): they join the household.
+func _on_moving_in(other: Sim) -> void:
+	if household.has(other) or not visitors.townies.has(other):
+		return
+	if household.size() >= MAX_HOUSEHOLD:
+		hud.show_notice("The household is full, so %s can't move in." % other.sim_name, "Household")
+		return
+	visitors.townies.erase(other)
+	other.is_visitor = false
+	other.reparent(self)
+	other.lot = lot
+	other.levels = levels
+	add_to_household(other)
+	hud.show_notice("%s has moved in! Click their portrait to play as them." % other.sim_name, "Household")
 
 
 func remove_from_household(s: Sim) -> void:
@@ -696,6 +727,7 @@ func _check_dev_args() -> void:
 
 ## Title screen over a slowly orbiting camera.
 var _mess_check := 0.0
+var _pizza_due := -1.0
 
 
 ## A messy home makes everyone there tense; more mess, stronger feeling.
@@ -703,6 +735,11 @@ func _update_mess() -> void:
 	if Clock.total_minutes < _mess_check:
 		return
 	_mess_check = Clock.total_minutes + 2.0
+	if _pizza_due >= 0.0 and Clock.total_minutes >= _pizza_due and location == "home":
+		_pizza_due = -1.0
+		lot.add_mess("pizza", lot.cell_to_world(Vector2i(10, 13)))
+		Sfx.play("notice", -4.0)
+		hud.show_notice("Pizza's here! It's waiting by the front door.", "Delivery")
 	var count := lot.messes().size()
 	var fires: Array[Furniture] = []
 	for m in lot.messes():
@@ -1002,9 +1039,13 @@ func _loading_screen(text: String) -> CanvasLayer:
 	return layer
 
 
-## A community park: paths, a fountain, benches, trees, grills and picnic tables.
+## A community lot: the park, the gym, the library or the lounge.
 func _place_community(dest: String) -> void:
 	home_id = dest
+	match dest:
+		"gym", "library", "lounge":
+			_place_venue(dest)
+			return
 	lot.add_floor(Rect2i(11, 0, 2, lot.size.y), 8)
 	lot.add_floor(Rect2i(0, 9, lot.size.x, 2), 8)
 	lot.add_floor(Rect2i(9, 7, 6, 6), 8)
@@ -1021,6 +1062,55 @@ func _place_community(dest: String) -> void:
 		_place("tree", c)
 	for c in [Vector2i(9, 13), Vector2i(14, 6), Vector2i(1, 17), Vector2i(22, 17), Vector2i(5, 11)]:
 		_place("bush", c)
+
+
+## An indoor venue: one big room with the right furniture.
+func _place_venue(dest: String) -> void:
+	var floor_style: int = {"gym": 8, "library": 2, "lounge": 7}[dest]
+	var wall_style: int = {"gym": 3, "library": 6, "lounge": 4}[dest]
+	lot.add_floor(Rect2i(3, 2, 18, 12), floor_style)
+	for r in [[Vector2i(3, 2), Vector2i(21, 2)], [Vector2i(3, 14), Vector2i(21, 14)], [Vector2i(3, 2), Vector2i(3, 14)], [Vector2i(21, 2), Vector2i(21, 14)]]:
+		for e in Lot.wall_run(r[0], r[1]):
+			lot.add_wall(e)
+			lot.paint_wall(e, wall_style)
+	lot.add_door(Vector3i(11, 14, 0))
+	lot.add_door(Vector3i(12, 14, 0))
+	for e in [Vector3i(6, 14, 0), Vector3i(17, 14, 0), Vector3i(6, 2, 0), Vector3i(12, 2, 0), Vector3i(17, 2, 0), Vector3i(3, 8, 1), Vector3i(21, 8, 1)]:
+		lot.add_window(e)
+	for c in [Vector2i(4, 3), Vector2i(20, 3), Vector2i(4, 13), Vector2i(20, 13)]:
+		_place("lamp", c)
+	match dest:
+		"gym":
+			for i in 4:
+				_place("treadmill", Vector2i(6 + i * 2, 3))
+			for i in 3:
+				_place("mirror", Vector2i(16 + i, 3))
+			_place("bench", Vector2i(7, 10), 2)
+			_place("plant", Vector2i(20, 8))
+			_place("fridge", Vector2i(19, 9), 3)
+			_place("toilet", Vector2i(4, 9), 1)
+			_place("shower", Vector2i(4, 11), 1)
+		"library":
+			for i in 6:
+				_place("bookshelf", Vector2i(5 + i * 2, 3))
+			_place("desk", Vector2i(6, 8))
+			_place("desk", Vector2i(10, 8))
+			_place("chess", Vector2i(16, 8))
+			_place("chess", Vector2i(18, 10))
+			_place("sofa", Vector2i(14, 12), 2)
+			_place("plant", Vector2i(20, 6))
+			_place("toilet", Vector2i(4, 9), 1)
+		"lounge":
+			_place("bar", Vector2i(9, 4))
+			_place("bar", Vector2i(12, 4))
+			_place("sofa", Vector2i(5, 8), 1)
+			_place("sofa", Vector2i(17, 9), 3)
+			_place("guitar", Vector2i(18, 4))
+			_place("chess", Vector2i(10, 10))
+			_place("plant", Vector2i(4, 6))
+			_place("plant", Vector2i(20, 6))
+			_place("toilet", Vector2i(4, 12), 1)
+	lot.add_floor(Rect2i(11, 14, 2, 4), 8)
 
 
 ## Shows Create a Sim over a paused game: the Sim stands in a studio away from
@@ -1395,6 +1485,20 @@ func _run_scenario(scenario: String, path: String) -> void:
 				rig.frame(lot.center() + Vector3(0, 0, 3), deg_to_rad(25.0), deg_to_rad(-25.0), 34.0)
 			await get_tree().create_timer(6.0).timeout
 			print("UPSTAIRS lot_level=%d action=%s y=%.2f" % [sim.lot.level, sim.current_action().label if sim.current_action() else "-", sim.global_position.y])
+		"lounge", "gym", "library":
+			Clock.total_minutes = 20.0 * 60.0
+			await travel(scenario)
+			Clock.set_speed(2)
+			await get_tree().create_timer(4.0).timeout
+		"movein":
+			var jules := visitors.neighbour
+			visitors.bring(jules, INF, lot.cell_to_world(Vector2i(10, 9)))
+			sim.global_position = lot.cell_to_world(Vector2i(13, 9))
+			sim.change_relationship(jules, 70.0, 80.0)
+			sim.queue_social(jules, Socials.find("Propose"))
+			Clock.set_speed(3)
+			await get_tree().create_timer(4.0).timeout
+			print("MOVEIN household=%d spouse=%s jules_visitor=%s" % [household.size(), sim.spouse.sim_name if sim.spouse else "-", jules.is_visitor])
 		"store":
 			aspirations.satisfaction = 2300
 			hud._show_page(5)
