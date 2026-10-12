@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -70,6 +70,7 @@ const INFO := {
 	"rug": ["Area Rug", 120],
 	"sculpture": ["Modern Sculpture", 400],
 	"monkey_bars": ["Monkey Bars", 450],
+	"column": ["Classic Column", 160],
 	"piano": ["Upright Piano", 1200],
 	"telescope": ["Telescope", 700],
 	"pond": ["Fishing Pond", 500],
@@ -91,7 +92,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -129,6 +130,7 @@ const DESCRIPTIONS := {
 	"dollhouse": "Endless make-believe. Builds a toddler's Imagination.",
 	"activity_table": "Crayons and blocks for little hands.",
 	"rug": "Ties the room together. Sims can walk on it.",
+	"column": "A full-height column to frame porches and open-plan rooms.",
 	"monkey_bars": "Climbing, hanging, showing off. Builds a child's Motor skill.",
 	"sculpture": "Bold, baffling, beautiful. Raises a room's look.",
 	"piano": "Polished keys for budding virtuosos. Practise to play for tips.",
@@ -601,6 +603,13 @@ static func create(kind: String) -> Furniture:
 			f.add_box(Vector3(1.5, 0.017, 1.5), Vector3(0, 0.009, 0), Color(0.92, 0.82, 0.65))
 			f.add_box(Vector3(0.9, 0.019, 0.9), Vector3(0, 0.01, 0), Color(0.3, 0.45, 0.6))
 			f.decor = 2
+		"column":
+			f.display_name = "Classic Column"
+			f.height = 2.8
+			f.add_box(Vector3(0.42, 0.14, 0.42), Vector3(0, 0.07, 0), WHITE)
+			f.add_box(Vector3(0.28, 2.52, 0.28), Vector3(0, 1.4, 0), Color(0.96, 0.95, 0.92))
+			f.add_box(Vector3(0.42, 0.14, 0.42), Vector3(0, 2.73, 0), WHITE)
+			f.decor = 1
 		"monkey_bars":
 			f.display_name = "Monkey Bars"
 			f.footprint = Vector2i(2, 1)

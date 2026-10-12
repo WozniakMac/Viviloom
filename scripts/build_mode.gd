@@ -185,7 +185,9 @@ func _on_press(p: Variant, screen_pos: Vector2) -> void:
 		Tool.DOOR:
 			var e := lot.edge_near(pt)
 			if lot.fences.has(e):
-				if not lot.gates.has(e) and _spend(Catalog.GATE_PRICE):
+				if not Lot.FENCE_STYLES[lot.fence_styles.get(e, 0)][3]:
+					notice.emit("That fence style can't have a gate.")
+				elif not lot.gates.has(e) and _spend(Catalog.GATE_PRICE):
 					lot.add_gate(e)
 			elif not lot.walls.has(e):
 				notice.emit("Doors go on walls (or fences, as gates).")
@@ -229,7 +231,7 @@ func _on_press(p: Variant, screen_pos: Vector2) -> void:
 					earn(Catalog.WALL_PRICE + (Catalog.DOOR_PRICE if lot.doors.has(e) else 0) + (Finishes.WINDOW_PRICE if lot.windows.has(e) else 0))
 					lot.remove_wall(e)
 				elif lot.fences.has(e):
-					earn(Catalog.FENCE_PRICE + (Catalog.GATE_PRICE if lot.gates.has(e) else 0))
+					earn(Lot.FENCE_STYLES[lot.fence_styles.get(e, 0)][2] + (Catalog.GATE_PRICE if lot.gates.has(e) else 0))
 					lot.remove_fence(e)
 	_refresh_overlays(p)
 
@@ -240,11 +242,12 @@ func _finish_wall() -> void:
 		for e in Lot.wall_run(_wall_start, _wall_end):
 			if lot.fences.has(e) or lot.walls.has(e) or not lot.edge_in_bounds(e):
 				continue
-			if funds < Catalog.FENCE_PRICE:
+			var fprice: int = Lot.FENCE_STYLES[fence_style][2]
+			if funds < fprice:
 				notice.emit("Out of funds.")
 				break
-			if lot.add_fence(e):
-				_spend(Catalog.FENCE_PRICE)
+			if lot.add_fence(e, fence_style):
+				_spend(fprice)
 		_wall_start = null
 		_wall_preview.visible = false
 		return
@@ -291,6 +294,7 @@ func _finish_pool() -> void:
 
 ## Terrain paint over the dragged rectangle (outdoor ground only shows it).
 var terrain_style := 1
+var fence_style := 0
 
 
 func _finish_terrain() -> void:
@@ -636,7 +640,7 @@ func _build_ui() -> void:
 	var tool_defs := [
 		[Tool.MOVE, "move", "Move objects: click to pick up, click to put down. R rotates, Delete sells."],
 		[Tool.WALL, "wall", "Wall tool: drag along the grid (§%d per segment)" % Catalog.WALL_PRICE],
-		[Tool.FENCE, "fence", "Fence tool: drag a picket fence along the grid (§%d per segment)" % Catalog.FENCE_PRICE],
+		[Tool.FENCE, "fence", "Fences & half walls: pick a style below, then drag along the grid"],
 		[Tool.ROOM, "room", "Room tool: drag a rectangle to build four walls at once (§%d per segment)" % Catalog.WALL_PRICE],
 		[Tool.ROOF, "roof", "Roof & Foundation: choose the roof shape and colour, or raise the house (§%d)" % Lot.ROOF_PRICE],
 		[Tool.DOOR, "door", "Door tool: click a wall to add a door (§%d), or a fence for a gate (§%d)" % [Catalog.DOOR_PRICE, Catalog.GATE_PRICE]],
@@ -795,7 +799,7 @@ func _show_category(cat: String) -> void:
 func _show_swatches() -> void:
 	if _swatch_box == null:
 		return
-	var painting := tool == Tool.PAINT or tool == Tool.FLOOR or tool == Tool.ROOF or tool == Tool.TERRAIN
+	var painting := tool == Tool.PAINT or tool == Tool.FLOOR or tool == Tool.ROOF or tool == Tool.TERRAIN or tool == Tool.FENCE
 	_tiles_scroll.visible = not painting
 	_swatch_box.visible = painting
 	for c in _swatch_box.get_children():
@@ -804,6 +808,16 @@ func _show_swatches() -> void:
 		return
 	if tool == Tool.ROOF:
 		_show_roof_swatches()
+		return
+	if tool == Tool.FENCE:
+		for i in Lot.FENCE_STYLES.size():
+			var fs: Array = Lot.FENCE_STYLES[i]
+			var b := _roof_button(fs[0], fence_style == i, fs[1])
+			b.tooltip_text = "%s\n§ %d per segment" % [fs[0], fs[2]]
+			b.pressed.connect(func():
+				fence_style = i
+				_show_swatches())
+			_swatch_box.add_child(b)
 		return
 	var list: Array = Finishes.WALLS if tool == Tool.PAINT else (Finishes.TERRAIN if tool == Tool.TERRAIN else Finishes.FLOORS)
 	var current := wall_style if tool == Tool.PAINT else (terrain_style if tool == Tool.TERRAIN else floor_style)

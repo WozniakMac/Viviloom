@@ -50,6 +50,15 @@ var y_offset := 0.0
 var _plinth: MeshInstance3D
 var _steps: Array[Node3D] = []
 var gates := {}
+## Edge -> fence style (see FENCE_STYLES); missing means the white picket fence.
+var fence_styles := {}
+## [name, colour, price per segment, can have a gate]
+const FENCE_STYLES := [
+	["White Picket", Color(0.97, 0.97, 0.95), 12, true],
+	["Half Wall", Color(0.94, 0.92, 0.86), 20, false],
+	["Iron Railing", Color(0.16, 0.16, 0.18), 18, true],
+	["Hedge", Color(0.24, 0.45, 0.22), 15, false],
+]
 const FENCE_HEIGHT := 0.9
 ## Vector2i tile -> Finishes.FLOORS index.
 var floor_tiles := {}
@@ -277,9 +286,11 @@ func remove_wall(e: Vector3i) -> bool:
 
 ## A low white picket fence along an edge (not on walls). Fences block walking but
 ## don't count as room walls and are never cut away.
-func add_fence(e: Vector3i) -> bool:
+func add_fence(e: Vector3i, style := 0) -> bool:
 	if fences.has(e) or walls.has(e) or not edge_in_bounds(e):
 		return false
+	if style != 0:
+		fence_styles[e] = style
 	fences[e] = _make_fence_visual(e, false)
 	_dirty = true
 	return true
@@ -291,13 +302,14 @@ func remove_fence(e: Vector3i) -> bool:
 	(fences[e] as Node3D).queue_free()
 	fences.erase(e)
 	gates.erase(e)
+	fence_styles.erase(e)
 	_dirty = true
 	return true
 
 
 ## Turns a fence segment into a swinging gate.
 func add_gate(e: Vector3i) -> bool:
-	if not fences.has(e) or gates.has(e):
+	if not fences.has(e) or gates.has(e) or not FENCE_STYLES[fence_styles.get(e, 0)][3]:
 		return false
 	gates[e] = true
 	(fences[e] as Node3D).queue_free()
@@ -307,14 +319,33 @@ func add_gate(e: Vector3i) -> bool:
 
 
 func _make_fence_visual(e: Vector3i, gate: bool) -> Node3D:
+	var style: int = fence_styles.get(e, 0)
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.97, 0.97, 0.95)
+	mat.albedo_color = FENCE_STYLES[style][1]
 	mat.roughness = 0.7
 	var n := Node3D.new()
 	n.name = "Fence"
 	n.position = edge_center(e)
 	if e.z == 1:
 		n.rotation.y = PI * 0.5
+	match style:
+		1:
+			# A solid half-height wall with a capping rail, like a breakfast-bar divider.
+			_wall_box(n, Vector3(CELL + WALL_THICKNESS, 1.0, WALL_THICKNESS), Vector3(0, 0.5, 0), mat)
+			var cap := StandardMaterial3D.new()
+			cap.albedo_color = Color(0.55, 0.4, 0.28)
+			_wall_box(n, Vector3(CELL + WALL_THICKNESS + 0.04, 0.05, WALL_THICKNESS + 0.08), Vector3(0, 1.02, 0), cap)
+			add_child(n)
+			return n
+		3:
+			# A neatly clipped hedge.
+			mat.roughness = 1.0
+			_wall_box(n, Vector3(CELL + 0.1, 1.1, 0.5), Vector3(0, 0.55, 0), mat)
+			add_child(n)
+			return n
+		2:
+			mat.metallic = 0.6
+			mat.roughness = 0.4
 	# Corner posts with little caps.
 	for px in [-0.5, 0.5]:
 		_wall_box(n, Vector3(0.1, FENCE_HEIGHT + 0.08, 0.1), Vector3(px, (FENCE_HEIGHT + 0.08) * 0.5, 0), mat)
@@ -333,7 +364,8 @@ func _make_fence_visual(e: Vector3i, gate: bool) -> Node3D:
 		_wall_box(holder, Vector3(0.9, 0.06, 0.03), Vector3(ox, ry, 0.03), mat)
 	for k in 6:
 		var x := -0.375 + k * 0.15
-		_wall_box(holder, Vector3(0.08, FENCE_HEIGHT - 0.05, 0.025), Vector3(ox + x, (FENCE_HEIGHT - 0.05) * 0.5, 0), mat)
+		var bar_w := 0.03 if style == 2 else 0.08
+		_wall_box(holder, Vector3(bar_w, FENCE_HEIGHT - 0.05, 0.025), Vector3(ox + x, (FENCE_HEIGHT - 0.05) * 0.5, 0), mat)
 		var tip := MeshInstance3D.new()
 		var pr := PrismMesh.new()
 		pr.size = Vector3(0.08, 0.07, 0.025)

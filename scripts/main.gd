@@ -1108,7 +1108,7 @@ func _lot_dict() -> Dictionary:
 		pool_rects.append([r.position.x, r.position.y, r.size.x, r.size.y])
 	var fences: Array = []
 	for e in lot.fences:
-		fences.append([e.x, e.y, e.z, lot.gates.has(e)])
+		fences.append([e.x, e.y, e.z, lot.gates.has(e), lot.fence_styles.get(e, 0)])
 	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "fences": fences, "roof": [lot.roof_style, lot.roof_color], "foundation": lot.foundation, "terrain": lot.terrain_tiles.keys().map(func(c): return [c.x, c.y, lot.terrain_tiles[c]]), "lot_traits": lot.lot_traits.duplicate(), "upper": _level_dict(upper)}
 
 
@@ -1185,7 +1185,7 @@ func _apply_lot_dict(d: Dictionary) -> void:
 		(l as Lot).lot_traits = d.get("lot_traits", []).duplicate()
 	for fe in d.get("fences", []):
 		var fe_e := Vector3i(int(fe[0]), int(fe[1]), int(fe[2]))
-		lot.add_fence(fe_e)
+		lot.add_fence(fe_e, int(fe[4]) if fe.size() > 4 else 0)
 		if fe[3]:
 			lot.add_gate(fe_e)
 	for p in d.get("pools", []):
@@ -1831,6 +1831,15 @@ func _run_scenario(scenario: String, path: String) -> void:
 			lot.wall_view = Lot.WallView.CUTAWAY
 			rig.frame(pn.global_position, deg_to_rad(25.0), deg_to_rad(-35.0), 8.0)
 			await get_tree().create_timer(4.0).timeout
+		"fencestyles":
+			for st in 4:
+				for e in Lot.wall_run(Vector2i(2 + st * 5, 16), Vector2i(6 + st * 5, 16)):
+					lot.add_fence(e, st)
+			lot.add_gate(Vector3i(4, 16, 0))
+			_place("column", Vector2i(10, 14))
+			_place("column", Vector2i(12, 14))
+			rig.frame(lot.cell_to_world(Vector2i(11, 16)), deg_to_rad(10.0), deg_to_rad(-25.0), 14.0)
+			await get_tree().create_timer(1.0).timeout
 		"terrain":
 			for x in range(1, 23):
 				for y in range(14, 19):

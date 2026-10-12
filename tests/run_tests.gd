@@ -49,6 +49,7 @@ func _ready() -> void:
 	_test_foundation()
 	_test_terrain()
 	_test_townie_babies()
+	_test_fence_styles()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -988,4 +989,20 @@ func _test_townie_babies() -> void:
 			break
 	_check(born and v.townies.any(func(t): return t.age_stage == "toddler"), "townie couples have children")
 	v.queue_free()
+	lot.queue_free()
+
+
+func _test_fence_styles() -> void:
+	var lot := _make_lot()
+	add_child(lot)
+	lot.add_fence(Vector3i(3, 4, 0), 1)
+	_check(lot.fence_styles[Vector3i(3, 4, 0)] == 1 and lot.edge_blocks(Vector3i(3, 4, 0)), "half walls block walking")
+	_check(not lot.add_gate(Vector3i(3, 4, 0)), "half walls can't have gates")
+	lot.add_fence(Vector3i(4, 4, 0), 2)
+	_check(lot.add_gate(Vector3i(4, 4, 0)), "iron railings can")
+	lot.remove_fence(Vector3i(3, 4, 0))
+	_check(not lot.fence_styles.has(Vector3i(3, 4, 0)), "removing a fence forgets its style")
+	var col := Catalog.create("column")
+	_check(col.blocks and col.decor > 0, "columns stand in the way and look nice")
+	col.free()
 	lot.queue_free()
