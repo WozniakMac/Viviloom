@@ -177,6 +177,10 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			ci.draw_circle(c + Vector2(-s * 0.35, s * 0.25), s * 0.5, col)
 			ci.draw_arc(c + Vector2(s * 0.45, -s * 0.35), s * 0.42, 0, TAU, 16, col, 2.0, true)
 			ci.draw_arc(c + Vector2(s * 0.5, s * 0.55), s * 0.25, 0, TAU, 12, col, 1.5, true)
+		"phone":
+			ci.draw_rect(Rect2(c - Vector2(s * 0.55, s), Vector2(s * 1.1, s * 2)), col)
+			ci.draw_rect(Rect2(c - Vector2(s * 0.4, s * 0.75), Vector2(s * 0.8, s * 1.35)), Color.WHITE)
+			ci.draw_circle(c + Vector2(0, s * 0.8), s * 0.12, Color.WHITE)
 		"menu":
 			for x in [-0.6, 0.0, 0.6]:
 				ci.draw_circle(c + Vector2(x * s, 0), s * 0.2, col)

@@ -19,6 +19,8 @@ var build: BuildMode
 var due := 0
 var due_day := 0
 var power_off := false
+## Bills only come and the power only goes while the household is at home.
+var active := true
 var _last_bill_day := 1
 
 
@@ -35,7 +37,7 @@ func home_value() -> int:
 
 
 func _process(_delta: float) -> void:
-	if lot == null:
+	if lot == null or not active:
 		return
 	var day := Clock.day()
 	if day - _last_bill_day >= PERIOD_DAYS and Clock.hour() >= BILL_HOUR:

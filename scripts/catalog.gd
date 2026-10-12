@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain"]
 
 ## Display name and price for the build-mode catalogue.
 const INFO := {
@@ -24,6 +24,12 @@ const INFO := {
 	"sink": ["Kitchen Sink", 260],
 	"plant": ["Potted Plant", 60],
 	"mailbox": ["Mailbox", 50],
+	"bench": ["Park Bench", 180],
+	"tree": ["Shade Tree", 120],
+	"bush": ["Round Bush", 40],
+	"grill": ["Charcoal Grill", 280],
+	"picnic_table": ["Picnic Table", 320],
+	"fountain": ["Wishing Fountain", 900],
 }
 ## Build-mode catalogue sections: [id, label]; "all" lists everything.
 const CATEGORIES := [["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"], ["living", "Living"], ["outdoor", "Outdoor"]]
@@ -32,6 +38,7 @@ const CATEGORY_OF := {
 	"tv": "fun", "desk": "fun", "chess": "hobby", "easel": "hobby", "bookshelf": "hobby", "lamp": "bedroom",
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
+	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -52,6 +59,12 @@ const DESCRIPTIONS := {
 	"sink": "Wash up, freshen up.",
 	"plant": "A bit of green. Needs the occasional drink.",
 	"mailbox": "Bills arrive here. Pay them before the power goes out.",
+	"bench": "Sit a while and watch the world go by.",
+	"tree": "Leafy, shady, and very good at standing still.",
+	"bush": "A tidy little bush.",
+	"grill": "Burgers taste better outdoors.",
+	"picnic_table": "Room for a whole family's lunch.",
+	"fountain": "Toss in a coin and make a wish.",
 }
 const WALL_PRICE := 14
 const DOOR_PRICE := 150
@@ -309,6 +322,42 @@ static func create(kind: String) -> Furniture:
 			var pay := Interaction.new("Pay Bills", {}, 10.0, "", "stand", true)
 			pay.opens_panel = "pay_bills"
 			f.interactions = [pay]
+		"bench":
+			f.display_name = "Park Bench"
+			f.footprint = Vector2i(2, 1)
+			f.height = 0.9
+			f.spots = [Vector3(0, 0, 0.9), Vector3(-0.6, 0, 0.9), Vector3(0.6, 0, 0.9)]
+			f.use_position = Vector3(0, 0.0, 0.0)
+			f.use_facing = Vector3(0, 0, 1)
+			f.interactions = [Interaction.new("Sit", {"fun": 6.0, "energy": 2.0}, 60.0, "", "sit")]
+		"tree", "bush":
+			f.display_name = INFO[kind][0]
+			f.height = 3.0 if kind == "tree" else 0.8
+		"grill":
+			f.display_name = "Charcoal Grill"
+			f.height = 1.0
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Grill Burgers", {"hunger": 75.0, "fun": 8.0}, 50.0, "hunger", "stand", true).practices("cooking", 60.0).grants("bbq", "happy", 1, "Backyard Barbecue", "Nothing beats a grilled burger.", 180.0),
+			]
+		"picnic_table":
+			f.display_name = "Picnic Table"
+			f.footprint = Vector2i(2, 2)
+			f.height = 0.8
+			f.spots = [Vector3(0, 0, 1.3), Vector3(0, 0, -1.3)]
+			f.use_position = Vector3(0, 0, 0.6)
+			f.use_facing = Vector3(0, 0, -1)
+			f.interactions = [
+				Interaction.new("Have a Picnic", {"hunger": 60.0, "social": 10.0, "fun": 10.0}, 45.0, "hunger", "sit", true).grants("picnic", "happy", 1, "Lovely Picnic", "Fresh air and good food.", 180.0),
+			]
+		"fountain":
+			f.display_name = "Wishing Fountain"
+			f.footprint = Vector2i(2, 2)
+			f.height = 1.3
+			f.spots = [Vector3(0, 0, 1.4), Vector3(1.4, 0, 0), Vector3(-1.4, 0, 0)]
+			f.interactions = [
+				Interaction.new("Make a Wish", {"fun": 20.0}, 10.0, "", "stand", true).grants("wished", "inspired", 1, "Made a Wish", "Maybe it'll come true...", 240.0),
+			]
 		_:
 			push_error("Unknown furniture kind: %s" % kind)
 	f.price = INFO[kind][1]

@@ -22,6 +22,13 @@ var work: Work
 var daylight: Daylight
 var bills: Bills
 var life: LifeCycle
+## "home" or a community lot id (see COMMUNITY_LOTS); the home's build is kept in
+## _home_snapshot while the household is out.
+var location := "home"
+var _home_snapshot := {}
+const COMMUNITY_LOTS := {
+	"park": {"name": "Willow Park", "description": "Benches, a fountain, grills and picnic tables."},
+}
 var aspirations: AspirationTracker
 ## Everyone in the player's household; `sim`, `work` and `aspirations` are the
 ## active member's.
@@ -91,8 +98,20 @@ func _ready() -> void:
 	visitors.name = "Visitors"
 	add_child(visitors)
 	visitors.setup(lot)
-	visitors.arrived.connect(func(v: Sim): hud.show_notice("%s from next door has dropped by to say hello. Click them to socialize." % v.sim_name, "Visitor"))
-	visitors.left.connect(func(v: Sim): hud.show_notice("%s has gone home for the evening." % v.sim_name, "Visitor"))
+	visitors.arrived.connect(func(v: Sim):
+		var hello := "%s from next door has dropped by to say hello." if v == visitors.neighbour else "%s has come over to visit."
+		hud.show_notice((hello % v.sim_name) + " Click them to socialize.", "Visitor"))
+	visitors.left.connect(func(v: Sim): hud.show_notice("%s has gone home." % v.sim_name, "Visitor"))
+	hud.phone_invite.connect(func(t: Sim):
+		if location != "home":
+			hud.show_notice("Invite people over once you're back home.", "Phone")
+		elif not t.away:
+			hud.show_notice("%s is already here." % t.sim_name, "Phone")
+		else:
+			hud.show_notice("%s is on their way over!" % t.sim_name, "Phone")
+			visitors.invite(t))
+	hud.phone_travel.connect(travel)
+	hud.set_phone(visitors, COMMUNITY_LOTS)
 	hud.set_others(lot)
 
 	hud.menu_requested.connect(func():
@@ -546,6 +565,19 @@ func _check_dev_args() -> void:
 		var m: AudioStreamPlayer = Sfx._music[Sfx._music_on]
 		print("AUDIO music=%s playing=%s ambience=%s playing=%s voice=%s" % [Sfx._music_name, m.playing, Sfx._ambience_name, Sfx._ambience.playing, voiced])
 		get_tree().quit()
+	elif scenario == "travelcheck":
+		_enter_live()
+		var before := lot.furniture.size()
+		var walls_before := lot.walls.size()
+		await travel("park")
+		await get_tree().create_timer(1.0).timeout
+		var at_park := lot.furniture.size()
+		var townies := visitors.present().size()
+		await travel("home")
+		await get_tree().create_timer(1.0).timeout
+		var ok := lot.furniture.size() == before and lot.walls.size() == walls_before and at_park > 10 and townies == 3 and visitors.present().is_empty()
+		print("TRAVEL %s home=%d/%d park=%d townies=%d" % ["OK" if ok else "FAIL", lot.furniture.size(), before, at_park, townies])
+		get_tree().quit()
 	elif scenario == "new":
 		open_create_a_sim()
 	elif scenario != "skip_cas":
@@ -607,7 +639,8 @@ func open_game_menu() -> void:
 	m.setup(SaveGame.exists())
 
 
-func save_game() -> void:
+## The home's build: walls, finishes and objects (also kept while away travelling).
+func _lot_dict() -> Dictionary:
 	var walls: Array = []
 	for e in lot.walls:
 		walls.append([e.x, e.y, e.z, lot.doors.has(e), lot.windows.has(e), lot.wall_styles.get(e, 0)])
@@ -617,39 +650,10 @@ func save_game() -> void:
 	var objects: Array = []
 	for f in lot.furniture:
 		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps])
-	var data := {
-		"version": 1,
-		"minutes": Clock.total_minutes,
-		"funds": build.funds,
-		"home": home_id,
-		"walls": walls,
-		"floors": floors,
-		"objects": objects,
-		"household": household.map(func(m: Sim): return {
-			"sim": m.to_dict(),
-			"work": (works[m] as Work).to_dict(),
-			"aspiration": (trackers[m] as AspirationTracker).to_dict(),
-		}),
-		"active": household.find(sim),
-		"neighbour": visitors.neighbour.to_dict(),
-		"bills": bills.to_dict(),
-	}
-	if SaveGame.write(data):
-		hud.show_notice("Game saved.", "OpenSims")
-	else:
-		hud.show_notice("Couldn't save the game.", "OpenSims")
+	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects}
 
 
-func load_game() -> void:
-	var d := SaveGame.read()
-	if d.is_empty():
-		hud.show_notice("No saved game found.", "OpenSims")
-		_enter_live()
-		return
-	Clock.total_minutes = d.get("minutes", Clock.total_minutes)
-	build.funds = int(d.get("funds", build.funds))
-	build.funds_changed.emit(build.funds)
-	sim.clear_queue()
+func _apply_lot_dict(d: Dictionary) -> void:
 	lot.clear_build()
 	home_id = d.get("home", "cottage")
 	_place_grounds(home_id)
@@ -670,6 +674,42 @@ func load_game() -> void:
 	for o in d.get("objects", []):
 		if Catalog.INFO.has(o[0]):
 			_place(o[0], Vector2i(int(o[1]), int(o[2])), int(o[3]))
+
+
+func save_game() -> void:
+	var data := _lot_dict() if location == "home" else _home_snapshot.duplicate()
+	data.merge({
+		"version": 1,
+		"minutes": Clock.total_minutes,
+		"funds": build.funds,
+		"household": household.map(func(m: Sim): return {
+			"sim": m.to_dict(),
+			"work": (works[m] as Work).to_dict(),
+			"aspiration": (trackers[m] as AspirationTracker).to_dict(),
+		}),
+		"active": household.find(sim),
+		"townies": visitors.to_dict(),
+		"bills": bills.to_dict(),
+	}, true)
+	if SaveGame.write(data):
+		hud.show_notice("Game saved.", "OpenSims")
+	else:
+		hud.show_notice("Couldn't save the game.", "OpenSims")
+
+
+func load_game() -> void:
+	var d := SaveGame.read()
+	if d.is_empty():
+		hud.show_notice("No saved game found.", "OpenSims")
+		_enter_live()
+		return
+	Clock.total_minutes = d.get("minutes", Clock.total_minutes)
+	build.funds = int(d.get("funds", build.funds))
+	build.funds_changed.emit(build.funds)
+	sim.clear_queue()
+	visitors.send_all_home()
+	_set_location("home")
+	_apply_lot_dict(d)
 	var members: Array = d.get("household", [])
 	if members.is_empty() and d.has("sim"):
 		members = [{"sim": d["sim"], "work": d.get("work", {}), "aspiration": d.get("aspiration", {})}]
@@ -679,17 +719,110 @@ func load_game() -> void:
 	while household.size() > maxi(members.size(), 1):
 		remove_from_household(household[household.size() - 1])
 	var everyone: Array = household.duplicate()
-	everyone.append(visitors.neighbour)
+	everyone.append_array(visitors.townies)
 	for i in members.size():
 		var m: Dictionary = members[i]
 		household[i].from_dict(m.get("sim", {}), everyone)
 		(works[household[i]] as Work).from_dict(m.get("work", {}))
 		(trackers[household[i]] as AspirationTracker).from_dict(m.get("aspiration", {}))
-	visitors.neighbour.from_dict(d.get("neighbour", {}), everyone)
+	if d.has("townies"):
+		visitors.from_dict(d["townies"], everyone)
+	elif d.has("neighbour"):
+		visitors.from_dict([d["neighbour"]], everyone)
 	bills.from_dict(d.get("bills", {}))
 	select_sim(household[clampi(int(d.get("active", 0)), 0, household.size() - 1)])
 	_enter_live(false)
 	hud.show_notice("Welcome back! Your game was loaded.", "OpenSims")
+
+
+# --- travelling --------------------------------------------------------------------
+
+## Takes the whole household to a community lot or back home, with a short
+## loading screen. The home is rebuilt exactly as it was.
+func travel(dest: String) -> void:
+	if dest == location:
+		return
+	if build.active:
+		build.exit()
+	var cover := _loading_screen("Travelling to %s..." % ("home" if dest == "home" else COMMUNITY_LOTS[dest]["name"]))
+	await get_tree().create_timer(0.6).timeout
+	if location == "home":
+		_home_snapshot = _lot_dict()
+	for m in household:
+		m.clear_queue()
+	visitors.send_all_home()
+	if dest == "home":
+		_apply_lot_dict(_home_snapshot)
+	else:
+		lot.clear_build()
+		_place_community(dest)
+	_set_location(dest)
+	for i in household.size():
+		var m := household[i]
+		if not m.away:
+			m.global_position = lot.cell_to_world(Vector2i(9 + i, lot.size.y - 2))
+	if dest != "home":
+		visitors.populate(3, [lot.cell_to_world(Vector2i(6, 8)), lot.cell_to_world(Vector2i(16, 6)), lot.cell_to_world(Vector2i(14, 13))])
+		hud.show_notice("Welcome to %s! %s" % [COMMUNITY_LOTS[dest]["name"], COMMUNITY_LOTS[dest]["description"]], "Travel")
+	else:
+		hud.show_notice("Home sweet home.", "Travel")
+	rig.frame(lot.center(), rig.yaw, rig.pitch, 22.0)
+	var tw := cover.create_tween()
+	tw.tween_property(cover.get_child(0), "modulate:a", 0.0, 0.5)
+	tw.tween_callback(cover.queue_free)
+
+
+func _set_location(dest: String) -> void:
+	location = dest
+	visitors.at_home = dest == "home"
+	bills.active = dest == "home"
+	build.allowed = dest == "home"
+
+
+func _loading_screen(text: String) -> CanvasLayer:
+	var layer := CanvasLayer.new()
+	layer.layer = 20
+	add_child(layer)
+	var bg := ColorRect.new()
+	bg.color = Color(0.13, 0.3, 0.62)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(bg)
+	var plumbob := MainMenu.Logo.new()
+	plumbob.custom_minimum_size = Vector2(420, 120)
+	plumbob.set_anchors_preset(Control.PRESET_CENTER)
+	plumbob.position = Vector2(-210, -120)
+	bg.add_child(plumbob)
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 22)
+	l.add_theme_color_override("font_color", Color.WHITE)
+	l.set_anchors_preset(Control.PRESET_CENTER)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.position = Vector2(-300, 30)
+	l.size = Vector2(600, 40)
+	bg.add_child(l)
+	return layer
+
+
+## A community park: paths, a fountain, benches, trees, grills and picnic tables.
+func _place_community(dest: String) -> void:
+	home_id = dest
+	lot.add_floor(Rect2i(11, 0, 2, lot.size.y), 8)
+	lot.add_floor(Rect2i(0, 9, lot.size.x, 2), 8)
+	lot.add_floor(Rect2i(9, 7, 6, 6), 8)
+	_place("fountain", Vector2i(11, 9))
+	_place("bench", Vector2i(9, 6), 0)
+	_place("bench", Vector2i(13, 13), 2)
+	_place("bench", Vector2i(15, 7), 0)
+	_place("picnic_table", Vector2i(3, 3))
+	_place("picnic_table", Vector2i(18, 14))
+	_place("grill", Vector2i(6, 3), 0)
+	_place("grill", Vector2i(21, 14), 0)
+	_place("chess", Vector2i(17, 3))
+	for c in [Vector2i(1, 1), Vector2i(8, 1), Vector2i(15, 1), Vector2i(21, 2), Vector2i(2, 13), Vector2i(7, 15), Vector2i(20, 8), Vector2i(4, 7)]:
+		_place("tree", c)
+	for c in [Vector2i(9, 13), Vector2i(14, 6), Vector2i(1, 17), Vector2i(22, 17), Vector2i(5, 11)]:
+		_place("bush", c)
 
 
 ## Shows Create a Sim over a paused game: the Sim stands in a studio away from
@@ -907,6 +1040,14 @@ func _run_scenario(scenario: String, path: String) -> void:
 			hud._show_page(4)
 			Clock.set_speed(3)
 			await get_tree().create_timer(3.0).timeout
+		"park":
+			Clock.total_minutes = 11.0 * 60.0
+			await travel("park")
+			Clock.set_speed(2)
+			await get_tree().create_timer(4.0).timeout
+		"phone":
+			hud._toggle_phone()
+			await get_tree().create_timer(0.6).timeout
 		"family":
 			var stages := ["toddler", "child", "teen", "adult", "elder"]
 			for i in stages.size():

@@ -338,11 +338,60 @@ def mailbox(M):
     box((0.02, 0.14, 0.04), (0.14, 1.18, 0.12), M["red"], 0.005)
 
 
+def bench(M):
+    for x in (-0.75, 0.75):
+        box((0.08, 0.42, 0.42), (x, 0.21, 0.0), M["metal"], 0.01)
+        box((0.08, 0.5, 0.06), (x, 0.65, -0.2), M["metal"], 0.01)
+    for k in range(4):
+        box((1.7, 0.035, 0.09), (0, 0.44, -0.15 + k * 0.1), M["wood_light"], 0.008)
+    for k in range(3):
+        box((1.7, 0.08, 0.03), (0, 0.6 + k * 0.11, -0.22), M["wood_light"], 0.008)
+
+
+def tree(M):
+    cylinder(0.12, 1.8, (0, 0.9, 0), M["wood_dark"], 12, 0.08)
+    for (x, y, z, r) in ((0, 2.3, 0, 0.9), (0.45, 2.0, 0.2, 0.6), (-0.4, 2.05, -0.15, 0.62), (0.1, 2.75, -0.1, 0.6), (-0.2, 1.9, 0.4, 0.5)):
+        sphere((r, r * 0.85, r), (x, y, z), M["leaf"])
+
+
+def bush(M):
+    for (x, y, z, r) in ((0, 0.35, 0, 0.42), (0.25, 0.3, 0.15, 0.3), (-0.25, 0.28, -0.1, 0.32)):
+        sphere((r, r * 0.8, r), (x, y, z), M["leaf"])
+
+
+def grill(M):
+    for x in (-0.25, 0.25):
+        for z in (-0.18, 0.18):
+            cylinder(0.02, 0.75, (x, 0.37, z), M["metal"], 8)
+    box((0.7, 0.2, 0.45), (0, 0.82, 0), M["dark"], 0.04)
+    box((0.66, 0.02, 0.41), (0, 0.93, 0), M["metal"], 0.0)
+    box((0.7, 0.04, 0.3), (0, 0.5, 0), M["wood"], 0.01)
+
+
+def picnic_table(M):
+    box((1.6, 0.05, 0.7), (0, 0.74, 0), M["wood_light"], 0.01)
+    for z in (-0.6, 0.6):
+        box((1.6, 0.04, 0.26), (0, 0.44, z), M["wood_light"], 0.01)
+    for x in (-0.6, 0.6):
+        tilted(box((0.06, 0.95, 0.06), (x, 0.38, 0.3), M["wood"], 0.008), 32)
+        tilted(box((0.06, 0.95, 0.06), (x, 0.38, -0.3), M["wood"], 0.008), -32)
+        box((0.06, 0.06, 1.5), (x, 0.4, 0), M["wood"], 0.008)
+
+
+def fountain(M):
+    cylinder(1.0, 0.4, (0, 0.2, 0), M["counter_top"], 40)
+    cylinder(0.85, 0.05, (0, 0.38, 0), M["glass"], 40)
+    cylinder(0.12, 0.9, (0, 0.65, 0), M["counter_top"], 16)
+    cylinder(0.4, 0.12, (0, 1.1, 0), M["counter_top"], 24, 0.32)
+    cylinder(0.3, 0.04, (0, 1.15, 0), M["glass"], 24)
+
+
 OBJECTS = {
     "fridge": fridge, "bed": bed, "toilet": toilet, "shower": shower, "tv": tv, "desk": desk,
     "bookshelf": bookshelf, "easel": easel, "chess": chess, "lamp": lamp, "sofa": sofa,
     "dining_table": dining_table, "chair": chair, "counter": counter, "stove": stove,
-    "sink": sink, "plant": plant, "mailbox": mailbox,
+    "sink": sink, "plant": plant, "mailbox": mailbox, "bench": bench, "tree": tree, "bush": bush,
+    "grill": grill, "picnic_table": picnic_table, "fountain": fountain,
 }
 
 

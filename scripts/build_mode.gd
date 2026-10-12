@@ -16,6 +16,8 @@ var camera: Camera3D
 var active := false
 var tool := Tool.MOVE
 var funds := 20000
+## Build mode only works on the household's own lot.
+var allowed := true
 
 var _held: Furniture = null
 var _held_is_new := false
@@ -57,6 +59,9 @@ func _ready() -> void:
 
 func enter() -> void:
 	if active:
+		return
+	if not allowed:
+		notice.emit("You can only build on your own lot.")
 		return
 	active = true
 	_speed_before = maxi(Clock.speed, 1)

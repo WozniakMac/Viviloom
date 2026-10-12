@@ -18,6 +18,8 @@ const NEED_COLORS := {
 signal menu_requested
 ## A household member's portrait was clicked.
 signal sim_selected(sim: Sim)
+signal phone_invite(townie: Sim)
+signal phone_travel(destination: String)
 
 const NOTICE_SECONDS := 7.0
 const MAX_NOTICES := 4
@@ -261,6 +263,10 @@ var _aspiration_box: VBoxContainer
 var _wants_box: HBoxContainer
 var aspirations: AspirationTracker
 var _household_box: HBoxContainer
+var _phone_panel: PanelContainer
+var _phone_list: VBoxContainer
+var _visitors: Visitors
+var _destinations := {}
 var _asp_refresh := 0.0
 var work: Work
 var _away_label: Label
@@ -702,6 +708,19 @@ func _build_sim_cluster() -> void:
 	_funds_label.mouse_filter = Control.MOUSE_FILTER_PASS
 	funds_pill.add_child(_funds_label)
 
+	var phone := IconButton.make("phone", 38, "Phone: invite friends over or travel")
+	phone.position = Vector2(14, 16)
+	phone.pressed.connect(_toggle_phone)
+	c.add_child(phone)
+	_phone_panel = PanelContainer.new()
+	_phone_panel.position = Vector2(14, -250)
+	_phone_panel.custom_minimum_size = Vector2(300, 0)
+	_phone_panel.visible = false
+	c.add_child(_phone_panel)
+	_phone_list = VBoxContainer.new()
+	_phone_list.add_theme_constant_override("separation", 6)
+	_phone_panel.add_child(_phone_list)
+
 	_household_box = HBoxContainer.new()
 	_household_box.position = Vector2(352, 218)
 	_household_box.add_theme_constant_override("separation", 4)
@@ -754,6 +773,59 @@ func watch_sim(s: Sim) -> void:
 func _on_panel_requested(panel: String) -> void:
 	if panel == "career":
 		_show_page(4)
+
+
+func set_phone(v: Visitors, destinations: Dictionary) -> void:
+	_visitors = v
+	_destinations = destinations
+
+
+func _toggle_phone() -> void:
+	_phone_panel.visible = not _phone_panel.visible
+	if _phone_panel.visible:
+		_fill_phone()
+
+
+## The phone: invite a townie over, or travel to a community lot or home.
+func _fill_phone() -> void:
+	for ch in _phone_list.get_children():
+		ch.queue_free()
+	var t := UiTheme.title(Label.new(), 17)
+	t.text = "Invite Over"
+	_phone_list.add_child(t)
+	if _visitors != null:
+		for townie in _visitors.townies:
+			var b := Button.new()
+			var rel := sim.relationship_label(townie) if sim.relationships.has(townie) else "Haven't met"
+			b.text = "%s  ·  %s  ·  %s" % [townie.sim_name, Ages.label(townie.age_stage), rel]
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.focus_mode = Control.FOCUS_NONE
+			b.add_theme_font_size_override("font_size", 13)
+			b.disabled = not townie.away
+			b.pressed.connect(func():
+				_phone_panel.visible = false
+				phone_invite.emit(townie))
+			_phone_list.add_child(b)
+	var t2 := UiTheme.title(Label.new(), 17)
+	t2.text = "Travel"
+	_phone_list.add_child(t2)
+	var places := {"home": "Home"}
+	for id in _destinations:
+		places[id] = _destinations[id]["name"]
+	for id in places:
+		var b := Button.new()
+		b.text = places[id]
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", 13)
+		b.pressed.connect(func():
+			_phone_panel.visible = false
+			phone_travel.emit(id))
+		_phone_list.add_child(b)
+	# Grow upwards from the button.
+	_phone_panel.reset_size()
+	await get_tree().process_frame
+	_phone_panel.position.y = 8 - _phone_panel.size.y
 
 
 ## Small portraits of the household; click one to control that Sim.
