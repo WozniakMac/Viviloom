@@ -61,6 +61,7 @@ func _ready() -> void:
 	_test_date_event()
 	_test_burglars()
 	_test_bed_assign_and_upgrade()
+	_test_dirty_fixtures()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1220,3 +1221,18 @@ func _test_bed_assign_and_upgrade() -> void:
 	var bin := Catalog.create("trash_can")
 	_check(bin.interactions[0].creates == "upgrade_part", "trash cans hide upgrade parts")
 	bin.free()
+
+
+func _test_dirty_fixtures() -> void:
+	var t := Catalog.create("toilet")
+	_check(not t.is_dirty(), "new fixtures are clean")
+	for k in 3:
+		t.add_dirt()
+	_check(t.is_dirty() and t.available_interactions()[0].name == "Clean" and t.get_node_or_null("Flies") != null, "used fixtures get grimy, draw flies and need cleaning")
+	t.apply_effect("clean")
+	_check(not t.is_dirty(), "cleaning fixes it")
+	t.apply_effect("upgrade:self_cleaning")
+	for k in 5:
+		t.add_dirt()
+	_check(not t.is_dirty(), "a self-cleaning toilet stays clean")
+	t.free()

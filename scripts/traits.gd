@@ -52,7 +52,7 @@ const INFO := {
 	"neat": {
 		"label": "Neat",
 		"description": "Loves a tidy home: cleans up eagerly and hates mess.",
-		"likes": {"dishes": 2.5, "puddle": 2.5},
+		"likes": {"dishes": 2.5, "puddle": 2.5, "clean": 2.5},
 	},
 	"slob": {
 		"label": "Slob",
@@ -146,6 +146,8 @@ static func liking(traits: Array[String], kind: String, interaction: Interaction
 	for t in traits:
 		var likes: Dictionary = INFO[t].get("likes", {})
 		m *= likes.get(kind, 1.0)
+		if interaction.effect != "":
+			m *= likes.get(interaction.effect, 1.0)
 		if interaction.skill != "":
 			m *= likes.get(interaction.skill, 1.0)
 		if interaction.is_social():

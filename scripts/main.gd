@@ -213,6 +213,7 @@ func _ready() -> void:
 		match service:
 			"maid":
 				var cleanable := lot.messes().filter(func(m): return m.kind in ["dishes", "puddle"])
+				var grimy := lot.furniture.filter(func(f): return f.is_dirty())
 				if location != "home" or build.funds < 60:
 					hud.show_notice("The maid can't come right now.", "Phone")
 				else:
@@ -220,6 +221,9 @@ func _ready() -> void:
 					for m in cleanable:
 						lot.remove_furniture(m)
 						m.queue_free()
+					for f in grimy:
+						f.set_dirt(0.0)
+						cleanable.append(f)
 					hud.show_notice("The maid cleaned up %d mess%s." % [cleanable.size(), "" if cleanable.size() == 1 else "es"], "Maid")
 				return
 			"repair":
@@ -1539,6 +1543,7 @@ func _apply_lot_dict(d: Dictionary) -> void:
 				placed.set_variant(int(o[5]))
 			if o.size() > 6 and o[6] is Dictionary and not (o[6] as Dictionary).is_empty():
 				placed.set_meta("item", (o[6] as Dictionary).duplicate())
+				placed._update_flies()
 				if o[0] == "planter":
 					placed.refresh_garden()
 				if placed.is_upgraded():
@@ -2278,6 +2283,13 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"dirty":
+			var tl := find_furniture("toilet")
+			tl.set_dirt(90.0)
+			rig.frame(tl.global_position, deg_to_rad(20.0), deg_to_rad(-45.0), 6.0)
+			await get_tree().create_timer(1.0).timeout
+			open_menu(tl, rig.camera.unproject_position(tl.global_position + Vector3(0, 0.5, 0)))
+			await get_tree().create_timer(0.6).timeout
 		"upgrademenu":
 			var st := find_furniture("stove")
 			rig.frame(st.global_position, deg_to_rad(20.0), deg_to_rad(-50.0), 12.0)

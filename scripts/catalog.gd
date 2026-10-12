@@ -52,11 +52,17 @@ const UPGRADES := {
 	"desk": [["unbreakable", "Unbreakable", 2, "unbreakable"], ["better_processor", "Better Processor", 4, "rate:fun"]],
 	"stove": [["unbreakable", "Unbreakable", 2, "unbreakable"], ["fireproof", "Fireproof", 4, "fireproof"]],
 	"fridge": [["unbreakable", "Unbreakable", 2, "unbreakable"]],
-	"shower": [["unbreakable", "Unbreakable", 2, "unbreakable"], ["water_heater", "Better Water Heater", 4, "rate:hygiene"]],
-	"toilet": [["unbreakable", "Unbreakable", 2, "unbreakable"]],
+	"shower": [["unbreakable", "Unbreakable", 2, "unbreakable"], ["water_heater", "Better Water Heater", 4, "rate:hygiene"], ["self_cleaning", "Self-Cleaning", 5, "self_cleaning"]],
+	"toilet": [["unbreakable", "Unbreakable", 2, "unbreakable"], ["self_cleaning", "Self-Cleaning", 5, "self_cleaning"]],
+	"bathtub": [["self_cleaning", "Self-Cleaning", 5, "self_cleaning"]],
 	"treadmill": [["unbreakable", "Unbreakable", 2, "unbreakable"]],
 	"sink": [["unbreakable", "Unbreakable", 2, "unbreakable"]],
 }
+## Fixtures that get grimy with use, as in the reference.
+const DIRTIES := ["toilet", "shower", "bathtub", "sink"]
+const DIRT_PER_USE := 22.0
+const DIRTY_AT := 60.0
+
 ## Chance that repairing something turns up a spare part.
 const PART_FROM_REPAIR := 0.35
 

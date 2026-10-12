@@ -240,6 +240,11 @@ func available_interactions() -> Array[Interaction]:
 		var gs := garden_state()
 		var list := interactions.filter(func(i: Interaction): return not (i.needs_on and not on) and not (i.needs_off and on) \
 			and (i.garden_state == "" or i.garden_state == gs))
+		if is_dirty():
+			if _clean_interaction == null:
+				_clean_interaction = Interaction.new("Clean", {"hygiene": -5.0, "fun": -4.0}, 20.0, "", "stand", true)
+				_clean_interaction.effect = "clean"
+			list.push_front(_clean_interaction)
 		var have := upgrades()
 		for x in extra_interactions():
 			if not x.effect.begins_with("upgrade:") or not have.has(x.effect.trim_prefix("upgrade:")):
@@ -274,6 +279,62 @@ func extra_interactions() -> Array[Interaction]:
 		up.set_meta("upgrade", u)
 		_extra_interactions.append(up)
 	return _extra_interactions
+
+
+var _clean_interaction: Interaction
+
+
+func dirt() -> float:
+	return get_meta("item", {}).get("dirt", 0.0)
+
+
+func is_dirty() -> bool:
+	return dirt() >= Catalog.DIRTY_AT
+
+
+func set_dirt(v: float) -> void:
+	var item: Dictionary = get_meta("item", {}).duplicate()
+	item["dirt"] = clampf(v, 0.0, 100.0)
+	set_meta("item", item)
+	_update_flies()
+
+
+## Used once: fixtures get dirtier unless they clean themselves.
+func add_dirt() -> void:
+	if Catalog.DIRTIES.has(kind) and not has_upgrade_effect("self_cleaning"):
+		set_dirt(dirt() + Catalog.DIRT_PER_USE)
+
+
+## Flies buzz around a dirty fixture.
+func _update_flies() -> void:
+	var flies := get_node_or_null("Flies") as CPUParticles3D
+	if is_dirty() and flies == null:
+		flies = CPUParticles3D.new()
+		flies.name = "Flies"
+		flies.amount = 6
+		flies.lifetime = 1.4
+		flies.position = Vector3(0, height + 0.12, 0)
+		flies.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+		flies.emission_sphere_radius = 0.18
+		flies.gravity = Vector3.ZERO
+		flies.initial_velocity_min = 0.05
+		flies.initial_velocity_max = 0.15
+		flies.direction = Vector3.UP
+		flies.spread = 180.0
+		flies.orbit_velocity_min = 0.6
+		flies.orbit_velocity_max = 1.2
+		flies.scale_amount_min = 0.02
+		flies.scale_amount_max = 0.03
+		var m := SphereMesh.new()
+		m.radius = 0.5
+		m.height = 1.0
+		flies.mesh = m
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.05, 0.05, 0.05)
+		flies.material_override = mat
+		add_child(flies)
+	elif not is_dirty() and flies != null:
+		flies.queue_free()
 
 
 func upgrades() -> Array:
@@ -388,6 +449,9 @@ func apply_effect(e: String) -> void:
 	if e.begins_with("plant:"):
 		set_meta("item", {"crop": e.trim_prefix("plant:"), "growth": 0.0, "watered": Clock.day()})
 		refresh_garden()
+		return
+	if e == "clean":
+		set_dirt(0.0)
 		return
 	if e.begins_with("upgrade:"):
 		var item: Dictionary = get_meta("item", {}).duplicate()

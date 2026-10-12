@@ -88,6 +88,13 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 			if urgent.is_empty() and not sim.is_visitor and Ages.is_adult(sim.age_stage):
 				options.append([MESS_SCORE * 0.8 / (1.0 + dist / 20.0), f, f.available_interactions()[0]])
 			continue
+		# Grimy bathroom fixtures get cleaned too (neat Sims love to, slobs don't bother).
+		if f.is_dirty() and urgent.is_empty() and not sim.is_visitor and Ages.is_adult(sim.age_stage):
+			var clean: Interaction = f.available_interactions()[0]
+			var like_clean := Traits.liking(sim.traits, f.kind, clean)
+			if sim.traits.has("slob"):
+				like_clean *= 0.1
+			options.append([MESS_SCORE * 0.7 * like_clean / (1.0 + dist / 20.0), f, clean])
 		# Tidy Sims clean up messes when nothing more pressing needs doing.
 		if Catalog.MESSES.has(f.kind):
 			if urgent.is_empty() and not sim.is_visitor and Ages.allows(sim.age_stage, f.interactions[0]):
