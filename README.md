@@ -41,7 +41,7 @@ for the current status, known limitations, source licenses and rebuild instructi
   and pass away, with neighbourhood news. Townies age, marry, have children, and newcomers move in.
 - **Create a Sim**: households of up to four, name, male/female anatomy, native age anatomy (toddler to elder), body sliders,
   direct face/body drag controls with undo and cancellation, hairstyles, walk styles, skin/hair/outfit colours for Everyday, Sleepwear, Athletic and Swimwear,
-  fourteen traits with conflicts, and one of 19 aspirations in 11 categories.
+  24 traits with conflicts, and one of 19 aspirations in 11 categories.
 - **Neighbourhood map**: buy a furnished home or an empty plot; homes of other families
   are marked as taken.
 - **Live mode**: six needs, emotions from moodlets with body language, 16 skills (fishing, piano, comedy, mischief, mixology, programming and more), wants

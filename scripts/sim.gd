@@ -1562,7 +1562,10 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 	if finished and i.creates == "produce" and _last_garden != null and is_instance_valid(_last_garden):
 		_harvest(_last_garden, lvl)
 	if finished and i.creates == "painting":
-		var q := clampi(lvl / 3, 0, 3)
+		var bonus := 0
+		for t in traits:
+			bonus += int(Traits.INFO[t].get("quality_bonus", 0))
+		var q := clampi(lvl / 3 + bonus, 0, 3)
 		var value := 20 + lvl * 22 + q * 15 + _rng.randi_range(0, 20)
 		inventory.append({"kind": "painting", "seed": _rng.randi(), "quality": q, "value": value})
 		inventory_changed.emit()

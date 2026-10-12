@@ -88,6 +88,67 @@ const INFO := {
 		"skill_mult": {"cooking": 1.5},
 		"likes": {"cooking": 2.5},
 	},
+	"ambitious": {
+		"label": "Ambitious",
+		"description": "Driven to climb the career ladder. Works harder and gets tense when stuck.",
+		"periodic": ["confident", 1, "Driven", "Big plans, big dreams.", 480.0, 180.0],
+		"likes": {"charisma": 1.5, "logic": 1.3, "programming": 1.3},
+		"work_bonus": 5.0,
+	},
+	"childish": {
+		"label": "Childish",
+		"description": "Never really grew up. Loves toys and silly games.",
+		"periodic": ["playful", 1, "Young at Heart", "Wheee!", 420.0, 180.0],
+		"likes": {"toybox": 3.0, "dollhouse": 3.0, "monkey_bars": 3.0, "activity_table": 2.5},
+	},
+	"goofball": {
+		"label": "Goofball",
+		"description": "Always joking around. Learns Comedy faster.",
+		"periodic": ["playful", 1, "Goofing Around", "Everything is funny!", 360.0, 180.0],
+		"skill_mult": {"comedy": 1.5},
+		"likes": {"comedy": 2.5},
+	},
+	"self_assured": {
+		"label": "Self-Assured",
+		"description": "Confident, and it shows.",
+		"lasting": ["confident", 1, "Self-Assured", "Feeling pretty great about themselves."],
+	},
+	"glutton": {
+		"label": "Glutton",
+		"description": "Always hungry, always snacking.",
+		"decay_mult": {"hunger": 1.35},
+		"likes": {"fridge": 2.0, "fruit_bowl": 2.5, "microwave": 2.0},
+	},
+	"good": {
+		"label": "Good",
+		"description": "Kind to everyone; happiest when being nice.",
+		"periodic": ["happy", 1, "Do-Gooder", "Doing the right thing feels good.", 600.0, 180.0],
+		"likes": {"social": 1.3, "mean": 0.1},
+	},
+	"mean": {
+		"label": "Mean",
+		"description": "Enjoys a good insult and a nasty prank.",
+		"periodic": ["angry", 1, "Grumpy", "Everyone's so annoying.", 480.0, 150.0],
+		"likes": {"mean": 3.0, "mischief": 2.0},
+	},
+	"outgoing": {
+		"label": "Outgoing",
+		"description": "A people person: needs company and loves a crowd.",
+		"decay_mult": {"social": 1.4},
+		"likes": {"social": 2.0},
+	},
+	"perfectionist": {
+		"label": "Perfectionist",
+		"description": "Takes longer to paint and write, but the results are better.",
+		"skill_mult": {"painting": 0.85, "writing": 0.85},
+		"quality_bonus": 1,
+	},
+	"geek": {
+		"label": "Geek",
+		"description": "Loves games, computers and sci-fi. Learns Video Gaming and Programming faster.",
+		"skill_mult": {"gaming": 1.5, "programming": 1.5},
+		"likes": {"gaming": 2.5, "programming": 1.5, "telescope": 2.0},
+	},
 	"music_lover": {
 		"label": "Music Lover",
 		"description": "Happiest with music playing. Learns Guitar faster.",
@@ -95,8 +156,10 @@ const INFO := {
 		"likes": {"guitar": 2.5, "stereo": 2.5},
 	},
 }
-const ORDER: Array[String] = ["cheerful", "gloomy", "creative", "genius", "lazy", "bookworm", "neat", "slob", "active", "romantic", "loner", "hot_headed", "foodie", "music_lover"]
-const CONFLICTS := [["cheerful", "gloomy"], ["neat", "slob"], ["active", "lazy"], ["loner", "romantic"], ["cheerful", "hot_headed"]]
+const ORDER: Array[String] = ["cheerful", "gloomy", "creative", "genius", "lazy", "bookworm", "neat", "slob", "active", "romantic", "loner", "hot_headed", "foodie", "music_lover",
+	"ambitious", "childish", "goofball", "self_assured", "glutton", "good", "mean", "outgoing", "perfectionist", "geek"]
+const CONFLICTS := [["cheerful", "gloomy"], ["neat", "slob"], ["active", "lazy"], ["loner", "romantic"], ["cheerful", "hot_headed"],
+	["good", "mean"], ["outgoing", "loner"], ["ambitious", "lazy"], ["self_assured", "gloomy"], ["goofball", "hot_headed"]]
 
 
 static func label(t: String) -> String:
@@ -154,4 +217,8 @@ static func liking(traits: Array[String], kind: String, interaction: Interaction
 			m *= likes.get("social", 1.0)
 			if interaction.social.get("category", "") == "Romance":
 				m *= likes.get("romance", 1.0)
+			if interaction.social.get("category", "") == "Mean":
+				m *= likes.get("mean", 1.0)
+			if interaction.social.get("category", "") == "Mischief":
+				m *= likes.get("mischief", 1.0)
 	return m

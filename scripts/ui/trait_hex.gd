@@ -20,6 +20,16 @@ const TRAIT_COLORS := {
 	"hot_headed": Color(0.85, 0.25, 0.2),
 	"foodie": Color(0.8, 0.6, 0.25),
 	"music_lover": Color(0.5, 0.35, 0.8),
+	"ambitious": Color(0.85, 0.55, 0.15),
+	"childish": Color(0.95, 0.6, 0.75),
+	"goofball": Color(0.95, 0.75, 0.2),
+	"self_assured": Color(0.25, 0.55, 0.85),
+	"glutton": Color(0.8, 0.45, 0.3),
+	"good": Color(0.45, 0.75, 0.4),
+	"mean": Color(0.55, 0.2, 0.25),
+	"outgoing": Color(0.2, 0.7, 0.75),
+	"perfectionist": Color(0.4, 0.4, 0.75),
+	"geek": Color(0.3, 0.6, 0.45),
 }
 
 var trait_id := ""

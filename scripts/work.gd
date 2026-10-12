@@ -171,6 +171,8 @@ func _finish_shift() -> void:
 	var skill: String = Careers.INFO[career]["skill"]
 	var style: Array = Careers.WORK_STYLES[work_style]
 	var gain: float = Careers.shift_performance(_mood_at_start, sim.skills.level(skill)) * style[1]
+	for t in sim.traits:
+		gain += Traits.INFO[t].get("work_bonus", 0.0)
 	var task_done := daily_task_done()
 	if task_done:
 		gain += Careers.TASK_BONUS

@@ -137,15 +137,16 @@ func _build() -> void:
 	pt.text = "Choose Traits"
 	pv.add_child(pt)
 	var grid := GridContainer.new()
-	grid.columns = 5
-	grid.add_theme_constant_override("h_separation", 14)
-	grid.add_theme_constant_override("v_separation", 8)
+	# Six to a row so two dozen traits fit above Body & Outfit.
+	grid.columns = 6
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 2)
 	pv.add_child(grid)
 	for t in Traits.ORDER:
 		var h := TraitHex.new()
 		h.trait_id = t
 		h.clickable = true
-		h.custom_minimum_size = Vector2(68, 74)
+		h.custom_minimum_size = Vector2(60, 62)
 		h.toggled.connect(_on_trait_clicked)
 		h.mouse_entered.connect(func(): _trait_info.text = "%s: %s" % [Traits.label(t), Traits.description(t)])
 		grid.add_child(h)

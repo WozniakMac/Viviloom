@@ -66,6 +66,7 @@ func _ready() -> void:
 	_test_counter_tops()
 	_test_surface_decor()
 	_test_more_aspirations()
+	_test_trait_batch_two()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1300,3 +1301,14 @@ func _test_more_aspirations() -> void:
 	_check(not Aspirations.goal_met({"all_of": ["guitar", "piano"], "level": 4}, {"sim": s}), "but both are needed for the third milestone")
 	_check(Aspirations.goal_met({"household": 3}, {"sim": s, "household": 3}), "family goals count the household")
 	s.free()
+
+
+func _test_trait_batch_two() -> void:
+	_check(Traits.ORDER.size() >= 24 and Traits.ORDER.all(func(t): return Traits.INFO.has(t)), "two dozen traits")
+	var t: Array[String] = ["good"]
+	_check(not Traits.can_add(t, "mean"), "Good and Mean conflict")
+	var insult := Socials.find("Insult")
+	var mean: Array[String] = ["mean"]
+	_check(Traits.liking(mean, "", insult) > 1.0 and Traits.liking(t, "", insult) < 1.0, "mean Sims enjoy insults, good ones avoid them")
+	var g: Array[String] = ["geek"]
+	_check(Traits.skill_mult(g, "gaming") > 1.0, "geeks learn gaming faster")
