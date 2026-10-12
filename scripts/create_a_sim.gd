@@ -29,6 +29,7 @@ var _done: IconButton
 var _swatches := {}
 var _aspiration_buttons := {}
 var _hair_buttons := {}
+var _age_buttons := {}
 var _rng := RandomNumberGenerator.new()
 var _household_row: HBoxContainer
 
@@ -127,6 +128,28 @@ func _build() -> void:
 	var lt := UiTheme.title(Label.new(), 18)
 	lt.text = "Appearance"
 	lv.add_child(lt)
+	var al := Label.new()
+	al.text = "Age"
+	al.add_theme_font_size_override("font_size", 14)
+	al.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+	lv.add_child(al)
+	var arow := HFlowContainer.new()
+	arow.add_theme_constant_override("h_separation", 4)
+	arow.add_theme_constant_override("v_separation", 4)
+	arow.custom_minimum_size = Vector2(250, 0)
+	lv.add_child(arow)
+	for stage in ["child", "teen", "young_adult", "adult", "elder"]:
+		var ab := Button.new()
+		ab.text = Ages.label(stage)
+		ab.toggle_mode = true
+		ab.focus_mode = Control.FOCUS_NONE
+		ab.add_theme_font_size_override("font_size", 12)
+		ab.add_theme_stylebox_override("pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		ab.add_theme_stylebox_override("hover_pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		ab.pressed.connect(_pick_age.bind(stage))
+		arow.add_child(ab)
+		_age_buttons[stage] = ab
+	_pick_age(sim.age_stage)
 	var hl := Label.new()
 	hl.text = "Hairstyle"
 	hl.add_theme_font_size_override("font_size", 14)
@@ -174,7 +197,7 @@ func _build() -> void:
 	var asp := PanelContainer.new()
 	asp.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	asp.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	asp.position = Vector2(-24, 470)
+	asp.position = Vector2(-24, 545)
 	asp.custom_minimum_size = Vector2(286, 0)
 	root.add_child(asp)
 	var av := VBoxContainer.new()
@@ -263,6 +286,7 @@ func edit(s: Sim) -> void:
 	_picked = s.traits.duplicate()
 	_name_edit.text = s.sim_name
 	_pick_hair(s.hair_style)
+	_pick_age(s.age_stage)
 	_pick_aspiration(s.aspiration)
 	_sync_swatches()
 	_refresh()
@@ -295,6 +319,13 @@ func _sync_swatches() -> void:
 	for part in _swatches:
 		for pair in _swatches[part]:
 			(pair[0] as Button).set_pressed_no_signal((pair[1] as Color).is_equal_approx(current[part]))
+
+
+func _pick_age(stage: String) -> void:
+	sim.age_days = 0
+	sim.set_age(stage)
+	for k in _age_buttons:
+		(_age_buttons[k] as Button).button_pressed = k == stage
 
 
 func _pick_hair(style: String) -> void:

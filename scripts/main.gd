@@ -21,6 +21,7 @@ var visitors: Visitors
 var work: Work
 var daylight: Daylight
 var bills: Bills
+var life: LifeCycle
 var aspirations: AspirationTracker
 ## Everyone in the player's household; `sim`, `work` and `aspirations` are the
 ## active member's.
@@ -67,6 +68,15 @@ func _ready() -> void:
 	bills.build = build
 	add_child(bills)
 	bills.notice.connect(func(t: String, title: String): hud.show_notice(t, title))
+	life = LifeCycle.new()
+	life.name = "LifeCycle"
+	life.household = household
+	life.works = works
+	life.max_size = MAX_HOUSEHOLD
+	add_child(life)
+	life.notice.connect(func(t: String, title: String): hud.show_notice(t, title))
+	life.born.connect(_on_baby_born)
+	life.passed_away.connect(remove_from_household)
 
 	var first := _new_sim("Alex")
 	var start_needs := {"hunger": 70.0, "energy": 85.0, "bladder": 55.0, "hygiene": 80.0, "fun": 45.0, "social": 60.0}
@@ -110,6 +120,7 @@ func add_to_household(s: Sim) -> void:
 	if not lot.sims.has(s):
 		lot.sims.append(s)
 	s.earned.connect(build.earn)
+	s.baby_tried.connect(func(p: Sim): life.try_for_baby(s, p))
 	s.panel_requested.connect(func(p: String):
 		if p == "pay_bills":
 			bills.pay())
@@ -130,6 +141,17 @@ func add_to_household(s: Sim) -> void:
 	trackers[s] = t
 	build.household = household
 	hud.set_household(household)
+
+
+func _on_baby_born(baby: Sim, parents: Array) -> void:
+	baby.name = "Sim_%d" % (household.size() + 1)
+	add_child(baby)
+	baby.set_selected(false)
+	baby.global_position = (parents[0] as Sim).global_position + Vector3(0.8, 0, 0.4)
+	add_to_household(baby)
+	for p in parents:
+		if is_instance_valid(p):
+			baby.change_relationship(p, 60.0, 0.0)
 
 
 func remove_from_household(s: Sim) -> void:
@@ -222,16 +244,22 @@ func open_menu(f: Furniture, screen_pos: Vector2) -> void:
 	if f.interactions.is_empty():
 		return
 	var names: Array[String] = []
+	var allowed: Array[Interaction] = []
 	for i in f.interactions:
-		names.append(i.name)
-	_on_pie_choice(func(idx: int): sim.queue_interaction(f, f.interactions[idx]))
+		if Ages.allows(sim.age_stage, i):
+			names.append(i.name)
+			allowed.append(i)
+	if allowed.is_empty():
+		hud.show_notice("%s is too young for the %s." % [sim.sim_name, f.display_name], sim.sim_name)
+		return
+	_on_pie_choice(func(idx: int): sim.queue_interaction(f, allowed[idx]))
 	hud.pie_menu.open(screen_pos, f.display_name, names)
 
 
 ## Social pie menu for another Sim: first a ring of categories, then the socials in
 ## the chosen one.
 func open_sim_menu(other: Sim, screen_pos: Vector2) -> void:
-	var options := Socials.available(sim.friendship_with(other), sim.romance_with(other))
+	var options := Socials.available(sim.friendship_with(other), sim.romance_with(other), sim.age_stage, other.age_stage)
 	var cats: Array[String] = []
 	for i in options:
 		var c: String = i.social["category"]
@@ -721,6 +749,8 @@ func _on_cas_finished() -> void:
 		for b_sim in household:
 			if a_sim != b_sim and not a_sim.relationships.has(b_sim):
 				a_sim.change_relationship(b_sim, 35.0, 0.0)
+	for m in household:
+		life.enrol(m)
 	select_sim(household[0])
 	open_neighbourhood()
 
@@ -748,6 +778,7 @@ func _on_home_chosen(lot_id: String, price: int) -> void:
 func _enter_live(fresh := true) -> void:
 	hud.visible = true
 	hud.refresh_identity()
+	life._last_day = Clock.day()
 	if fresh:
 		for m in household:
 			(trackers[m] as AspirationTracker).reset()
@@ -876,6 +907,20 @@ func _run_scenario(scenario: String, path: String) -> void:
 			hud._show_page(4)
 			Clock.set_speed(3)
 			await get_tree().create_timer(3.0).timeout
+		"family":
+			var stages := ["toddler", "child", "teen", "adult", "elder"]
+			for i in stages.size():
+				var m := _new_sim(["Tia", "Kit", "Ted", "Ann", "Gus"][i])
+				add_to_household(m)
+				m.set_age(stages[i])
+				m.autonomy_enabled = false
+				m.global_position = lot.cell_to_world(Vector2i(6 + i * 2, 14))
+				m.set_part_color("shirt", Color.from_hsv(i * 0.18, 0.5, 0.9))
+			sim.global_position = lot.cell_to_world(Vector2i(4, 14))
+			select_sim(household[3])
+			hud._show_page(2)
+			rig.frame(lot.cell_to_world(Vector2i(10, 14)), deg_to_rad(20.0), deg_to_rad(-25.0), 11.0)
+			await get_tree().create_timer(1.0).timeout
 		"bubbles":
 			Clock.total_minutes = 9.0 * 60.0 + 1.0
 			await get_tree().create_timer(0.3).timeout

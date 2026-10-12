@@ -29,6 +29,9 @@ static func all() -> Array[Interaction]:
 	out.append(_make("Kiss", 15.0, {"social": 90.0}, {"category": "Romance", "romance": 12.0, "friendship": 3.0, "min_romance": 30.0,
 		"actor_moodlet": ["kissed", "flirty", 2, "First Kiss Glow", "Wow.", 240.0],
 		"target_moodlet": ["kissed", "flirty", 2, "First Kiss Glow", "Wow.", 240.0]}))
+	out.append(_make("Try for Baby", 60.0, {"social": 100.0, "fun": 30.0}, {"category": "Romance", "romance": 5.0, "min_romance": 60.0, "baby": true,
+		"actor_moodlet": ["in_love", "flirty", 2, "In Love", "Life together is wonderful.", 360.0],
+		"target_moodlet": ["in_love", "flirty", 2, "In Love", "Life together is wonderful.", 360.0]}))
 	out.append(_make("Insult", 10.0, {"social": 30.0}, {"category": "Mean", "friendship": -15.0,
 		"actor_moodlet": ["mean", "confident", 1, "Got That Off My Chest", "They had it coming.", 90.0],
 		"target_moodlet": ["insulted", "angry", 2, "Insulted", "How rude!", 180.0]}))
@@ -61,9 +64,15 @@ static func friendship_label(friendship: float, romance: float) -> String:
 
 ## Socials worth offering right now; ones that would surely be rejected are still
 ## shown (that's part of the fun) except kissing before any romance at all.
-static func available(friendship: float, romance: float) -> Array[Interaction]:
+static func available(friendship: float, romance: float, actor_stage := "young_adult", target_stage := "young_adult") -> Array[Interaction]:
 	var out: Array[Interaction] = []
 	for i in all():
+		if i.social.get("category", "") == "Romance" and not Ages.romance_ok(actor_stage, target_stage):
+			continue
+		if not Ages.allows(actor_stage, i):
+			continue
+		if i.name == "Try for Baby" and (romance < 50.0 or actor_stage == "elder" or actor_stage == "teen"):
+			continue
 		if i.name == "Kiss" and romance < 15.0:
 			continue
 		if i.name == "Hug" and friendship < 20.0:

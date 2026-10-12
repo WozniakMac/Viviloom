@@ -10,6 +10,8 @@ signal action_failed(message: String)
 signal announced(message: String)
 signal earned(amount: int)
 signal relationships_changed
+## A "Try for Baby" went well with `partner`.
+signal baby_tried(partner: Sim)
 ## Asks the HUD to show a panel ("career"...).
 signal panel_requested(panel: String)
 ## An activity or social was done long enough to count (for wants and goals).
@@ -68,6 +70,10 @@ var relationships := {}
 var is_visitor := false
 ## Lifelong goal (see Aspirations) and counters it can check, e.g. "paintings_sold".
 var aspiration := "renaissance"
+## Life stage (see Ages) and days lived in it; days of pregnancy (-1 = not expecting).
+var age_stage := "young_adult"
+var age_days := 0
+var pregnant_days := -1
 var stats := {}
 ## Off the lot (at work, or a visitor who went home).
 var away := false
@@ -98,6 +104,7 @@ var _materials := {}
 
 func _ready() -> void:
 	_build_visual()
+	set_age(age_stage)
 	skills.leveled_up.connect(func(s: String, l: int):
 		Sfx.play("level_up", -4.0)
 		announced.emit("%s reached %s level %d!" % [sim_name, Skills.label(s), l]))
@@ -127,6 +134,22 @@ func set_hair_style(style: String) -> void:
 	hair_style = style
 	for k in _hair_meshes:
 		(_hair_meshes[k] as Node3D).visible = k == style
+
+
+## Changes life stage: size, walking speed, and grey hair for elders.
+func set_age(stage: String) -> void:
+	age_stage = stage
+	var info: Dictionary = Ages.INFO[stage]
+	if _body != null:
+		var k: float = info["scale"]
+		_body.scale = Vector3.ONE * k
+	walk_speed = 2.0 * info["speed"]
+	if stage == "elder":
+		set_part_color("hair", hair_color.lerp(Color(0.82, 0.82, 0.84), 0.75))
+
+
+func size_scale() -> float:
+	return Ages.INFO[age_stage]["scale"]
 
 
 ## Replaces the Sim's traits and their lasting moodlets.
@@ -218,6 +241,7 @@ func to_dict() -> Dictionary:
 		"name": sim_name,
 		"colors": {"shirt": shirt_color.to_html(), "pants": pants_color.to_html(), "skin": skin_color.to_html(), "hair": hair_color.to_html()},
 		"hair_style": hair_style,
+		"age": [age_stage, age_days, pregnant_days],
 		"traits": traits,
 		"aspiration": aspiration,
 		"needs": needs.values.duplicate(),
@@ -234,6 +258,10 @@ func from_dict(d: Dictionary, others: Array) -> void:
 	for part in d.get("colors", {}):
 		set_part_color(part, Color.html(d["colors"][part]))
 	set_hair_style(d.get("hair_style", hair_style))
+	var ag: Array = d.get("age", ["young_adult", 0, -1])
+	age_days = int(ag[1])
+	pregnant_days = int(ag[2])
+	set_age(ag[0])
 	var t: Array[String] = []
 	for x in d.get("traits", []):
 		t.append(x)
@@ -558,6 +586,8 @@ func _social_result(a: SimAction) -> void:
 	if not is_instance_valid(t) or a.elapsed < a.interaction.reward_after():
 		return
 	var s: Dictionary = a.interaction.social
+	if a.outcome and s.get("baby", false):
+		baby_tried.emit(t)
 	count_stat("socials")
 	var stat: String = {"Tell a Joke": "jokes", "Flirt": "flirts", "Kiss": "kisses"}.get(a.interaction.name, "")
 	if stat != "" and a.outcome:
@@ -708,7 +738,7 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 		"sit":
 			anim = "sit_use" if busy else "sit"
 			_body.rotation.x = 0.0
-			_body.position.y = -0.45
+			_body.position.y = -0.45 * size_scale()
 		"lie":
 			anim = "lie"
 			_body.rotation.x = PI * 0.5
@@ -734,6 +764,7 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 	# The plumbob floats over the head, spinning and bobbing even while paused.
 	_plumbob.rotation.y += get_process_delta_time() * 1.8
 	var head := _body.to_global(Vector3(0, 1.7, 0))
+	_plumbob.scale = Vector3.ONE * size_scale()
 	_plumbob.global_position = head + Vector3(0, 0.5 + sin(Time.get_ticks_msec() * 0.003) * 0.04, 0)
 
 

@@ -25,6 +25,7 @@ func _ready() -> void:
 	_test_sim_round_trip()
 	_test_new_objects()
 	_test_finishes()
+	_test_life_cycle()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -351,3 +352,47 @@ func _test_finishes() -> void:
 	lot.clear_build()
 	_check(lot.floor_tiles.is_empty() and lot.windows.is_empty() and lot.wall_styles.is_empty(), "clearing removes finishes")
 	lot.free()
+
+
+func _test_life_cycle() -> void:
+	var life := LifeCycle.new()
+	add_child(life)
+	var kid := Sim.new()
+	kid.age_stage = "child"
+	var w := Work.new()
+	w.sim = kid
+	add_child(w)
+	life.household = [kid] as Array[Sim]
+	life.works = {kid: w}
+	life.enrol(kid)
+	_check(w.career == "school", "children go to grade school")
+	for i in Ages.INFO["child"]["days"]:
+		life.new_day()
+	_check(kid.age_stage == "teen" and w.career == "high_school" and kid.emotions.has("birthday"), "a birthday makes a child a teen who goes to high school")
+	var mom := Sim.new()
+	var dad := Sim.new()
+	life.household = [mom, dad] as Array[Sim]
+	life._rng.seed = 1
+	var babies: Array = []
+	life.born.connect(func(b, _p): babies.append(b))
+	for i in 20:
+		life.try_for_baby(mom, dad)
+	_check(mom.pregnant_days == 0, "trying for a baby can lead to a pregnancy")
+	life.aging_enabled = false
+	for i in LifeCycle.PREGNANCY_DAYS:
+		life.new_day()
+	_check(babies.size() == 1 and babies[0].age_stage == "toddler" and mom.pregnant_days == -1, "a toddler arrives after the pregnancy")
+	var gran := Sim.new()
+	gran.age_stage = "elder"
+	gran.age_days = Ages.INFO["elder"]["days"] - 1
+	life.household = [gran, mom] as Array[Sim]
+	life.aging_enabled = true
+	var gone: Array = []
+	life.passed_away.connect(func(s): gone.append(s))
+	life.new_day()
+	_check(gone == [gran] and mom.emotions.has("mourning"), "elders pass on and are mourned")
+	_check(not Ages.romance_ok("child", "adult") and Ages.romance_ok("adult", "elder"), "romance is for grown-ups")
+	for s in [kid, mom, dad, gran] + babies:
+		s.free()
+	w.free()
+	life.free()

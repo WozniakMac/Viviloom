@@ -20,14 +20,15 @@ var _last_shift_day := 0
 var _mood_at_start := "fine"
 
 
-func join(c: String) -> void:
+func join(c: String, quiet := false) -> void:
 	career = c
 	level = 0
 	performance = 0.0
 	# Joining after today's shift started means starting tomorrow.
 	if Clock.hour() >= Careers.INFO[c]["start"]:
 		_last_shift_day = Clock.day()
-	notice.emit("%s is now a %s in the %s career. Work is %s at §%d an hour." % [sim.sim_name, Careers.title(c, 0), Careers.label(c), Careers.schedule_text(c), Careers.hourly(c, 0)], "New Job")
+	if not quiet:
+		notice.emit("%s is now a %s in the %s career. Work is %s at §%d an hour." % [sim.sim_name, Careers.title(c, 0), Careers.label(c), Careers.schedule_text(c), Careers.hourly(c, 0)], "New Job")
 	changed.emit()
 
 
@@ -88,7 +89,7 @@ func _leave_for_work() -> void:
 	state = State.LEAVING
 	if not sim.queue_go(curb()):
 		_arrive_at_work()
-	notice.emit("%s is heading off to work." % sim.sim_name, "Career")
+	notice.emit("%s is heading off to %s." % [sim.sim_name, "school" if Careers.is_school(career) else "work"], "School" if Careers.is_school(career) else "Career")
 	changed.emit()
 
 
@@ -131,6 +132,9 @@ func _finish_shift() -> void:
 		sim.emotions.add("work_day", "confident", 1, "Productive Day", "Got a lot done at work today.", 240.0)
 	elif gain < 12.0:
 		sim.emotions.add("work_day", "tense", 1, "Rough Day at Work", "Work was hard going in that mood.", 240.0)
+	if Careers.is_school(career):
+		notice.emit("%s is home from school. Current grade: %s." % [sim.sim_name, Careers.grade(performance)], Careers.label(career))
+		return
 	paid.emit(pay)
 	notice.emit("%s is back from work and earned §%d. Performance %d%%." % [sim.sim_name, pay, int(performance)], Careers.title(career, level))
 	_try_promotion()

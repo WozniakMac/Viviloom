@@ -25,12 +25,39 @@ const INFO := {
 		"levels": [["Canvas Stretcher", 12], ["Gallery Assistant", 18], ["Artist", 28], ["Acclaimed Artist", 42], ["Master Painter", 60]],
 		"description": "Make a name in the art world. Painting helps you rise.",
 	},
+	"school": {
+		"label": "Grade School", "skill": "logic", "start": 8, "end": 15,
+		"levels": [["Student", 0]], "description": "Reading, writing and recess.",
+	},
+	"high_school": {
+		"label": "High School", "skill": "logic", "start": 8, "end": 15,
+		"levels": [["Student", 0]], "description": "Homework, friends and a lot of growing up.",
+	},
 }
 const ORDER: Array[String] = ["culinary", "tech", "painter"]
+## School counts as a "career" for children and teens: no pay, a grade instead.
+const SCHOOLS: Array[String] = ["school", "high_school"]
 const WORK_DAYS := 5
 ## Emotions that make a shift go better or worse.
 const GOOD_MOODS: Array[String] = ["happy", "confident", "focused", "energized", "inspired"]
 const BAD_MOODS: Array[String] = ["sad", "angry", "tense", "uncomfortable", "embarrassed", "bored"]
+
+
+static func is_school(c: String) -> bool:
+	return SCHOOLS.has(c)
+
+
+## A school grade for a performance value.
+static func grade(performance: float) -> String:
+	if performance >= 80.0:
+		return "A"
+	if performance >= 60.0:
+		return "B"
+	if performance >= 40.0:
+		return "C"
+	if performance >= 20.0:
+		return "D"
+	return "F"
 
 
 static func label(c: String) -> String:

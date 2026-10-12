@@ -1057,6 +1057,12 @@ func _rel_bar(label: String, value: float, centred: bool) -> Control:
 func _rebuild_traits() -> void:
 	for c in _traits_box.get_children():
 		c.queue_free()
+	var age := UiTheme.title(Label.new(), 15)
+	var stage: Dictionary = Ages.INFO[sim.age_stage]
+	age.text = "%s  ·  day %d of %d" % [stage["label"], sim.age_days + 1, stage["days"]]
+	if sim.pregnant_days >= 0:
+		age.text += "  ·  expecting"
+	_traits_box.add_child(age)
 	var heading := Label.new()
 	heading.text = "Traits"
 	heading.add_theme_font_size_override("font_size", 13)

@@ -65,6 +65,8 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 			continue
 		var dist := sim.global_position.distance_to(f.global_position)
 		for i in f.interactions:
+			if not Ages.allows(sim.age_stage, i):
+				continue
 			if not urgent.is_empty() and not restores_any(i, urgent):
 				continue
 			var s := score(sim.needs, i) / (1.0 + dist / 20.0)
