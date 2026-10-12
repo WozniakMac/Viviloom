@@ -1,0 +1,12 @@
+{
+  "listing": "https://static.makehumancommunity.org/assets/assetpacks/hair01.html",
+  "archive": "https://files2.makehumancommunity.org/asset_packs/hair01/hair01_cc0.zip",
+  "archive_bytes": 227775853,
+  "license": "CC0",
+  "retrieval": "Selected entries via HTTP Range, validated by ZIP CRC",
+  "assets": {
+    "culturalibre_hair_05": "culturalibre",
+    "culturalibre_hair_06": "culturalibre",
+    "rehmanpolanski_hair_bun_brown": "RehmanPolanski"
+  }
+}

@@ -5,6 +5,7 @@ extends CanvasLayer
 ## appearance swatches on the right, rotate arrows below the Sim and a green tick to
 ## finish. Edits apply to the Sim immediately.
 
+signal view_requested(close_up: bool)
 signal finished
 signal member_selected(sim: Sim)
 signal add_requested
@@ -35,6 +36,7 @@ var _age_buttons := {}
 var _outfit_buttons := {}
 var _heavy_slider: HSlider
 var _fit_slider: HSlider
+var _face_sliders := {}
 var _sleeve_buttons: Array[Button] = []
 var _leg_buttons: Array[Button] = []
 var _rng := RandomNumberGenerator.new()
@@ -162,6 +164,27 @@ func _build() -> void:
 	_fit_slider.value_changed.connect(func(v: float): sim.set_body(sim.body_heavy, v))
 	_sleeve_buttons = _choice_row(bv, "Sleeves", ["Short", "Long"], func(i: int): sim.set_outfit(i == 1, sim.shorts))
 	_leg_buttons = _choice_row(bv, "Legs", ["Trousers", "Shorts", "Skirt"], func(i: int): sim.set_legs(["trousers", "shorts", "skirt"][i]))
+	var face_panel := PanelContainer.new()
+	face_panel.visible = false
+	face_panel.custom_minimum_size = Vector2(380, 0)
+	left.add_child(face_panel)
+	var face_controls := VBoxContainer.new()
+	face_controls.add_theme_constant_override("separation", 8)
+	face_panel.add_child(face_controls)
+	view_requested.connect(func(close_up: bool):
+		body.visible = not close_up
+		face_panel.visible = close_up)
+	var face_title := UiTheme.title(Label.new(), 18)
+	face_title.text = "Face"
+	face_controls.add_child(face_title)
+	for feature in sim.face_features:
+		var labels := {"NoseWidth": "Nose", "JawWidth": "Jaw", "EyeSpacing": "Eyes", "LipFullness": "Lips"}
+		var slider := _slider(face_controls, labels[feature])
+		slider.min_value = -1.0
+		slider.value = 0.0
+		slider.value_changed.connect(func(value: float): sim.set_face_feature(feature, value))
+		slider.drag_started.connect(func(): view_requested.emit(true))
+		_face_sliders[feature] = slider
 	_sync_body()
 
 	# Right: appearance.
@@ -231,7 +254,7 @@ func _build() -> void:
 	lv.add_child(hrow)
 	for style in Sim.HAIR_STYLES:
 		var hb := Button.new()
-		hb.text = style.capitalize()
+		hb.text = "Tousled" if style == "curly" else style.capitalize()
 		hb.toggle_mode = true
 		hb.focus_mode = Control.FOCUS_NONE
 		hb.custom_minimum_size = Vector2(0, 28)
@@ -264,6 +287,14 @@ func _build() -> void:
 			sw.pressed.connect(_on_swatch.bind(part, c))
 			row.add_child(sw)
 			_swatches[part].append([sw, c])
+
+	var view_row := HBoxContainer.new()
+	lv.add_child(view_row)
+	for close_up in [true, false]:
+		var view := Button.new()
+		view.text = "Face view" if close_up else "Full body"
+		view.pressed.connect(func(): view_requested.emit(close_up))
+		view_row.add_child(view)
 
 	# Bottom centre: turn the Sim.
 	var turn := HBoxContainer.new()
@@ -421,6 +452,8 @@ func _choice_row(parent: Control, label: String, options: Array, on_pick: Callab
 func _sync_body() -> void:
 	_heavy_slider.set_value_no_signal(sim.body_heavy)
 	_fit_slider.set_value_no_signal(sim.body_fit)
+	for feature in _face_sliders:
+		(_face_sliders[feature] as HSlider).set_value_no_signal(sim.face_features[feature])
 	for k in 2:
 		_sleeve_buttons[k].set_pressed_no_signal((k == 1) == sim.long_sleeves)
 	var leg := 2 if sim.skirt else (1 if sim.shorts else 0)
@@ -566,6 +599,7 @@ void fragment() {
 	var floor_mesh := PlaneMesh.new()
 	floor_mesh.size = Vector2(30, 30)
 	var floor := MeshInstance3D.new()
+	floor.layers = 8
 	floor.mesh = floor_mesh
 	var fm := StandardMaterial3D.new()
 	fm.albedo_color = Color(0.36, 0.55, 0.66)
@@ -576,8 +610,23 @@ void fragment() {
 	var key := OmniLight3D.new()
 	key.position = Vector3(1.2, 2.4, 3.2)
 	key.omni_range = 9.0
-	key.light_energy = 1.6
+	key.light_energy = 0.9
+	key.shadow_enabled = true
+	key.light_cull_mask = 8
 	key.light_color = Color(1.0, 0.97, 0.92)
 	studio.add_child(key)
+	var fill := OmniLight3D.new()
+	fill.position = Vector3(-2.0, 1.7, 2.0)
+	fill.omni_range = 7.0
+	fill.light_energy = 0.45
+	fill.light_color = Color(0.84, 0.9, 1.0)
+	fill.light_cull_mask = 8
+	studio.add_child(fill)
+	var rim := OmniLight3D.new()
+	rim.position = Vector3(0.5, 2.1, -1.5)
+	rim.omni_range = 5.0
+	rim.light_energy = 0.65
+	rim.light_cull_mask = 8
+	studio.add_child(rim)
 	studio.position = at
 	return studio

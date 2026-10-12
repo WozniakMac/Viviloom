@@ -57,7 +57,7 @@ class SimAction:
 
 @export var sim_name := "Alex"
 @export var shirt_color := Color(0.22, 0.47, 0.82)
-@export var pants_color := Color(0.18, 0.2, 0.28)
+@export var pants_color := Color(0.3, 0.4, 0.62)
 @export var skin_color := Color(0.87, 0.69, 0.55)
 @export var hair_color := Color(0.25, 0.16, 0.1)
 @export var eye_color := Color(0.25, 0.17, 0.1)
@@ -83,9 +83,12 @@ var _jogging := false
 var _walk_phase := 0.0
 ## Seconds left of a walk-on-the-spot preview (Create a Sim).
 var _preview_walk := 0.0
+var creator_preview := false
 ## Body shape sliders (0..1) and outfit cut.
 @export var body_heavy := 0.0
 @export var body_fit := 0.0
+var face_features := {"NoseWidth": 0.0, "JawWidth": 0.0, "EyeSpacing": 0.0, "LipFullness": 0.0}
+var _head_mesh: MeshInstance3D
 @export var long_sleeves := false
 @export var shorts := false
 @export var skirt := false
@@ -170,9 +173,12 @@ var _prop: Node3D
 var _hair_meshes := {}
 var _body_mesh: MeshInstance3D
 var _skirt_mesh: MeshInstance3D
+var _clothing_meshes := {}
 ## Mouth and brow shapes by name ("Mouth_Smile", "Brows_Angry"...).
 var _face_meshes := {}
 var _expression := ""
+var _face_time := 0.0
+var _action_indices := {}
 var _selection_ring: MeshInstance3D
 var _plumbob: MeshInstance3D
 ## Materials by part ("shirt", "pants", "skin", "hair") so the look can change later.
@@ -215,9 +221,30 @@ func _update_expression() -> void:
 	if key == _expression:
 		return
 	_expression = key
+	_set_face_action("Smile", 0.65 if e[0] == "Smile" else 0.0)
+	_set_face_action("Frown", 0.7 if e[0] == "Frown" else 0.0)
+	_set_face_action("BrowAngry", 0.8 if e[1] == "Angry" else 0.0)
+	_set_face_action("BrowSad", 0.8 if e[1] == "Sad" else 0.0)
 	for name in _face_meshes:
 		var mi: MeshInstance3D = _face_meshes[name]
 		mi.visible = name == "Mouth_" + e[0] or name == "Brows_" + e[1]
+
+
+func _set_face_action(action: String, value: float) -> void:
+	if _head_mesh == null:
+		return
+	if not _action_indices.has(action):
+		_action_indices[action] = _head_mesh.find_blend_shape_by_name("Action" + action)
+	var index: int = _action_indices[action]
+	if index >= 0:
+		_head_mesh.set_blend_shape_value(index, value)
+
+
+func _animate_face(real_delta: float) -> void:
+	_face_time += real_delta
+	var phase := fmod(_face_time + float(absi(hash(sim_name)) % 37) * 0.1, 4.7)
+	var blink := sin(PI * phase / 0.16) if phase < 0.16 else 0.0
+	_set_face_action("Blink", blink)
 
 
 ## Recolours one part of the Sim: "shirt", "pants", "skin" or "hair".
@@ -228,11 +255,29 @@ func set_part_color(part: String, c: Color) -> void:
 		"skin": skin_color = c
 		"hair": hair_color = c
 		"eyes": eye_color = c
-	var key := "pupil" if part == "eyes" else part
+	var key := "iris" if part == "eyes" else part
 	if _materials.has(key):
-		(_materials[key] as BaseMaterial3D).albedo_color = c
+		(_materials[key] as BaseMaterial3D).albedo_color = _skin_tint() if part == "skin" else c
+	var fabric_key := part + "fabric"
+	_set_fabric_color(fabric_key, c)
+	if part == "eyes" and _materials.has("nativeeyes"):
+		(_materials["nativeeyes"] as ShaderMaterial).set_shader_parameter("eye_color", c)
+	if part == "hair":
+		for material_key in _materials:
+			if material_key.begins_with("nativehair_"):
+				(_materials[material_key] as ShaderMaterial).set_shader_parameter("hair_color", c)
 	_apply_outfit()
 	_store_outfit()
+
+
+## Palette colors describe the intended skin tone; the source texture already has color.
+func _skin_tint() -> Color:
+	return Color(skin_color.r / .87, skin_color.g / .69, skin_color.b / .55, skin_color.a)
+
+
+func _set_fabric_color(key: String, color: Color) -> void:
+	if _materials.get(key) is ShaderMaterial:
+		(_materials[key] as ShaderMaterial).set_shader_parameter("fabric_color", color)
 
 
 ## Outfit categories, each with its own top, bottom and cut. The Sim wears one
@@ -333,11 +378,28 @@ static func outfit_for(i: Interaction) -> String:
 ## Sleeves and lower legs show cloth or skin depending on the outfit's cut.
 func _apply_outfit() -> void:
 	if _materials.has("sleeve"):
-		(_materials["sleeve"] as BaseMaterial3D).albedo_color = shirt_color if long_sleeves else skin_color
+		(_materials["sleeve"] as BaseMaterial3D).albedo_color = shirt_color if long_sleeves else _skin_tint()
 	if _materials.has("shin"):
-		(_materials["shin"] as BaseMaterial3D).albedo_color = skin_color if shorts or skirt else pants_color
+		(_materials["shin"] as BaseMaterial3D).albedo_color = _skin_tint() if shorts or skirt else pants_color
 	if _skirt_mesh != null:
 		_skirt_mesh.visible = skirt
+		if _materials.has("skirt"):
+			(_materials["skirt"] as BaseMaterial3D).albedo_color = pants_color
+	for part in _clothing_meshes:
+		var mesh: MeshInstance3D = _clothing_meshes[part]
+		mesh.visible = not ((part == "OutfitSleeve" and not long_sleeves) or (part == "OutfitShin" and (shorts or skirt)) or (part == "OutfitPants" and skirt))
+	if not _clothing_meshes.is_empty():
+		for part in ["shirt", "pants", "sleeve", "shin", "shoes"]:
+			if not _materials.has(part):
+				continue
+			var material: BaseMaterial3D = _materials[part]
+			var hidden: bool = part in ["shirt", "shoes"] or part == "pants" or (part == "sleeve" and long_sleeves) or (part == "shin" and not shorts and not skirt)
+			material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			var tint := _skin_tint()
+			tint.a = 0.0 if hidden else 1.0
+			material.albedo_color = tint
+		for part in ["shirt", "pants"]:
+			_set_fabric_color(part + "fabric", shirt_color if part == "shirt" else pants_color)
 
 
 ## Trousers, shorts or a skirt.
@@ -355,16 +417,36 @@ func set_outfit(p_long_sleeves: bool, p_shorts: bool) -> void:
 	_store_outfit()
 
 
+## Persistent facial proportions. Negative values make the feature narrower/smaller.
+func set_face_feature(feature: String, value: float) -> void:
+	if not face_features.has(feature):
+		return
+	face_features[feature] = clampf(value, -1.0, 1.0)
+	var meshes: Array = [_head_mesh]
+	for key in _face_meshes:
+		if key.begins_with("Brows_"):
+			meshes.append(_face_meshes[key])
+	for mesh in meshes:
+		if mesh == null:
+			continue
+		var index: int = mesh.find_blend_shape_by_name(feature)
+		if index >= 0:
+			mesh.set_blend_shape_value(index, face_features[feature])
+
+
 ## Body sliders: 0..1 heavier and 0..1 more muscular.
 func set_body(heavy: float, fit: float) -> void:
 	body_heavy = clampf(heavy, 0.0, 1.0)
 	body_fit = clampf(fit, 0.0, 1.0)
 	if _body_mesh == null:
 		return
-	for pair in [["Heavy", body_heavy], ["Fit", body_fit]]:
-		var idx := _body_mesh.find_blend_shape_by_name(pair[0])
-		if idx >= 0:
-			_body_mesh.set_blend_shape_value(idx, pair[1])
+	var meshes: Array = [_body_mesh]
+	meshes.append_array(_clothing_meshes.values())
+	for mesh in meshes:
+		for pair in [["Heavy", body_heavy], ["Fit", body_fit], ["HeavyFit", body_heavy * body_fit]]:
+			var idx: int = mesh.find_blend_shape_by_name(pair[0])
+			if idx >= 0:
+				mesh.set_blend_shape_value(idx, pair[1])
 
 
 func set_hair_style(style: String) -> void:
@@ -533,6 +615,7 @@ func to_dict() -> Dictionary:
 		"hair_style": hair_style,
 		"walk_style": walk_style,
 		"body": [body_heavy, body_fit, long_sleeves, shorts, skirt],
+		"face": face_features.duplicate(),
 		"outfit": outfit,
 		"outfits": _outfits_dict(),
 		"age": [age_stage, age_days, pregnant_days],
@@ -559,6 +642,9 @@ func from_dict(d: Dictionary, others: Array) -> void:
 	walk_style = d.get("walk_style", "default")
 	var bd: Array = d.get("body", [0.0, 0.0, false, false])
 	set_body(bd[0], bd[1])
+	var saved_face: Dictionary = d.get("face", {})
+	for feature in face_features:
+		set_face_feature(feature, float(saved_face.get(feature, 0.0)))
 	set_outfit(bd[2], bd[3])
 	if bd.size() > 4 and bd[4]:
 		set_legs("skirt")
@@ -832,6 +918,7 @@ func _enqueue(a: SimAction) -> bool:
 func _process(real_delta: float) -> void:
 	if away:
 		return
+	_animate_face(real_delta)
 	if dying:
 		_animate(Clock.scaled(real_delta), false, null)
 		return
@@ -1545,7 +1632,7 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 			line.global_position = tip - Vector3(0, drop * 0.5, 0)
 	if _anim != null:
 		# Standing around and walking show the Sim's mood (strong feelings only).
-		if (anim == "idle" or anim == "walk") and emotions.intensity() >= 1:
+		if not creator_preview and (anim == "idle" or anim == "walk") and emotions.intensity() >= 1:
 			var mood_anim := "%s_%s" % [anim, MOOD_ANIMS.get(emotions.mood(), "")]
 			if _anim.has_animation(mood_anim):
 				anim = mood_anim
@@ -1554,7 +1641,7 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 		# Animations follow game speed (capped so ultra speed isn't frantic), and the
 		# walk cycle matches the walking speed (about 1.4 m per stride).
 		var rate := minf(Clock.SPEED_FACTORS[Clock.speed], 3.0)
-		if _preview_walk > 0.0:
+		if creator_preview or _preview_walk > 0.0:
 			rate = 1.0
 		if anim.begins_with("walk"):
 			rate *= move_speed() / 1.4
@@ -1593,6 +1680,10 @@ func _build_visual() -> void:
 		var mi := node as MeshInstance3D
 		# Layer 3 as well, so the portrait camera can see Sims and nothing else.
 		mi.layers = 1 | PORTRAIT_LAYER
+		if mi.name.begins_with("Outfit"):
+			_clothing_meshes[mi.name] = mi
+		if mi.name == "Head":
+			_head_mesh = mi
 		if mi.name == "Body":
 			_body_mesh = mi
 		if mi.name == "Skirt":
@@ -1605,9 +1696,27 @@ func _build_visual() -> void:
 			var src := mi.mesh.surface_get_material(i)
 			if src == null:
 				continue
-			var key := src.resource_name.to_lower()
+			var key := "skirt" if mi.name == "Skirt" else src.resource_name.to_lower()
 			if not _materials.has(key):
-				_materials[key] = src.duplicate()
+				if key in ["shirtfabric", "pantsfabric"] and src is BaseMaterial3D:
+					var fabric := ShaderMaterial.new()
+					fabric.shader = preload("res://shaders/fabric.gdshader")
+					fabric.set_shader_parameter("fabric_texture", src.albedo_texture)
+					fabric.set_shader_parameter("fabric_normal", src.normal_texture)
+					fabric.set_shader_parameter("has_normal", src.normal_texture != null)
+					_materials[key] = fabric
+				elif key == "nativeeyes" and src is BaseMaterial3D:
+					var eye_material := ShaderMaterial.new()
+					eye_material.shader = preload("res://shaders/eyes.gdshader")
+					eye_material.set_shader_parameter("eye_texture", src.albedo_texture)
+					_materials[key] = eye_material
+				elif key.begins_with("nativehair_") and src is BaseMaterial3D:
+					var hair_material := ShaderMaterial.new()
+					hair_material.shader = preload("res://shaders/facial_hair.gdshader") if key in ["nativehair_brows", "nativehair_lashes"] else preload("res://shaders/hair.gdshader")
+					hair_material.set_shader_parameter("hair_texture", src.albedo_texture)
+					_materials[key] = hair_material
+				else:
+					_materials[key] = src.duplicate()
 			mi.set_surface_override_material(i, _materials[key])
 	set_part_color("shirt", shirt_color)
 	set_part_color("pants", pants_color)
@@ -1616,6 +1725,8 @@ func _build_visual() -> void:
 	set_part_color("eyes", eye_color)
 	set_hair_style(hair_style)
 	set_body(body_heavy, body_fit)
+	for feature in face_features:
+		set_face_feature(feature, face_features[feature])
 	_apply_outfit()
 	_default_outfits()
 

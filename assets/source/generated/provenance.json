@@ -1,0 +1,10 @@
+{
+  "crewneck-blue-ai.png": {
+    "tool": "built-in imagegen",
+    "mode": "precise-object-edit",
+    "source": "../makehuman/system-assets/clothes/male_casualsuit02/male_casualsuit02_diffuse.png",
+    "source_license": "CC0",
+    "prompt": "crewneck-blue-ai.prompt.txt",
+    "use": "Sweater only; original denim texture retained on trousers"
+  }
+}

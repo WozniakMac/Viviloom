@@ -821,6 +821,7 @@ func _setup_environment() -> void:
 	sun.name = "Sun"
 	sun.rotation_degrees = Vector3(-55.0, 35.0, 0.0)
 	sun.light_energy = 1.1
+	sun.light_cull_mask = 1
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
 	add_child(sun)
@@ -1437,7 +1438,15 @@ func open_create_a_sim() -> void:
 	add_child(_studio)
 	_stop_pan()
 	rig.set_locked(true)
-	rig.frame(CAS_STUDIO + Vector3(0, 0.95, 0), 0.0, deg_to_rad(-6.0), 4.6)
+	rig.frame(CAS_STUDIO + Vector3(0, 0.95, 0), 0.0, deg_to_rad(-2.0), 3.3)
+	var studio_env := Environment.new()
+	studio_env.background_mode = Environment.BG_COLOR
+	studio_env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	studio_env.ambient_light_color = Color(0.78, 0.84, 0.95)
+	studio_env.ambient_light_energy = 0.35
+	studio_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	studio_env.ssao_enabled = true
+	rig.camera.environment = studio_env
 	_cas = CreateASim.new()
 	_cas.name = "CreateASim"
 	add_child(_cas)
@@ -1445,6 +1454,8 @@ func open_create_a_sim() -> void:
 	_cas.set_household(household, MAX_HOUSEHOLD)
 	_cas.finished.connect(_on_cas_finished)
 	_cas.member_selected.connect(_cas_show)
+	_cas.view_requested.connect(func(close_up: bool):
+		rig.frame(CAS_STUDIO + Vector3(0, 1.69 if close_up else .95, 0), 0.0, deg_to_rad(-2.0), .8 if close_up else 3.3))
 	_cas.add_requested.connect(func():
 		var s := _new_sim("")
 		add_to_household(s)
@@ -1463,7 +1474,13 @@ func _cas_show(s: Sim) -> void:
 		m.visible = m == s
 		m.away = m != s
 		m.clear_queue()
+		m.creator_preview = true
 	s.global_position = CAS_STUDIO
+	for node in s.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
+		if not mesh.has_meta("cas_original_layers"):
+			mesh.set_meta("cas_original_layers", mesh.layers)
+		mesh.layers = 8 | Sim.PORTRAIT_LAYER
 	# Turned slightly towards the camera, which looks along -Z.
 	s.rotation.y = PI - 0.25
 	select_sim(s)
@@ -1473,6 +1490,14 @@ func _cas_show(s: Sim) -> void:
 
 
 func _on_cas_finished() -> void:
+	rig.camera.environment = null
+	for member in household:
+		member.creator_preview = false
+		for node in member.find_children("*", "MeshInstance3D", true, false):
+			var mesh := node as MeshInstance3D
+			if mesh.has_meta("cas_original_layers"):
+				mesh.layers = int(mesh.get_meta("cas_original_layers"))
+				mesh.remove_meta("cas_original_layers")
 	for m in household:
 		m.change_outfit("everyday", false)
 	_cas = null
@@ -1684,6 +1709,8 @@ func _trace() -> void:
 
 
 func _run_scenario(scenario: String, path: String) -> void:
+	if path != "":
+		get_viewport().set_disable_input(true)
 	await get_tree().create_timer(0.5).timeout
 	match scenario:
 		"menu":
@@ -2188,6 +2215,32 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_social(jules, Socials.find("Tell a Joke"))
 			hud._show_page(3)
 			await get_tree().create_timer(2.5).timeout
+		"casclothes", "casshorts", "casskirt":
+			open_create_a_sim()
+			sim.set_body(1.0, 1.0)
+			sim.set_outfit(scenario == "casclothes", scenario == "casshorts")
+			if scenario == "casskirt":
+				sim.set_legs("skirt")
+			_cas._sync_body()
+			await get_tree().create_timer(1.0).timeout
+		"caspalm", "castorso", "castorsomax":
+			open_create_a_sim()
+			sim.set_body(1.0 if scenario == "castorsomax" else .25, 1.0 if scenario == "castorsomax" else .5)
+			sim.set_outfit(true, false)
+			_cas._sync_body()
+			rig.frame(CAS_STUDIO + (Vector3(-.24, .83, 0) if scenario == "caspalm" else Vector3(0, 1.15, 0)), 0.0, deg_to_rad(-2.0), .65 if scenario == "caspalm" else 1.75)
+			await get_tree().create_timer(1.0).timeout
+		"cashair-short", "cashair-long", "cashair-bob", "cashair-ponytail", "cashair-curly", "cashair-bun":
+			open_create_a_sim()
+			sim.set_body(.25, .5)
+			sim.set_outfit(true, false)
+			sim.set_hair_style(scenario.trim_prefix("cashair-"))
+			_cas.view_requested.emit(true)
+			await get_tree().create_timer(1.0).timeout
+		"casface":
+			open_create_a_sim()
+			_cas.view_requested.emit(true)
+			await get_tree().create_timer(1.0).timeout
 		"cas":
 			open_create_a_sim()
 			_cas.randomize_sim()
