@@ -70,6 +70,9 @@ class SimAction:
 
 const MODEL := preload("res://assets/sim/sim.glb")
 const PORTRAIT_LAYER := 4
+## Emotion -> the suffix of its body-language idle and walk animations.
+const MOOD_ANIMS := {"sad": "sad", "angry": "angry", "happy": "happy", "playful": "happy", "energized": "happy",
+	"tense": "tense", "uncomfortable": "tense", "embarrassed": "tense", "flirty": "flirty", "confident": "happy"}
 const HAIR_STYLES: Array[String] = ["short", "long", "bun"]
 @export var walk_speed := 2.0
 
@@ -1183,12 +1186,17 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 			elif busy:
 				anim = "use"
 	if _anim != null:
+		# Standing around and walking show the Sim's mood (strong feelings only).
+		if (anim == "idle" or anim == "walk") and emotions.intensity() >= 1:
+			var mood_anim := "%s_%s" % [anim, MOOD_ANIMS.get(emotions.mood(), "")]
+			if _anim.has_animation(mood_anim):
+				anim = mood_anim
 		if _anim.current_animation != anim:
-			_anim.play(anim, 0.25)
+			_anim.play(anim, 0.3)
 		# Animations follow game speed (capped so ultra speed isn't frantic), and the
 		# walk cycle matches the walking speed (about 1.4 m per stride).
 		var rate := minf(Clock.SPEED_FACTORS[Clock.speed], 3.0)
-		if anim == "walk":
+		if anim.begins_with("walk"):
 			rate *= walk_speed / 1.4
 		_anim.speed_scale = rate
 	# The plumbob floats over the head, spinning and bobbing even while paused.

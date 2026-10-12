@@ -456,6 +456,60 @@ def animations(rig):
                    "upperarm.L": (0, 0, 4)}
     make_action(rig, "wave", 31, wave)
 
+    # Mood idles: body language for the current emotion.
+    def mood_idle(name, base, sway):
+        poses = {}
+        for f, t in ((1, 0.0), (21, 1.0), (41, 0.0), (61, -1.0), (81, 0.0)):
+            p = dict(base)
+            for bone, amt in sway.items():
+                r = p.get(bone, (0, 0, 0))
+                p[bone] = (r[0] + amt[0] * t, r[1] + amt[1] * t, r[2] + amt[2] * t)
+            poses[f] = p
+        make_action(rig, name, 81, poses)
+
+    mood_idle("idle_sad",
+        {"spine": (12, 0, 0), "chest": (8, 0, 0), "neck": (10, 0, 0), "head": (22, 0, 0),
+         "upperarm.L": (6, 0, 2), "upperarm.R": (6, 0, -2), "hips_loc": (0, -0.02, 0)},
+        {"head": (3, 4, 0), "chest": (2, 0, 0)})
+    mood_idle("idle_angry",
+        {"chest": (-4, 0, 0), "head": (6, 0, 0), "upperarm.L": (-35, 0, 20), "upperarm.R": (-35, 0, -20),
+         "forearm.L": (-110, 0, 0), "forearm.R": (-110, 0, 0)},
+        {"head": (0, 10, 0), "spine": (0, 6, 0)})
+    mood_idle("idle_happy",
+        {"chest": (-4, 0, 0), "head": (-8, 0, 0), "upperarm.L": (-8, 0, 10), "upperarm.R": (-8, 0, -10)},
+        {"spine": (0, 0, 5), "head": (0, 0, 8), "hips_loc": (0, 0.02, 0)})
+    mood_idle("idle_tense",
+        {"chest": (6, 0, 0), "head": (4, 0, 0), "upperarm.L": (-25, 0, 4), "upperarm.R": (-25, 0, -4),
+         "forearm.L": (-60, 0, 0), "forearm.R": (-60, 0, 0)},
+        {"head": (0, 18, 0), "forearm.L": (-15, 0, 0), "forearm.R": (15, 0, 0)})
+    mood_idle("idle_flirty",
+        {"spine": (0, 0, 6), "head": (-5, 0, 10), "upperarm.L": (0, 0, 14), "upperarm.R": (-40, 0, -10),
+         "forearm.R": (-70, 0, 0)},
+        {"spine": (0, 0, 4), "head": (0, 6, 4)})
+
+    # Mood walks: slumped and slow when sad, bouncy when happy, stomping when angry.
+    def mood_walk(name, extra, bounce, stride):
+        walk = {}
+        for f in range(1, 32, 5):
+            ph = (f - 1) / 30.0 * 2 * math.pi
+            sn = math.sin(ph)
+            knee_l = max(0.0, -math.sin(ph + 0.6)) * 45 * stride
+            knee_r = max(0.0, math.sin(ph + 0.6)) * 45 * stride
+            p = {
+                "thigh.L": (-28 * sn * stride, 0, 0), "thigh.R": (28 * sn * stride, 0, 0),
+                "shin.L": (knee_l, 0, 0), "shin.R": (knee_r, 0, 0),
+                "upperarm.L": (22 * sn * stride, 0, 5), "upperarm.R": (-22 * sn * stride, 0, -5),
+                "forearm.L": (-12, 0, 0), "forearm.R": (-12, 0, 0),
+                "hips_loc": (0, abs(math.cos(ph)) * bounce, 0),
+            }
+            p.update(extra)
+            walk[f] = p
+        make_action(rig, name, 31, walk)
+
+    mood_walk("walk_sad", {"spine": (10, 0, 0), "head": (20, 0, 0)}, 0.012, 0.6)
+    mood_walk("walk_happy", {"head": (-6, 0, 0), "chest": (-4, 0, 0)}, 0.05, 1.1)
+    mood_walk("walk_angry", {"chest": (6, 0, 0), "head": (8, 0, 0), "forearm.L": (-80, 0, 0), "forearm.R": (-80, 0, 0)}, 0.035, 1.2)
+
 
 def main():
     clear_scene()

@@ -21,6 +21,8 @@ func _initialize() -> void:
 	root3d.add_child(sun)
 	var scene: PackedScene = load("res://assets/sim/sim.glb")
 	var names := ["idle", "walk", "sit", "sit_use", "lie", "talk", "use"]
+	if args.size() > 4 and args[4] == "moods":
+		names = ["idle_sad", "idle_angry", "idle_happy", "idle_tense", "idle_flirty", "walk_sad", "walk_angry"]
 	for i in names.size():
 		var inst := scene.instantiate() as Node3D
 		root3d.add_child(inst)
