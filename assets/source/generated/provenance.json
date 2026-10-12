@@ -6,5 +6,18 @@
     "source_license": "CC0",
     "prompt": "crewneck-blue-ai.prompt.txt",
     "use": "Sweater only; original denim texture retained on trousers"
+  },
+  "hair-detail-ai-v1.png": {
+    "path": "../../sim/hair-detail-ai-v1.png",
+    "tool": "built-in imagegen",
+    "mode": "precise-object-edit",
+    "source": "../makehuman/hair01/hair/culturalibre_hair_01/diffuse_black.png",
+    "source_license": "CC0",
+    "prompt": "hair-detail-ai-v1.prompt.txt",
+    "use": "Supplemental RGB clump luminance for native Long and Bob hair. The original atlas alone controls alpha, UV layout, hairline and cutout. AI output did not preserve exact island placement; its color contributes only where its alpha is present.",
+    "dimensions": [
+      1254,
+      1254
+    ]
   }
 }

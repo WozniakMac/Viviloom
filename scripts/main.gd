@@ -1443,7 +1443,7 @@ func open_create_a_sim() -> void:
 	studio_env.background_mode = Environment.BG_COLOR
 	studio_env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	studio_env.ambient_light_color = Color(0.78, 0.84, 0.95)
-	studio_env.ambient_light_energy = 0.35
+	studio_env.ambient_light_energy = 0.25
 	studio_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	studio_env.ssao_enabled = true
 	rig.camera.environment = studio_env

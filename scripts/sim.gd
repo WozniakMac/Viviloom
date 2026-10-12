@@ -1799,9 +1799,19 @@ func _build_model() -> void:
 					if key not in ["nativehair_brows", "nativehair_lashes"]:
 						hair_material.set_shader_parameter("hair_normal", src.normal_texture)
 						hair_material.set_shader_parameter("has_normal", src.normal_texture != null)
+						if key in ["nativehair_long", "nativehair_bob"]:
+							hair_material.set_shader_parameter("hair_detail_texture", preload("res://assets/sim/hair-detail-ai-v1.png"))
+							hair_material.set_shader_parameter("has_detail", true)
 					_materials[key] = hair_material
 				else:
 					_materials[key] = src.duplicate()
+					if key in ["skin", "sleeve", "shin"] and src is BaseMaterial3D:
+						var skin: BaseMaterial3D = _materials[key]
+						skin.subsurf_scatter_enabled = RenderingServer.get_current_rendering_method() == "forward_plus"
+						skin.subsurf_scatter_skin_mode = true
+						skin.subsurf_scatter_strength = 0.15
+						skin.roughness = 0.55
+						skin.metallic_specular = 0.35
 			mi.set_surface_override_material(i, _materials[key])
 	set_part_color("shirt", shirt_color)
 	set_part_color("pants", pants_color)

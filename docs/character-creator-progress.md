@@ -1,6 +1,6 @@
 # Character creator quality work
 
-Worktree: character-creator. Goal active; the full Sims 4 quality and interaction target is not yet achieved.
+Worktree: character-creator. The full Sims 4 quality and interaction target is not yet achieved.
 
 ## Current character
 
@@ -12,12 +12,12 @@ Worktree: character-creator. Goal active; the full Sims 4 quality and interactio
 - Shoulder coverage and neck binding corrected. Garment membership survives sleeve/leg cuts: connected sweater and trouser pieces get their own materials, including the sweater hem.
 - CC0 MakeHuman casual outfit and shoes are fitted through their native barycentric bindings. Jeans preserve original seam/pocket/wear detail. Fabric shader preserves folds while supporting the game palette.
 - Built-in imagegen edited the sweater UV texture into a plain blue crewneck. Source and prompt are retained in assets/source/generated; original source images remain intact. The generated texture is used only on the sweater.
-- Short, tousled and bun styles use sculpted CC0 hair from the official hair01 pack; long uses sculpted culturalibre_hair_01 from hair01, bob is an original chin-length restyle of those locks, and ponytail uses a fitted system-pack asset. Short/tousled styles include a fitted scalp underneath. Hair shading has restrained highlights, normal-map detail and dark-texture tone compression to preserve strands.
+- Short, tousled and bun styles use sculpted CC0 hair from the official hair01 pack; long uses sculpted culturalibre_hair_01 from hair01, bob is an original chin-length restyle of those locks, and ponytail uses a fitted system-pack asset. Short/tousled/long/bob styles include a fitted scalp underneath. The bob has narrower, shorter ends. Hair shading has restrained anisotropic highlights, softer normal detail and dark-texture tone compression to preserve strands. AI clump luminance supplements the original Long/Bob atlas without changing its alpha mask; exact UV island matching was not achieved by imagegen. Asset and exact prompt provenance are in assets/source/generated/provenance.json.
 - Female base uses its own native facial proportions and CC0 female skin, plus restrained jaw/chin/nose/lip refinement applied consistently to the base and every action. Male/Female controls switch the actual model and persist through saving.
 - Native eyes, softly blended textured eyebrows and eyelashes replace procedural overlays. Iris color preserves pupils and whites. Eyelashes follow the native blink morph.
 - Native Anny blink, smile, frown, angry brow and sad brow actions deform the face; eyes remain fixed. Blinking runs in both CAS and gameplay.
 - Persistent nose, jaw, eye spacing and lip controls retain legacy save defaults. A neutral creator idle keeps gameplay moods from changing posture while editing.
-- Creator studio camera, key/fill/rim lighting and isolated rendering layers improve close inspection. Gameplay layers are restored on exit.
+- Creator studio camera, softer key/fill/rim lighting, a fading floor without a hard horizon and isolated rendering layers improve close inspection. Native skin uses restrained subsurface scattering in Forward+, with normal opaque skin fallback in other renderers. Gameplay layers are restored on exit.
 - Editable compressed Blender source: tools/model_source/character.blend. Image paths are relative. Runtime asset: assets/sim/sim.glb.
 
 ## Verification
@@ -34,6 +34,9 @@ Worktree: character-creator. Goal active; the full Sims 4 quality and interactio
 - Real Godot AnimationMixer/modifier ordering, grip changes, wrist-relative props, release and rebuilt skeletons: output/hands-runtime-check.log, zero failures. Frame identity/save, face and body/clothing morph checks: output/hands-frame-check.log, output/hands-face-check.log and output/hands-morph-check.log, zero failures. Game suite: output/hands-game-tests.log, TESTS PASSED (0 failures); existing transform/cleanup diagnostics remain.
 - Latest game hand renders: output/hands-final.png, output/hands-female-heavy-fit.png and output/hands-final-cas-palm.png. Female creator after the hand pass: output/hands-final-female-body.png. Visual inspection confirms the wrist seam is removed and the finger bends remain bounded; authored prop contact still needs refinement.
 - Latest torso/creator: output/garment-region-torso.png and output/character-current.png. Hand closeup: output/final-palm.png. Soft face detail: output/soft-face-detail.png. Tests alone do not establish the visual quality target.
+
+- Female hair/studio checkpoint: output/beauty-studio-final-face.png and output/beauty-studio-final-body.png show the actual game creator. Brown/blonde material comparison: output/beauty-hair-comparison-v2.png, built by tools/preview_portraits.tscn. Both native hand bindings, frame/save/prop switches, face morphs, body/clothing morphs and hand modifier checks all pass in output/beauty-hair-*-check.log. Game suite: output/beauty-hair-game-tests.log, TESTS PASSED (0 failures), with existing transform/resource cleanup diagnostics.
+- Live Sims 4 comparison inspected the existing female household in CAS at full body and face zoom. Reference hair uses broad coherent locks, controlled strand highlights and soft silhouette ends; face lighting gives more cheek/nose depth. Current OpenSims card edges and silhouette remain below that target. The compatibility renderer loads successfully but still differs visibly in brightness/material response; Forward+ is the current visual target.
 
 ## Remaining goal work
 

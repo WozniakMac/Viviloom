@@ -24,9 +24,11 @@ def build_native_hair(procedural):
             # the side part, open face, strand UVs and uneven natural ends.
             for p in bindings:
                 length=max(0.,1.770-p.z)
-                p.z+=.43*length
+                p.z+=.57*length
                 t=min(1.,length/.30)
-                p.x*=1.-.20*t*t
+                end=max(0.,min(1.,(length-.28)/.20))
+                end=end*end*(3.-2.*end)
+                p.x*=(1.-.30*t*t)*(1.-.18*end)
                 p.y-=.004*t*t
         old=next(o for o in result if o.name=='Hair_'+style)
         result.remove(old);bpy.data.objects.remove(old,do_unlink=True)
@@ -39,7 +41,7 @@ def build_native_hair(procedural):
         obj=bpy.data.objects.new('Hair_'+style,mesh);bpy.context.collection.objects.link(obj)
         mesh.materials.append(texture_material(folder,'NativeHair_'+style))
         # A fitted scalp beneath separate locks closes gaps without flattening the silhouette.
-        if style in ['Short','Curly']:
+        if style in ['Short','Curly','Long','Bob']:
             from character_details import join
             cap=scalp.copy();cap.data=scalp.data.copy()
             bpy.context.collection.objects.link(cap)

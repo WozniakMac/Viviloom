@@ -627,33 +627,34 @@ void fragment() {
 	var floor_mesh := PlaneMesh.new()
 	floor_mesh.size = Vector2(30, 30)
 	var floor := MeshInstance3D.new()
-	floor.layers = 8
+	floor.layers = 16
 	floor.mesh = floor_mesh
-	var fm := StandardMaterial3D.new()
-	fm.albedo_color = Color(0.36, 0.55, 0.66)
-	fm.roughness = 1.0
+	var fm := ShaderMaterial.new()
+	fm.shader = preload("res://shaders/studio_floor.gdshader")
+	floor.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	floor.material_override = fm
 	studio.add_child(floor)
 	# Soft key light from the front so the face isn't in shadow.
 	var key := OmniLight3D.new()
 	key.position = Vector3(1.2, 2.4, 3.2)
 	key.omni_range = 9.0
-	key.light_energy = 0.9
+	key.light_energy = 0.85
 	key.shadow_enabled = true
-	key.light_cull_mask = 8
+	key.light_cull_mask = 8 | 16
+	key.shadow_caster_mask = 8
 	key.light_color = Color(1.0, 0.97, 0.92)
 	studio.add_child(key)
 	var fill := OmniLight3D.new()
 	fill.position = Vector3(-2.0, 1.7, 2.0)
 	fill.omni_range = 7.0
-	fill.light_energy = 0.45
+	fill.light_energy = 0.28
 	fill.light_color = Color(0.84, 0.9, 1.0)
 	fill.light_cull_mask = 8
 	studio.add_child(fill)
 	var rim := OmniLight3D.new()
 	rim.position = Vector3(0.5, 2.1, -1.5)
 	rim.omni_range = 5.0
-	rim.light_energy = 0.65
+	rim.light_energy = 0.28
 	rim.light_cull_mask = 8
 	studio.add_child(rim)
 	studio.position = at
