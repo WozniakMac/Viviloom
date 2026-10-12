@@ -1888,6 +1888,20 @@ func _run_scenario(scenario: String, path: String) -> void:
 			var map := get_node("Neighbourhood") as Neighbourhood
 			map.show_card("studio")
 			await get_tree().create_timer(1.0).timeout
+		"cozy":
+			var bea := _new_sim("Bea")
+			bea.set_hair_style("long")
+			bea.set_part_color("shirt", Color(0.9, 0.45, 0.6))
+			add_to_household(bea)
+			sim.change_relationship(bea, 70.0, 70.0)
+			var bed := find_furniture("bed")
+			var sleep: Interaction = bed.interactions.filter(func(i): return i.name == "Sleep")[0]
+			sim.queue_interaction(bed, sleep)
+			bea.queue_interaction(bed, sleep)
+			Clock.set_speed(2)
+			rig.frame(bed.global_position, deg_to_rad(30.0), deg_to_rad(-45.0), 7.0)
+			await get_tree().create_timer(4.0).timeout
+			print("COZY users=%d alex=%s bea=%s cozy=%s" % [bed.users.size(), sim.current_action().label if sim.current_action() else "-", bea.current_action().label if bea.current_action() else "-", sim.emotions.has("cozy")])
 		"store":
 			aspirations.satisfaction = 2300
 			hud._show_page(5)

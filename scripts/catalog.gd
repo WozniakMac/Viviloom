@@ -168,6 +168,7 @@ static func create(kind: String) -> Furniture:
 			f.add_box(Vector3(1.95, 0.9, 0.1), Vector3(0, 0.45, -0.95), WOOD)
 			f.spots = [Vector3(-1.5, 0, 0.2), Vector3(1.5, 0, 0.2)]
 			f.use_position = Vector3(-0.45, 0.62, 0.92)
+			f.extra_positions = [Vector3(0.45, 0.62, 0.92)]
 			f.use_facing = Vector3(0, 0, 1)
 			var sleep_rates := {"energy": 13.0, "hunger": -3.0, "bladder": -4.0, "hygiene": -2.0, "fun": 0.0, "social": -2.0}
 			f.interactions = [
@@ -535,6 +536,8 @@ static func create(kind: String) -> Furniture:
 			f.display_name = "Swimming Pool"
 			f.height = 0.2
 			f.use_position = Vector3(0, Lot.WATER_LEVEL - 0.05, 0)
+			# Several swimmers share a pool.
+			f.extra_positions = [f.use_position, f.use_position, f.use_position]
 			f.interactions = [
 				Interaction.new("Swim", {"fun": 35.0, "hygiene": 20.0, "energy": -10.0}, 60.0, "", "swim").practices("fitness", 45.0).grants("swim", "happy", 1, "Refreshing Swim", "The water was perfect.", 180.0),
 			]
@@ -594,6 +597,11 @@ static func create(kind: String) -> Furniture:
 			push_error("Unknown furniture kind: %s" % kind)
 	f.price = INFO[kind][1]
 	_use_model(f, kind)
+	if kind == "bed":
+		# A duvet that covers whoever is sleeping (hidden while the bed is empty).
+		var covers := f.add_box(Vector3(1.88, 0.26, 1.4), Vector3(0, 0.84, 0.28), Color(0.32, 0.48, 0.78))
+		covers.name = "Covers"
+		covers.visible = false
 	if kind != "pool":
 		f.build_collider()
 	return f

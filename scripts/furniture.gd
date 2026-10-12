@@ -21,6 +21,44 @@ var use_position: Variant = null
 ## Local direction the Sim faces while at `use_position`.
 var use_facing := Vector3(0, 0, 1)
 var user: Node3D = null
+## Extra places for more Sims at once (the other side of a double bed, more
+## swimmers); everyone using the object, in slot order.
+var extra_positions: Array[Vector3] = []
+var users: Array = []
+
+
+func capacity() -> int:
+	return 1 + extra_positions.size()
+
+
+func has_room_for(s: Node3D) -> bool:
+	users = users.filter(func(u): return is_instance_valid(u))
+	return users.has(s) or users.size() < capacity()
+
+
+## Takes a place on the object; returns the local position for that place.
+func claim(s: Node3D) -> Variant:
+	if not users.has(s):
+		users.append(s)
+	user = s
+	_update_covers.call_deferred()
+	var slot := users.find(s)
+	if slot == 0 or extra_positions.is_empty():
+		return use_position
+	return extra_positions[mini(slot - 1, extra_positions.size() - 1)]
+
+
+func release(s: Node3D) -> void:
+	users.erase(s)
+	user = users[0] if not users.is_empty() else null
+	_update_covers()
+
+
+## Beds show their duvet over anyone lying in them.
+func _update_covers() -> void:
+	var covers := get_node_or_null("Covers") as Node3D
+	if covers != null:
+		covers.visible = not users.is_empty()
 ## Colour swatch (0 = the original colours).
 var variant := 0
 ## Material name -> its own copy and original colour, for recolouring.

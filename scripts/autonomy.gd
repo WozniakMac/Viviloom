@@ -73,7 +73,7 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 	var meal_ready := sim.all_furniture().any(func(f): return is_instance_valid(f) and f.kind == "meal")
 	var options: Array = []
 	for f in sim.all_furniture():
-		if f.user != null and f.user != sim:
+		if not f.has_room_for(sim):
 			continue
 		if Daylight.power_off and Bills.ELECTRIC.has(f.kind):
 			continue

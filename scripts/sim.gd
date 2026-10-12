@@ -979,7 +979,7 @@ func _start(a: SimAction) -> void:
 			_fail(a, "%s can't get there." % sim_name)
 		return
 	var f := a.furniture
-	if f.user != null and f.user != self:
+	if not f.has_room_for(self):
 		_fail(a, "The %s is in use." % f.display_name)
 		return
 	if f.broken and not a.interaction.fixes:
@@ -1121,15 +1121,21 @@ func _begin_perform(a: SimAction) -> void:
 		return
 	a.performing = true
 	var f := a.furniture
-	f.user = self
+	var place: Variant = f.claim(self)
 	var facing: Vector3
 	if a.interaction.pose == "swim":
 		_swim_center = f.to_global(f.use_position)
 		_swim_half = Vector2(f.footprint) * 0.5
 		_swim_phase = randf() * TAU
-	if f.use_position != null:
-		global_position = f.to_global(f.use_position)
+	if place != null:
+		global_position = f.to_global(place)
 		facing = f.global_basis * f.use_facing
+	# Sharing a bed with someone special is lovely.
+	if f.kind == "bed" and a.interaction.pose == "lie":
+		for other in f.users:
+			if other != self and is_instance_valid(other) and (spouse == other or romance_with(other) >= 30.0):
+				emotions.add("cozy", "happy", 1, "Cozy Together", "Nothing beats falling asleep next to them.", 480.0)
+				other.emotions.add("cozy", "happy", 1, "Cozy Together", "Nothing beats falling asleep next to them.", 480.0)
 	else:
 		facing = f.global_position - global_position
 	facing.y = 0.0
@@ -1202,7 +1208,7 @@ func _end_perform(a: SimAction, finished := false) -> void:
 		return
 	_reward(a.interaction, a.elapsed, finished)
 	a.performing = false
-	a.furniture.user = null
+	a.furniture.release(self)
 	if finished and a.interaction.leaves_mess != "" and lot != null:
 		lot.add_mess(a.interaction.leaves_mess, a.spot if a.spot != Vector3.ZERO else global_position)
 	elif finished and traits.has("slob") and lot != null and a.furniture.blocks and _rng.randf() < 0.25:
