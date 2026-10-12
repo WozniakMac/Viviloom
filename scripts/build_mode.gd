@@ -7,7 +7,7 @@ signal funds_changed(funds: int)
 signal notice(text: String)
 signal entered
 
-enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR }
+enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL }
 
 var lot: Lot
 var sim: Sim
@@ -122,6 +122,8 @@ func handle_input(event: InputEvent) -> void:
 				_finish_wall()
 			elif tool == Tool.FLOOR and _floor_start != null:
 				_finish_floor()
+			elif tool == Tool.POOL and _floor_start != null:
+				_finish_pool()
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			if _held != null:
 				_cancel_held()
@@ -184,12 +186,15 @@ func _on_press(p: Variant, screen_pos: Vector2) -> void:
 						if not _spend(price):
 							break
 						lot.paint_wall(t, wall_style)
-		Tool.FLOOR:
+		Tool.FLOOR, Tool.POOL:
 			_floor_start = lot.world_to_cell(pt)
 			_floor_end = _floor_start
 		Tool.DELETE:
 			var f := _furniture_under(screen_pos)
-			if f != null:
+			if f != null and f.kind == "pool":
+				earn(POOL_TILE_PRICE * f.footprint.x * f.footprint.y)
+				lot.remove_pool(f)
+			elif f != null:
 				lot.remove_furniture(f)
 				_sell(f)
 			else:
@@ -220,6 +225,27 @@ func _floor_rect() -> Rect2i:
 	var lo := Vector2i(mini(a.x, _floor_end.x), mini(a.y, _floor_end.y))
 	var hi := Vector2i(maxi(a.x, _floor_end.x), maxi(a.y, _floor_end.y))
 	return Rect2i(lo, hi - lo + Vector2i.ONE)
+
+
+const POOL_TILE_PRICE := 60
+
+
+func _finish_pool() -> void:
+	var r := _floor_rect()
+	_floor_start = null
+	_wall_preview.visible = false
+	if r.size.x < 2 or r.size.y < 2:
+		notice.emit("Pools need to be at least 2 by 2 tiles.")
+		return
+	var price := POOL_TILE_PRICE * r.size.x * r.size.y
+	if price > funds:
+		notice.emit("Not enough Simoleons for a pool that size.")
+		return
+	if lot.add_pool(r) == null:
+		notice.emit("Pools need clear, open ground.")
+		return
+	_spend(price)
+	Sfx.play("place")
 
 
 func _finish_floor() -> void:
@@ -331,7 +357,7 @@ func _refresh_overlays(p: Variant) -> void:
 					_wall_preview.visible = true
 			else:
 				_show_vertex(_vertex(at))
-		Tool.FLOOR:
+		Tool.FLOOR, Tool.POOL:
 			if _floor_start != null:
 				_floor_end = lot.world_to_cell(at)
 				var r := _floor_rect()
@@ -446,6 +472,7 @@ func _build_ui() -> void:
 		[Tool.WINDOW, "window", "Window tool: click a wall to add a window (§%d)" % Finishes.WINDOW_PRICE],
 		[Tool.PAINT, "paint", "Wall paint: pick a finish below, click a wall (Shift: every wall)"],
 		[Tool.FLOOR, "floor", "Floor tool: pick a finish below, drag over tiles"],
+		[Tool.POOL, "pool", "Pool tool: drag out a swimming pool (§60 per tile)"],
 		[Tool.DELETE, "sell", "Sledgehammer: click an object or wall to sell it"],
 	]
 	for d in tool_defs:

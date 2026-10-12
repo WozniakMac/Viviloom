@@ -36,6 +36,13 @@ var wall_styles := {}
 ## Vector2i tile -> Finishes.FLOORS index.
 var floor_tiles := {}
 var _floor_mesh: MeshInstance3D
+## Pools: Rect2i -> their Pool object; tiles under a pool have no ground.
+var pools := {}
+var _ground_mesh: MeshInstance3D
+var _pool_mesh: MeshInstance3D
+var _water_mesh: MeshInstance3D
+const POOL_DEPTH := 1.4
+const WATER_LEVEL := -0.15
 ## A gable roof over the indoor area, shown with walls up.
 var _roof: MeshInstance3D
 var wall_view := WallView.CUTAWAY
@@ -690,6 +697,8 @@ func clear_build() -> void:
 		remove_wall(e)
 	floor_tiles.clear()
 	_rebuild_floor()
+	pools.clear()
+	_rebuild_pools()
 	for n in _built:
 		if n.has_meta("blocks"):
 			set_rect_blocked(n.get_meta("blocks"), false)
@@ -734,29 +743,154 @@ func remove_furniture(f: Furniture) -> void:
 # --- Ground and decoration --------------------------------------------------
 
 func _build_ground() -> void:
-	var lot_mesh := MeshInstance3D.new()
-	lot_mesh.name = "LotGround"
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(size.x * CELL, size.y * CELL)
-	lot_mesh.mesh = plane
-	lot_mesh.position = center()
+	_ground_mesh = MeshInstance3D.new()
+	_ground_mesh.name = "LotGround"
 	var mat := ShaderMaterial.new()
 	mat.shader = preload("res://shaders/lot_ground.gdshader")
-	lot_mesh.material_override = mat
-	add_child(lot_mesh)
+	_ground_mesh.material_override = mat
+	add_child(_ground_mesh)
+	_rebuild_ground()
 
-	# The neighbourhood around the lot, slightly darker and without a grid.
+	# The neighbourhood around the lot, slightly darker and without a grid; it
+	# leaves a hole where the lot is so pools can be dug.
 	var outer := MeshInstance3D.new()
 	outer.name = "Surroundings"
-	var outer_plane := PlaneMesh.new()
-	outer_plane.size = Vector2(200, 200)
-	outer.mesh = outer_plane
-	outer.position = center() + Vector3(0, -0.02, 0)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_normal(Vector3.UP)
+	var w := size.x * CELL
+	var d := size.y * CELL
+	for r in [Rect2(-100, -100, w + 200, 100), Rect2(-100, d, w + 200, 100), Rect2(-100, 0, 100, d), Rect2(w, 0, 100, d)]:
+		_quad_xz(st, r, -0.02)
+	outer.mesh = st.commit()
 	var outer_mat := StandardMaterial3D.new()
 	outer_mat.albedo_color = Color(0.27, 0.42, 0.2)
 	outer_mat.roughness = 1.0
 	outer.material_override = outer_mat
 	add_child(outer)
+
+
+func _quad_xz(st: SurfaceTool, r: Rect2, y: float) -> void:
+	var a := Vector3(r.position.x, y, r.position.y)
+	var b := Vector3(r.end.x, y, r.position.y)
+	var c := Vector3(r.end.x, y, r.end.y)
+	var d := Vector3(r.position.x, y, r.end.y)
+	for v in [a, b, c, a, c, d]:
+		st.add_vertex(v)
+
+
+func is_pool(c: Vector2i) -> bool:
+	for r in pools:
+		if (r as Rect2i).has_point(c):
+			return true
+	return false
+
+
+## Grass on every tile that isn't dug out for a pool.
+func _rebuild_ground() -> void:
+	if _ground_mesh == null:
+		return
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_normal(Vector3.UP)
+	for y in size.y:
+		for x in size.x:
+			if not is_pool(Vector2i(x, y)):
+				_quad_xz(st, Rect2(x * CELL, y * CELL, CELL, CELL), 0.0)
+	_ground_mesh.mesh = st.commit()
+
+
+## Digs a pool over `rect` (tiles must be free). Returns the Pool object.
+func add_pool(rect: Rect2i) -> Furniture:
+	for x in range(rect.position.x, rect.end.x):
+		for y in range(rect.position.y, rect.end.y):
+			if not in_bounds(Vector2i(x, y)) or not is_walkable(Vector2i(x, y)) or is_pool(Vector2i(x, y)):
+				return null
+	var pool := Catalog.create("pool")
+	pool.footprint = rect.size
+	pool.build_collider()
+	# Ladders/steps on every side: Sims climb in from the nearest edge.
+	pool.spots.clear()
+	var half := Vector2(rect.size) * 0.5
+	pool.spots.append(Vector3(0, 0, half.y + 0.5))
+	pool.spots.append(Vector3(0, 0, -half.y - 0.5))
+	pool.spots.append(Vector3(half.x + 0.5, 0, 0))
+	pool.spots.append(Vector3(-half.x - 0.5, 0, 0))
+	place_furniture(pool, rect.position, 0)
+	pools[rect] = pool
+	_rebuild_pools()
+	return pool
+
+
+func remove_pool(pool: Furniture) -> void:
+	for r in pools.keys():
+		if pools[r] == pool:
+			pools.erase(r)
+	remove_furniture(pool)
+	pool.queue_free()
+	_rebuild_pools()
+
+
+## Tiled pool walls and floor, stone coping round the edge, and the water.
+func _rebuild_pools() -> void:
+	_rebuild_ground()
+	if _pool_mesh == null:
+		_pool_mesh = MeshInstance3D.new()
+		_pool_mesh.name = "PoolShell"
+		_pool_mesh.material_override = Finishes.pool_material()
+		add_child(_pool_mesh)
+		_water_mesh = MeshInstance3D.new()
+		_water_mesh.name = "Water"
+		_water_mesh.material_override = Finishes.water_material()
+		_water_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_water_mesh)
+	if pools.is_empty():
+		_pool_mesh.mesh = null
+		_water_mesh.mesh = null
+		return
+	var shell := SurfaceTool.new()
+	shell.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var water := SurfaceTool.new()
+	water.begin(Mesh.PRIMITIVE_TRIANGLES)
+	water.set_normal(Vector3.UP)
+	var stone := Color(0.9, 0.88, 0.82)
+	var tile := Color(0.55, 0.8, 0.92)
+	for r in pools:
+		var rect := r as Rect2i
+		var x0 := rect.position.x * CELL
+		var z0 := rect.position.y * CELL
+		var x1 := rect.end.x * CELL
+		var z1 := rect.end.y * CELL
+		var bottom := -POOL_DEPTH
+		shell.set_color(tile)
+		shell.set_normal(Vector3.UP)
+		for v in [Vector3(x0, bottom, z0), Vector3(x1, bottom, z0), Vector3(x1, bottom, z1), Vector3(x0, bottom, z0), Vector3(x1, bottom, z1), Vector3(x0, bottom, z1)]:
+			shell.add_vertex(v)
+		# Four inner walls, facing into the pool.
+		var walls_in := [
+			[Vector3(x0, 0, z0), Vector3(x1, 0, z0), Vector3.BACK],
+			[Vector3(x1, 0, z1), Vector3(x0, 0, z1), Vector3.FORWARD],
+			[Vector3(x0, 0, z1), Vector3(x0, 0, z0), Vector3.RIGHT],
+			[Vector3(x1, 0, z0), Vector3(x1, 0, z1), Vector3.LEFT],
+		]
+		for wl in walls_in:
+			var a: Vector3 = wl[0]
+			var b: Vector3 = wl[1]
+			shell.set_normal(wl[2])
+			var ab := Vector3(b.x, bottom, b.z)
+			var aa := Vector3(a.x, bottom, a.z)
+			for v in [a, b, ab, a, ab, aa]:
+				shell.add_vertex(v)
+		# Coping: a raised stone rim round the edge.
+		shell.set_color(stone)
+		shell.set_normal(Vector3.UP)
+		var cw := 0.28
+		for rim in [Rect2(x0 - cw, z0 - cw, x1 - x0 + cw * 2, cw), Rect2(x0 - cw, z1, x1 - x0 + cw * 2, cw),
+				Rect2(x0 - cw, z0, cw, z1 - z0), Rect2(x1, z0, cw, z1 - z0)]:
+			_quad_xz(shell, rim, 0.05)
+		_quad_xz(water, Rect2(x0, z0, x1 - x0, z1 - z0), WATER_LEVEL)
+	_pool_mesh.mesh = shell.commit()
+	_water_mesh.mesh = water.commit()
 
 	# A sidewalk and road along the front of the lot.
 	_add_strip("Sidewalk", Vector3(center().x, -0.01, size.y * CELL + 0.75), Vector2(200, 1.5), Color(0.72, 0.71, 0.68))

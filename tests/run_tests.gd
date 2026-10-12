@@ -29,6 +29,7 @@ func _ready() -> void:
 	_test_messes()
 	_test_repairs_and_fire()
 	_test_moods_and_rewards()
+	_test_pools()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -464,3 +465,20 @@ func _test_moods_and_rewards() -> void:
 	t.free()
 	a.free()
 	b.free()
+
+
+func _test_pools() -> void:
+	var lot := _make_lot()
+	var pool := lot.add_pool(Rect2i(4, 4, 4, 3))
+	_check(pool != null and lot.is_pool(Vector2i(5, 5)) and not lot.is_walkable(Vector2i(5, 5)), "pools can't be walked on")
+	_check(lot.add_pool(Rect2i(6, 5, 3, 3)) == null, "pools can't overlap")
+	_check(pool.interactions[0].name == "Swim" and pool.interactions[0].pose == "swim", "pools are for swimming")
+	var reachable := 0
+	for s in pool.spots:
+		# The lot isn't in the scene tree here, so use the local transform.
+		if lot.is_walkable(lot.world_to_cell(pool.transform * s)):
+			reachable += 1
+	_check(reachable == 4, "every side of the pool can be reached")
+	lot.remove_pool(pool)
+	_check(lot.pools.is_empty() and lot.is_walkable(Vector2i(5, 5)), "removing a pool fills it in")
+	lot.free()

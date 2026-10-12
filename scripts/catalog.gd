@@ -45,6 +45,7 @@ const INFO := {
 	"dishes": ["Dirty Dishes", 0],
 	"puddle": ["Puddle", 0],
 	"fire": ["Fire!", 0],
+	"pool": ["Swimming Pool", 0],
 }
 ## Build-mode catalogue sections: [id, label]; "all" lists everything.
 const CATEGORIES := [["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"], ["living", "Living"], ["outdoor", "Outdoor"]]
@@ -421,6 +422,14 @@ static func create(kind: String) -> Furniture:
 			var clean := Interaction.new("Clean Up", {"fun": 2.0}, 10.0, "", "stand", true)
 			clean.consumes = true
 			f.interactions = [clean]
+		"pool":
+			# Its footprint, spots and visuals come from Lot.add_pool.
+			f.display_name = "Swimming Pool"
+			f.height = 0.2
+			f.use_position = Vector3(0, Lot.WATER_LEVEL - 0.05, 0)
+			f.interactions = [
+				Interaction.new("Swim", {"fun": 35.0, "hygiene": 20.0, "energy": -10.0}, 60.0, "", "swim").practices("fitness", 45.0).grants("swim", "happy", 1, "Refreshing Swim", "The water was perfect.", 180.0),
+			]
 		"fire":
 			f.display_name = "Fire!"
 			f.blocks = false
@@ -477,7 +486,8 @@ static func create(kind: String) -> Furniture:
 			push_error("Unknown furniture kind: %s" % kind)
 	f.price = INFO[kind][1]
 	_use_model(f, kind)
-	f.build_collider()
+	if kind != "pool":
+		f.build_collider()
 	return f
 
 

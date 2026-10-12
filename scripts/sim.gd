@@ -97,6 +97,10 @@ var _selected := false
 var _voice: AudioStreamPlayer3D
 ## Game minutes left lying on the floor after collapsing from exhaustion.
 var _passed_out := 0.0
+## While swimming: the pool's centre and half size, and the lap phase.
+var _swim_center := Vector3.ZERO
+var _swim_half := Vector2.ONE
+var _swim_phase := 0.0
 var _voice_timer := 0.0
 ## Voice pitch, picked once per Sim.
 var _voice_pitch := 1.0
@@ -727,6 +731,10 @@ func _begin_perform(a: SimAction) -> void:
 	var f := a.furniture
 	f.user = self
 	var facing: Vector3
+	if a.interaction.pose == "swim":
+		_swim_center = f.to_global(f.use_position)
+		_swim_half = Vector2(f.footprint) * 0.5
+		_swim_phase = randf() * TAU
 	if f.use_position != null:
 		global_position = f.to_global(f.use_position)
 		facing = f.global_basis * f.use_facing
@@ -866,6 +874,19 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 			anim = "lie"
 			_body.rotation.x = PI * 0.5
 			_body.position.y = 0.15
+		"swim":
+			# Face down in the water, doing laps round the pool.
+			anim = "walk"
+			_body.rotation.x = -PI * 0.5
+			_body.position.y = 0.0
+			_swim_phase += delta * 0.35
+			var hx := maxf(_swim_half.x - 0.6, 0.1)
+			var hz := maxf(_swim_half.y - 0.6, 0.1)
+			var p := _swim_center + Vector3(cos(_swim_phase) * hx, 0, sin(_swim_phase) * hz)
+			var tangent := Vector3(-sin(_swim_phase) * hx, 0, cos(_swim_phase) * hz)
+			global_position = p
+			if tangent.length() > 0.01:
+				rotation.y = atan2(-tangent.x, -tangent.z)
 		_:
 			_body.rotation.x = 0.0
 			_body.position.y = 0.0

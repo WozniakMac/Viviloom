@@ -732,10 +732,13 @@ func _lot_dict() -> Dictionary:
 		floors.append([c.x, c.y, lot.floor_tiles[c]])
 	var objects: Array = []
 	for f in lot.furniture:
-		if Catalog.MESSES.has(f.kind) and f.kind == "fire":
+		if f.kind == "fire" or f.kind == "pool":
 			continue
 		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps, f.broken])
-	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects}
+	var pool_rects: Array = []
+	for r in lot.pools:
+		pool_rects.append([r.position.x, r.position.y, r.size.x, r.size.y])
+	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects}
 
 
 func _apply_lot_dict(d: Dictionary) -> void:
@@ -756,8 +759,10 @@ func _apply_lot_dict(d: Dictionary) -> void:
 		for f in d["floors"]:
 			lot.floor_tiles[Vector2i(int(f[0]), int(f[1]))] = int(f[2])
 		lot.add_floor(Rect2i(), 0)
+	for p in d.get("pools", []):
+		lot.add_pool(Rect2i(int(p[0]), int(p[1]), int(p[2]), int(p[3])))
 	for o in d.get("objects", []):
-		if Catalog.INFO.has(o[0]):
+		if Catalog.INFO.has(o[0]) and o[0] != "pool":
 			var placed := _place(o[0], Vector2i(int(o[1]), int(o[2])), int(o[3]))
 			if o.size() > 4 and o[4]:
 				placed.set_broken(true)
@@ -1169,6 +1174,12 @@ func _run_scenario(scenario: String, path: String) -> void:
 			visitors.bring(visitors.townies[2], INF)
 			_on_doorbell(visitors.townies[2])
 			await get_tree().create_timer(0.8).timeout
+		"pool":
+			var pool := lot.add_pool(Rect2i(13, 13, 5, 2))
+			sim.queue_interaction(pool, pool.interactions[0])
+			Clock.set_speed(1)
+			rig.frame(lot.cell_to_world(Vector2i(15, 13)), deg_to_rad(20.0), deg_to_rad(-38.0), 14.0)
+			await get_tree().create_timer(5.0).timeout
 		"store":
 			aspirations.satisfaction = 2300
 			hud._show_page(5)

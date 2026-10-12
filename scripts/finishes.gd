@@ -124,6 +124,49 @@ void fragment() {
 	return m
 
 
+static var _pool_mat: StandardMaterial3D
+static var _water_mat: ShaderMaterial
+
+
+## Pool shell: vertex-coloured (tiles inside, stone coping).
+static func pool_material() -> StandardMaterial3D:
+	if _pool_mat == null:
+		_pool_mat = StandardMaterial3D.new()
+		_pool_mat.vertex_color_use_as_albedo = true
+		_pool_mat.vertex_color_is_srgb = true
+		_pool_mat.roughness = 0.4
+		_pool_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return _pool_mat
+
+
+## See-through turquoise water with moving ripples and sparkles.
+static func water_material() -> ShaderMaterial:
+	if _water_mat == null:
+		_water_mat = ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = """
+shader_type spatial;
+render_mode blend_mix, cull_disabled, depth_draw_opaque;
+varying vec3 wp;
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	float t = TIME * 0.6;
+	float w = sin(wp.x * 3.1 + t * 2.0) * 0.5 + sin(wp.z * 2.7 - t * 1.6) * 0.5 + sin((wp.x + wp.z) * 5.3 + t * 3.0) * 0.25;
+	vec3 deep = vec3(0.05, 0.42, 0.62);
+	vec3 shallow = vec3(0.35, 0.82, 0.9);
+	ALBEDO = mix(deep, shallow, 0.5 + 0.25 * w);
+	ALPHA = 0.62;
+	ROUGHNESS = 0.05;
+	METALLIC = 0.0;
+	SPECULAR = 0.9;
+	NORMAL = normalize(vec3(0.08 * cos(wp.x * 3.1 + t * 2.0), 1.0, 0.08 * cos(wp.z * 2.7 - t * 1.6)));
+	EMISSION = vec3(0.02, 0.06, 0.08) * (1.0 + w);
+}
+"""
+		_water_mat.shader = sh
+	return _water_mat
+
+
 static func wall_name(style: int) -> String:
 	return WALLS[style][0]
 

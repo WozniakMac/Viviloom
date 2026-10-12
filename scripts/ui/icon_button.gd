@@ -181,6 +181,14 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			ci.draw_rect(Rect2(c - Vector2(s * 0.55, s), Vector2(s * 1.1, s * 2)), col)
 			ci.draw_rect(Rect2(c - Vector2(s * 0.4, s * 0.75), Vector2(s * 0.8, s * 1.35)), Color.WHITE)
 			ci.draw_circle(c + Vector2(0, s * 0.8), s * 0.12, Color.WHITE)
+		"pool":
+			ci.draw_rect(Rect2(c - Vector2(s, s * 0.7), Vector2(s * 2, s * 1.4)), col, false, 2.0)
+			for k in 2:
+				var y := c.y - s * 0.15 + k * s * 0.45
+				var pts := PackedVector2Array()
+				for i in 9:
+					pts.append(Vector2(c.x - s * 0.8 + i * s * 0.2, y + sin(i * 1.6) * s * 0.12))
+				ci.draw_polyline(pts, col, 1.8, true)
 		"menu":
 			for x in [-0.6, 0.0, 0.6]:
 				ci.draw_circle(c + Vector2(x * s, 0), s * 0.2, col)
