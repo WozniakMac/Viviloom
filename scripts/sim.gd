@@ -80,6 +80,11 @@ var path := PackedVector3Array()
 var _path_index := 0
 var _pose := "stand"
 var _selected := false
+var _voice: AudioStreamPlayer3D
+var _voice_timer := 0.0
+## Voice pitch, picked once per Sim.
+var _voice_pitch := 1.0
+var _voice_high := false
 
 var _body: Node3D
 var _anim: AnimationPlayer
@@ -94,7 +99,17 @@ var _materials := {}
 func _ready() -> void:
 	_build_visual()
 	skills.leveled_up.connect(func(s: String, l: int):
+		Sfx.play("level_up", -4.0)
 		announced.emit("%s reached %s level %d!" % [sim_name, Skills.label(s), l]))
+	earned.connect(func(_a: int): Sfx.play("cash", -4.0))
+	_voice = AudioStreamPlayer3D.new()
+	_voice.position = Vector3(0, 1.6, 0)
+	_voice.unit_size = 6.0
+	_voice.max_db = -2.0
+	add_child(_voice)
+	var h := hash(sim_name) if sim_name != "" else randi()
+	_voice_high = h % 2 == 0
+	_voice_pitch = 0.92 + float(h % 17) / 100.0
 
 
 ## Recolours one part of the Sim: "shirt", "pants", "skin" or "hair".
@@ -380,6 +395,8 @@ func _process(real_delta: float) -> void:
 		else:
 			_begin_perform(cur)
 	elif cur != null and cur.performing:
+		if cur.target_sim != null:
+			_chatter(delta)
 		cur.elapsed += Clock.game_delta
 		var full := cur.interaction.until_full != "" and needs.get_value(cur.interaction.until_full) >= 99.9
 		var lost := cur.target_sim != null and cur.target_sim._social_with != self
@@ -400,12 +417,21 @@ func _should_abandon(a: SimAction) -> bool:
 
 
 ## Being talked to: stand facing the speaker, gesturing, while Social fills up.
+## Babbles now and then while talking.
+func _chatter(delta: float) -> void:
+	_voice_timer -= delta
+	if _voice_timer <= 0.0:
+		_voice_timer = randf_range(1.6, 3.2)
+		Sfx.voice(_voice, _voice_high, _voice_pitch)
+
+
 func _listen(delta: float) -> void:
 	var partner := _social_with
 	if not is_instance_valid(partner) or partner.away:
 		_social_with = null
 		return
 	_face_toward(partner.global_position)
+	_chatter(delta)
 	var rates: Dictionary = _social_interaction.rates if _social_interaction != null else {}
 	needs.tick(Clock.game_delta, rates, Traits.decay_mult(traits))
 	emotions.tick(Clock.game_delta)

@@ -61,6 +61,7 @@ func pay() -> void:
 		return
 	build.funds -= due
 	build.funds_changed.emit(build.funds)
+	Sfx.play("cash", -4.0)
 	notice.emit("Bills of %s paid. Thank you!" % Hud.money(due), "Bills")
 	due = 0
 	if power_off:

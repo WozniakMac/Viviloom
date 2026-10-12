@@ -338,6 +338,7 @@ func _build_top_right() -> void:
 
 ## A notification card in the top-right corner that fades out after a while.
 func show_notice(text: String, title := "") -> void:
+	Sfx.play("notice", -8.0)
 	if title == "":
 		title = sim.sim_name if sim != null else "Notice"
 	var card := PanelContainer.new()

@@ -12,6 +12,7 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 [autoload]
 
 Clock="*res://scripts/game_clock.gd"
+Sfx="*res://scripts/sfx.gd"
 
 [display]
 

@@ -42,6 +42,13 @@ func setup(has_save: bool) -> void:
 	var x := IconButton.make("close", 28, "Back to the game (Esc)")
 	x.pressed.connect(close)
 	head.add_child(x)
+	var music := Button.new()
+	music.text = "Music: On" if Sfx.music_enabled else "Music: Off"
+	music.focus_mode = Control.FOCUS_NONE
+	music.custom_minimum_size = Vector2(0, 40)
+	music.pressed.connect(func():
+		Sfx.set_music_enabled(not Sfx.music_enabled)
+		music.text = "Music: On" if Sfx.music_enabled else "Music: Off")
 	for d in [["Save", save_pressed, true], ["Load", load_pressed, has_save], ["Main Menu", main_menu_pressed, true], ["Quit Game", null, true]]:
 		var b := Button.new()
 		b.text = d[0]
@@ -56,6 +63,8 @@ func setup(has_save: bool) -> void:
 				close()
 				sig.emit())
 		v.add_child(b)
+	v.add_child(music)
+	v.move_child(music, v.get_child_count() - 2)
 	# Centre after the panel has its size.
 	await get_tree().process_frame
 	panel.position = (root.size - panel.size) * 0.5

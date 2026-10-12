@@ -251,6 +251,7 @@ func _drop() -> void:
 	if _held_is_new and not _spend(_held.price):
 		return
 	lot.place_furniture(_held, _held_cell, _held_rot)
+	Sfx.play("place")
 	_held.set_ghost(false)
 	_held = null
 	if tool == Tool.PLACE:
@@ -270,6 +271,7 @@ func _cancel_held() -> void:
 
 
 func _sell(f: Furniture) -> void:
+	Sfx.play("demolish")
 	earn(f.price)
 	if f == _held:
 		_held = null

@@ -293,6 +293,7 @@ func _furniture_at(screen_pos: Vector2) -> Furniture:
 
 
 func _process(delta: float) -> void:
+	_update_audio()
 	if _menu_orbit:
 		rig.frame(lot.center(), rig.yaw + delta * 0.08, deg_to_rad(-32.0), 30.0)
 	lot.update_walls(rig.camera.global_position, rig.global_position, delta)
@@ -502,6 +503,19 @@ func _check_dev_args() -> void:
 		_trace()
 	elif scenario == "saveload":
 		_save_load_check()
+	elif scenario == "audiocheck":
+		_enter_live()
+		Clock.total_minutes = 9.0 * 60.0 + 5.0
+		await get_tree().create_timer(2.0).timeout
+		var jules := visitors.neighbour
+		sim.queue_social(jules, Socials.find("Chat"))
+		var voiced := false
+		for i in 40:
+			await get_tree().create_timer(0.1).timeout
+			voiced = voiced or sim._voice.playing or jules._voice.playing
+		var m: AudioStreamPlayer = Sfx._music[Sfx._music_on]
+		print("AUDIO music=%s playing=%s ambience=%s playing=%s voice=%s" % [Sfx._music_name, m.playing, Sfx._ambience_name, Sfx._ambience.playing, voiced])
+		get_tree().quit()
 	elif scenario == "new":
 		open_create_a_sim()
 	elif scenario != "skip_cas":
@@ -511,6 +525,21 @@ func _check_dev_args() -> void:
 # --- title screen, game menu, saving ---------------------------------------------
 
 ## Title screen over a slowly orbiting camera.
+## Music follows the mode (title / Create a Sim, live, build); ambience follows
+## the time of day.
+func _update_audio() -> void:
+	var title := _cas != null or (_menu != null and _menu is MainMenu) or has_node("Neighbourhood")
+	if title:
+		Sfx.music("music_cas")
+		Sfx.ambience("")
+	elif build.active:
+		Sfx.music("music_build")
+		Sfx.ambience("")
+	else:
+		Sfx.music("music_live")
+		Sfx.ambience("crickets" if Daylight.is_dark(fmod(Clock.total_minutes, 1440.0) / 60.0) else "birds")
+
+
 func open_main_menu() -> void:
 	Clock.set_speed(0)
 	hud.visible = false

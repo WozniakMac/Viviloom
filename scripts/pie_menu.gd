@@ -17,6 +17,7 @@ func _ready() -> void:
 
 
 func open(at: Vector2, title: String, options: Array[String]) -> void:
+	Sfx.play("menu_open", -6.0)
 	_clear()
 	var vp := get_viewport_rect().size
 	at = Vector2(clampf(at.x, RADIUS + 120, vp.x - RADIUS - 120), clampf(at.y, RADIUS + 60, vp.y - RADIUS - 60))
