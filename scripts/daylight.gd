@@ -8,8 +8,8 @@ const DAY_TOP := Color(0.36, 0.56, 0.86)
 const DAY_HORIZON := Color(0.72, 0.8, 0.9)
 const DUSK_HORIZON := Color(0.98, 0.62, 0.42)
 const DUSK_TOP := Color(0.32, 0.38, 0.62)
-const NIGHT_TOP := Color(0.03, 0.05, 0.13)
-const NIGHT_HORIZON := Color(0.1, 0.13, 0.24)
+const NIGHT_TOP := Color(0.06, 0.09, 0.2)
+const NIGHT_HORIZON := Color(0.16, 0.2, 0.34)
 const SUN_DAY := Color(1.0, 0.97, 0.9)
 const SUN_LOW := Color(1.0, 0.68, 0.42)
 const MOON := Color(0.55, 0.65, 1.0)
@@ -62,13 +62,17 @@ func apply(hour: float) -> void:
 		sun.rotation_degrees = Vector3(-50.0, -20.0, 0.0)
 		sun.light_color = MOON
 		# Brighter under a full moon, darker on a new moon.
-		sun.light_energy = lerpf(0.1, 0.32, Lunar.illumination(Lunar.phase(Clock.day())))
+		sun.light_energy = lerpf(0.22, 0.4, Lunar.illumination(Lunar.phase(Clock.day())))
 	var top := NIGHT_TOP.lerp(DUSK_TOP, smoothstep(-0.15, 0.1, hgt)).lerp(DAY_TOP, smoothstep(0.1, 0.4, hgt))
 	var horizon := NIGHT_HORIZON.lerp(DUSK_HORIZON, smoothstep(-0.15, 0.05, hgt)).lerp(DAY_HORIZON, smoothstep(0.1, 0.4, hgt))
 	sky_mat.sky_top_color = top
 	sky_mat.sky_horizon_color = horizon
 	sky_mat.ground_horizon_color = horizon.darkened(0.3)
-	env.ambient_light_energy = lerpf(0.28, 0.9, day)
+	env.ambient_light_energy = lerpf(0.5, 0.9, day)
+	# At night, part of the ambient light is a steady moonlit blue so dark roofs
+	# and lawns still read, as in the reference's nights.
+	env.ambient_light_color = Color(0.42, 0.5, 0.72)
+	env.ambient_light_sky_contribution = lerpf(0.45, 1.0, day)
 	var dark := is_dark(hour)
 	if dark != lamps_on:
 		lamps_on = dark

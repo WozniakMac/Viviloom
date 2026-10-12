@@ -685,6 +685,7 @@ func _furniture_at(screen_pos: Vector2) -> Furniture:
 
 func _process(delta: float) -> void:
 	_autosave(delta)
+	_update_window_glow()
 	rig.height_keys_enabled = not build.active
 	rig.rotate_keys_enabled = not (build.active and build.is_holding())
 	_update_audio()
@@ -907,6 +908,11 @@ func _setup_environment() -> void:
 	env.ssil_enabled = true
 	env.ssil_radius = 4.0
 	env.ssil_intensity = 0.7
+	# Glossy floors and tiles reflect the room (screen-space reflections).
+	env.ssr_enabled = true
+	env.ssr_max_steps = 48
+	env.ssr_fade_in = 0.2
+	env.ssr_fade_out = 1.5
 	env.glow_enabled = true
 	env.glow_intensity = 0.25
 	env.glow_bloom = 0.0
@@ -1320,6 +1326,19 @@ func _lot_dict() -> Dictionary:
 	for e in lot.fences:
 		fences.append([e.x, e.y, e.z, lot.gates.has(e), lot.fence_styles.get(e, 0)])
 	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "fences": fences, "roof": [lot.roof_style, lot.roof_color], "foundation": lot.foundation, "terrain": lot.terrain_tiles.keys().map(func(c): return [c.x, c.y, lot.terrain_tiles[c]]), "lot_traits": lot.lot_traits.duplicate(), "upper": _level_dict(upper)}
+
+
+## Windows glow warmly at night while the house has power, as seen from outside.
+func _update_window_glow() -> void:
+	var on := Daylight.lit_now and not Daylight.power_off
+	for l in levels:
+		var g: StandardMaterial3D = (l as Lot)._glass_mat
+		if g == null or g.emission_enabled == on:
+			continue
+		g.emission_enabled = on
+		g.emission = Color(1.0, 0.78, 0.45)
+		g.emission_energy_multiplier = 1.6
+		g.albedo_color = Color(1.0, 0.85, 0.6, 0.85) if on else Color(0.7, 0.85, 0.95, 0.3)
 
 
 ## Saves on the Autosave interval from Game Options while playing at home.
@@ -2124,6 +2143,11 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"nightout", "dayout":
+			Clock.total_minutes = (22 if scenario == "nightout" else 12) * 60.0
+			lot.wall_view = Lot.WallView.UP
+			rig.frame(lot.cell_to_world(Vector2i(11, 10)), deg_to_rad(15.0), deg_to_rad(-22.0), 22.0)
+			await get_tree().create_timer(1.2).timeout
 		"fullmoon":
 			Clock.total_minutes = (4 * 24 + 22) * 60.0
 			await get_tree().create_timer(1.0).timeout

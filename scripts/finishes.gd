@@ -77,6 +77,12 @@ void fragment() {
 		float jitter = fract(sin(dot(vec2(floor(x), row), vec2(12.9898, 78.233))) * 43758.5453);
 		c = mix(c * (0.88 + 0.2 * jitter), vec3(0.85, 0.82, 0.76), mortar);
 	}
+	// Fine plaster texture so painted walls aren't perfectly flat.
+	vec2 pq = vec2(along, wp.y) * 22.0;
+	float pl = fract(sin(dot(floor(pq), vec2(12.9898, 78.233))) * 43758.5453);
+	c *= 0.975 + 0.04 * pl;
+	// Soft darkening near the floor and the ceiling, like bounced-light falloff.
+	c *= 0.9 + 0.1 * smoothstep(0.0, 0.7, wp.y - floor(wp.y / 2.8) * 2.8);
 	// A darker skirting board along the bottom.
 	c *= 1.0 - (1.0 - smoothstep(0.08, 0.1, wp.y)) * 0.35;
 	ALBEDO = c;

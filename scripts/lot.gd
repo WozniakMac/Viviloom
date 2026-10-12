@@ -714,12 +714,12 @@ func _compute_interior() -> void:
 enum RoofStyle { GABLE, HIP, FLAT, NONE }
 const ROOF_STYLE_NAMES: Array[String] = ["Gable", "Hip", "Flat", "No Roof"]
 const ROOF_COLORS: Array = [
-	["Cocoa Shingle", Color(0.36, 0.27, 0.27)],
-	["Slate", Color(0.3, 0.34, 0.42)],
-	["Terracotta", Color(0.66, 0.33, 0.22)],
-	["Forest", Color(0.24, 0.36, 0.27)],
-	["Sandstone", Color(0.72, 0.64, 0.5)],
-	["Charcoal", Color(0.16, 0.16, 0.18)],
+	["Cocoa Shingle", Color(0.55, 0.42, 0.38)],
+	["Slate", Color(0.46, 0.52, 0.62)],
+	["Terracotta", Color(0.8, 0.46, 0.33)],
+	["Forest", Color(0.38, 0.52, 0.4)],
+	["Sandstone", Color(0.84, 0.76, 0.62)],
+	["Charcoal", Color(0.32, 0.32, 0.36)],
 ]
 const ROOF_PRICE := 100
 var roof_style := RoofStyle.GABLE
@@ -741,7 +741,7 @@ func _rebuild_roof() -> void:
 		m.shader.code = """
 shader_type spatial;
 render_mode cull_disabled;
-uniform vec3 shingle = vec3(0.36, 0.27, 0.27);
+uniform vec3 shingle = vec3(0.55, 0.42, 0.38);
 varying vec3 wp;
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
@@ -754,7 +754,7 @@ void fragment() {
 		float row = fract(wp.y * 5.0);
 		float x = fract((wp.x + wp.z) * 2.5 + floor(wp.y * 5.0) * 0.5);
 		c *= 0.9 + 0.12 * step(0.5, x);
-		c *= 1.0 - smoothstep(0.85, 1.0, row) * 0.35;
+		c *= 1.0 - smoothstep(0.85, 1.0, row) * 0.22;
 	}
 	ALBEDO = pow(c, vec3(2.2));
 	ROUGHNESS = 0.8;

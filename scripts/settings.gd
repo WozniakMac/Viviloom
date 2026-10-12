@@ -87,6 +87,7 @@ static func apply(tree: SceneTree) -> void:
 		environment.ssao_enabled = q >= 1
 		environment.ssil_enabled = q >= 2
 		environment.glow_enabled = q >= 1
+		environment.ssr_enabled = q >= 2
 	RenderingServer.directional_soft_shadow_filter_set_quality([RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][q])
 	RenderingServer.positional_soft_shadow_filter_set_quality([RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][q])
 	tree.root.content_scale_factor = UI_SCALES[get_value("ui_scale")]
