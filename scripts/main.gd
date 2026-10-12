@@ -2283,6 +2283,21 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"showroom2":
+			lot.add_floor(Rect2i(2, 15, 18, 4), 3)
+			for e in Lot.wall_run(Vector2i(2, 15), Vector2i(20, 15)):
+				lot.add_wall(e)
+			_place("microwave", Vector2i(3, 15))
+			_place("coffee_maker", Vector2i(4, 15))
+			_place("bathroom_sink", Vector2i(6, 15))
+			_place("nightstand", Vector2i(8, 15))
+			_place("wardrobe", Vector2i(10, 15))
+			_place("wall_lamp", Vector2i(13, 15), 0)
+			_place("basketball_hoop", Vector2i(16, 16))
+			Clock.total_minutes = 21 * 60.0
+			lot.wall_view = Lot.WallView.UP
+			rig.frame(lot.cell_to_world(Vector2i(10, 16)), deg_to_rad(0.0), deg_to_rad(-30.0), 12.0)
+			await get_tree().create_timer(1.2).timeout
 		"dirty":
 			var tl := find_furniture("toilet")
 			tl.set_dirt(90.0)

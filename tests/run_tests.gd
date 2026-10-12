@@ -62,6 +62,7 @@ func _ready() -> void:
 	_test_burglars()
 	_test_bed_assign_and_upgrade()
 	_test_dirty_fixtures()
+	_test_everyday_objects()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1236,3 +1237,14 @@ func _test_dirty_fixtures() -> void:
 		t.add_dirt()
 	_check(not t.is_dirty(), "a self-cleaning toilet stays clean")
 	t.free()
+
+
+func _test_everyday_objects() -> void:
+	for kind in ["microwave", "coffee_maker", "bathroom_sink", "nightstand", "wardrobe", "wall_lamp", "basketball_hoop"]:
+		_check(Catalog.INFO.has(kind) and Catalog.CATEGORY_OF.has(kind) and Catalog.KINDS.has(kind), "%s is in the catalogue" % kind)
+		var f := Catalog.create(kind)
+		_check(f.display_name != "", "%s builds" % kind)
+		f.free()
+	var lamp := Catalog.create("wall_lamp")
+	_check(lamp.wall_mounted and lamp.is_in_group("lamps"), "wall lamps hang on walls and light up at night")
+	lamp.free()

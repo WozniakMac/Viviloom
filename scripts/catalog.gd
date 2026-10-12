@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter", "dresser", "burglar_alarm", "trash_can", "pine", "flower_shrub", "flower_bed"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter", "dresser", "burglar_alarm", "microwave", "coffee_maker", "bathroom_sink", "nightstand", "wardrobe", "wall_lamp", "basketball_hoop", "trash_can", "pine", "flower_shrub", "flower_bed"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -59,7 +59,7 @@ const UPGRADES := {
 	"sink": [["unbreakable", "Unbreakable", 2, "unbreakable"]],
 }
 ## Fixtures that get grimy with use, as in the reference.
-const DIRTIES := ["toilet", "shower", "bathtub", "sink"]
+const DIRTIES := ["toilet", "shower", "bathtub", "sink", "bathroom_sink"]
 const DIRT_PER_USE := 22.0
 const DIRTY_AT := 60.0
 
@@ -142,6 +142,13 @@ const INFO := {
 	"planter": ["Garden Planter", 150],
 	"dresser": ["Dresser", 300],
 	"burglar_alarm": ["Burglar Alarm", 375],
+	"microwave": ["Microwave", 150],
+	"coffee_maker": ["Coffee Maker", 120],
+	"bathroom_sink": ["Bathroom Sink", 250],
+	"nightstand": ["Nightstand", 110],
+	"wardrobe": ["Wardrobe", 420],
+	"wall_lamp": ["Wall Lamp", 95],
+	"basketball_hoop": ["Basketball Hoop", 380],
 	"trash_can": ["Outdoor Trash Can", 80],
 	"piano": ["Upright Piano", 1200],
 	"telescope": ["Telescope", 700],
@@ -164,7 +171,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "pine": "outdoor", "flower_shrub": "outdoor", "flower_bed": "outdoor", "planter": "outdoor", "dresser": "bedroom", "burglar_alarm": "living", "trash_can": "outdoor",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "pine": "outdoor", "flower_shrub": "outdoor", "flower_bed": "outdoor", "planter": "outdoor", "dresser": "bedroom", "burglar_alarm": "living", "microwave": "kitchen", "coffee_maker": "kitchen", "bathroom_sink": "bathroom", "nightstand": "bedroom", "wardrobe": "bedroom", "wall_lamp": "living", "basketball_hoop": "outdoor", "trash_can": "outdoor",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -206,6 +213,13 @@ const DESCRIPTIONS := {
 	"activity_table": "Crayons and blocks for little hands.",
 	"rug": "Ties the room together. Sims can walk on it.",
 	"trash_can": "A big outdoor bin. Handy Sims rummage through it for upgrade parts.",
+	"microwave": "Ping! Quick, cheap meals for busy Sims.",
+	"coffee_maker": "A fresh cup perks up tired Sims.",
+	"bathroom_sink": "Wash hands and brush teeth before bed.",
+	"nightstand": "A little bedside table with a lamp.",
+	"wardrobe": "Tall and roomy. Change into any outfit here.",
+	"wall_lamp": "A warm light that hangs on a wall.",
+	"basketball_hoop": "Shoot hoops alone or with friends. Builds Fitness.",
 	"burglar_alarm": "Hangs on a wall. Calls the police the moment a burglar sets foot inside.",
 	"dresser": "Drawers full of clothes. Change into any outfit here.",
 	"planter": "Plant seeds, water them every day and harvest fresh produce to sell.",
@@ -706,6 +720,101 @@ static func create(kind: String) -> Furniture:
 			var dig := Interaction.new("Search for Upgrade Parts", {"fun": 6.0, "hygiene": -15.0}, 30.0, "", "stand", true).practices("handiness", 30.0)
 			dig.creates = "upgrade_part"
 			f.interactions = [dig]
+		"microwave":
+			f.display_name = "Microwave"
+			f.height = 0.4
+			f.add_box(Vector3(0.55, 0.32, 0.4), Vector3(0, 0.16, -0.05), Color(0.9, 0.9, 0.9))
+			f.add_box(Vector3(0.36, 0.24, 0.01), Vector3(-0.06, 0.16, 0.155), Color(0.1, 0.12, 0.15))
+			f.add_box(Vector3(0.09, 0.24, 0.01), Vector3(0.2, 0.16, 0.155), Color(0.25, 0.25, 0.28))
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				_dishes(Interaction.new("Microwave a Meal", {"hunger": 120.0}, 15.0, "hunger", "stand", true)),
+			]
+		"coffee_maker":
+			f.display_name = "Coffee Maker"
+			f.height = 0.4
+			f.add_box(Vector3(0.24, 0.36, 0.26), Vector3(0, 0.18, -0.05), Color(0.12, 0.12, 0.14))
+			f.add_box(Vector3(0.12, 0.12, 0.12), Vector3(0, 0.08, 0.06), Color(0.75, 0.82, 0.88, 0.6))
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Make Coffee", {"energy": 60.0, "bladder": -25.0}, 10.0, "", "stand", true).grants("caffeinated", "energized", 1, "Caffeinated", "That hit the spot!", 180.0),
+			]
+		"bathroom_sink":
+			f.display_name = "Bathroom Sink"
+			f.height = 1.0
+			f.add_box(Vector3(0.12, 0.75, 0.12), Vector3(0, 0.38, -0.1), WHITE)
+			f.add_box(Vector3(0.55, 0.14, 0.42), Vector3(0, 0.8, 0.0), WHITE)
+			f.add_box(Vector3(0.04, 0.16, 0.04), Vector3(0, 0.94, -0.16), Color(0.75, 0.75, 0.8))
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Wash Hands", {"hygiene": 60.0}, 6.0, "", "stand", true),
+				Interaction.new("Brush Teeth", {"hygiene": 70.0}, 8.0, "", "stand", true).grants("fresh_breath", "confident", 1, "Fresh Breath", "Minty fresh!", 240.0),
+			]
+		"nightstand":
+			f.display_name = "Nightstand"
+			f.height = 0.9
+			f.decor = 1
+			f.add_box(Vector3(0.48, 0.5, 0.42), Vector3(0, 0.25, 0), WOOD)
+			f.add_box(Vector3(0.4, 0.14, 0.02), Vector3(0, 0.36, 0.21), WOOD.lightened(0.12))
+			f.add_box(Vector3(0.1, 0.03, 0.1), Vector3(-0.1, 0.52, 0), DARK)
+			f.add_box(Vector3(0.02, 0.2, 0.02), Vector3(-0.1, 0.62, 0), DARK)
+			var bedside := f.add_box(Vector3(0.18, 0.14, 0.18), Vector3(-0.1, 0.76, 0), Color(0.96, 0.9, 0.78))
+			bedside.name = "Shade"
+			var bulb := OmniLight3D.new()
+			bulb.name = "Glow"
+			bulb.position = Vector3(-0.1, 0.8, 0)
+			bulb.light_color = Color(1.0, 0.82, 0.6)
+			bulb.light_energy = 0.9
+			bulb.omni_range = 3.5
+			bulb.visible = false
+			f.add_child(bulb)
+			f.add_to_group("lamps")
+		"wardrobe":
+			f.display_name = "Wardrobe"
+			f.footprint = Vector2i(2, 1)
+			f.height = 2.0
+			f.decor = 1
+			f.add_box(Vector3(1.4, 1.95, 0.6), Vector3(0, 0.98, -0.18), WOOD)
+			for x in [-0.35, 0.35]:
+				f.add_box(Vector3(0.66, 1.8, 0.02), Vector3(x, 1.0, 0.13), WOOD.lightened(0.1))
+				f.add_box(Vector3(0.03, 0.22, 0.03), Vector3(x * 0.15, 1.05, 0.16), Color(0.75, 0.62, 0.3))
+			f.spots = [Vector3(0, 0, 0.9)]
+			var looks: Array[Interaction] = []
+			for o in [["Everyday", "everyday"], ["Sleepwear", "sleep"], ["Athletic", "athletic"], ["Swimwear", "swim"]]:
+				var ch := Interaction.new(o[0], {}, 3.0, "", "stand", true)
+				ch.outfit = o[1]
+				ch.menu = "Change Outfit..."
+				looks.append(ch)
+			f.interactions = looks
+		"wall_lamp":
+			f.display_name = "Wall Lamp"
+			f.wall_mounted = true
+			f.blocks = false
+			f.height = 0.3
+			f.decor = 1
+			f.add_box(Vector3(0.12, 0.16, 0.04), Vector3(0, 0.3, -0.02), DARK)
+			var wl := f.add_box(Vector3(0.22, 0.2, 0.18), Vector3(0, 0.38, 0.08), Color(0.96, 0.9, 0.78))
+			wl.name = "Shade"
+			var wglow := OmniLight3D.new()
+			wglow.name = "Glow"
+			wglow.position = Vector3(0, 0.38, 0.25)
+			wglow.light_color = Color(1.0, 0.82, 0.6)
+			wglow.light_energy = 1.2
+			wglow.omni_range = 5.0
+			wglow.visible = false
+			f.add_child(wglow)
+			f.add_to_group("lamps")
+		"basketball_hoop":
+			f.display_name = "Basketball Hoop"
+			f.height = 3.0
+			f.add_box(Vector3(0.1, 2.9, 0.1), Vector3(0, 1.45, -0.3), Color(0.3, 0.3, 0.32))
+			f.add_box(Vector3(1.1, 0.7, 0.05), Vector3(0, 2.75, -0.22), WHITE)
+			f.add_box(Vector3(0.4, 0.3, 0.06), Vector3(0, 2.6, -0.2), Color(0.85, 0.25, 0.2))
+			f.add_box(Vector3(0.45, 0.03, 0.45), Vector3(0, 2.5, 0.05), Color(0.9, 0.4, 0.1))
+			f.spots = [Vector3(0, 0, 2.0), Vector3(-0.8, 0, 2.2), Vector3(0.8, 0, 2.2)]
+			f.interactions = [
+				Interaction.new("Shoot Hoops", {"fun": 50.0, "energy": -10.0, "hygiene": -10.0}, 60.0, "fun", "stand", true).practices("fitness", 50.0).grants("nothing_but_net", "confident", 1, "Nothing but Net", "Swish!", 120.0),
+			]
 		"burglar_alarm":
 			f.display_name = "Burglar Alarm"
 			f.wall_mounted = true
