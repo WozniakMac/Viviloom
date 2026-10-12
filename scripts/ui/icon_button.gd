@@ -199,6 +199,13 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			ci.draw_rect(Rect2(c - Vector2(s * 0.55, s), Vector2(s * 1.1, s * 2)), col)
 			ci.draw_rect(Rect2(c - Vector2(s * 0.4, s * 0.75), Vector2(s * 0.8, s * 1.35)), Color.WHITE)
 			ci.draw_circle(c + Vector2(0, s * 0.8), s * 0.12, Color.WHITE)
+		"room":
+			ci.draw_rect(Rect2(c - Vector2(s * 0.8, s * 0.8), Vector2(s * 1.6, s * 1.6)), col, false, 3.0)
+			for d in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+				ci.draw_circle(c + d * s * 0.8, s * 0.2, col)
+		"roof":
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s, s * 0.2), c + Vector2(0, -s * 0.75), c + Vector2(s, s * 0.2), c + Vector2(s * 0.75, s * 0.2), c + Vector2(0, -s * 0.4), c + Vector2(-s * 0.75, s * 0.2)]), col)
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.55, s * 0.2), Vector2(s * 1.1, s * 0.7)), col, false, 2.0)
 		"pool":
 			ci.draw_rect(Rect2(c - Vector2(s, s * 0.7), Vector2(s * 2, s * 1.4)), col, false, 2.0)
 			for k in 2:

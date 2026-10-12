@@ -114,6 +114,9 @@ func _ready() -> void:
 			if idx >= 0:
 				owner.inventory.remove_at(idx)
 				owner.inventory_changed.emit())
+	build.roof_changed.connect(func(style: int, color: int):
+		for l in levels:
+			(l as Lot).set_roof(style, color))
 	build.entered.connect(func(): tip("build", "Build Mode", "Time stops while you build. Use the tools at the top for walls, doors, windows, paint and floors, and buy objects from the catalogue at the bottom. Press F1 to go back to Live Mode."))
 	hud.bubbles.lot = lot
 	hud.bubbles.camera = rig.camera
@@ -1065,7 +1068,7 @@ func _lot_dict() -> Dictionary:
 	var fences: Array = []
 	for e in lot.fences:
 		fences.append([e.x, e.y, e.z, lot.gates.has(e)])
-	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "fences": fences, "upper": _level_dict(upper)}
+	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "fences": fences, "roof": [lot.roof_style, lot.roof_color], "upper": _level_dict(upper)}
 
 
 ## Walls, floors and objects of an upper level.
@@ -1122,6 +1125,9 @@ func _apply_lot_dict(d: Dictionary) -> void:
 		for f in d["floors"]:
 			lot.floor_tiles[Vector2i(int(f[0]), int(f[1]))] = int(f[2])
 		lot.add_floor(Rect2i(), 0)
+	var roof: Array = d.get("roof", [0, 0])
+	for l in levels:
+		(l as Lot).set_roof(int(roof[0]), int(roof[1]))
 	for fe in d.get("fences", []):
 		var fe_e := Vector3i(int(fe[0]), int(fe[1]), int(fe[2]))
 		lot.add_fence(fe_e)
@@ -1750,6 +1756,17 @@ func _run_scenario(scenario: String, path: String) -> void:
 			Clock.set_speed(1)
 			rig.frame(lot.cell_to_world(Vector2i(15, 13)), deg_to_rad(20.0), deg_to_rad(-38.0), 14.0)
 			await get_tree().create_timer(5.0).timeout
+		"rooftool":
+			build.enter()
+			build.set_tool(BuildMode.Tool.ROOF)
+			await get_tree().create_timer(1.0).timeout
+		"roof", "hiproof", "flatroof":
+			var style: int = {"roof": Lot.RoofStyle.GABLE, "hiproof": Lot.RoofStyle.HIP, "flatroof": Lot.RoofStyle.FLAT}[scenario]
+			for l in levels:
+				(l as Lot).set_roof(style, 2 if style == Lot.RoofStyle.HIP else 1)
+			lot.wall_view = Lot.WallView.UP
+			rig.frame(lot.center(), deg_to_rad(35.0), deg_to_rad(-30.0), 26.0)
+			await get_tree().create_timer(1.0).timeout
 		"fence":
 			for r in [[Vector2i(1, 15), Vector2i(23, 15)], [Vector2i(1, 15), Vector2i(1, 19)], [Vector2i(23, 15), Vector2i(23, 19)]]:
 				for e in Lot.wall_run(r[0], r[1]):

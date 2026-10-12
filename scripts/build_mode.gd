@@ -8,8 +8,10 @@ signal notice(text: String)
 signal entered
 ## An object was put down (main uses this to cut stairwells).
 signal placed(f: Furniture)
+## The roof style or colour was changed (applies to every storey).
+signal roof_changed(style: int, color: int)
 
-enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL, FENCE }
+enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL, FENCE, ROOM, ROOF }
 
 var lot: Lot
 var sim: Sim
@@ -137,6 +139,8 @@ func handle_input(event: InputEvent) -> void:
 				_finish_floor()
 			elif tool == Tool.POOL and _floor_start != null:
 				_finish_pool()
+			elif tool == Tool.ROOM and _floor_start != null:
+				_finish_room()
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			if _held != null:
 				_cancel_held()
@@ -202,7 +206,7 @@ func _on_press(p: Variant, screen_pos: Vector2) -> void:
 						if not _spend(price):
 							break
 						lot.paint_wall(t, wall_style)
-		Tool.FLOOR, Tool.POOL:
+		Tool.FLOOR, Tool.POOL, Tool.ROOM:
 			_floor_start = lot.world_to_cell(pt)
 			_floor_end = _floor_start
 		Tool.DELETE:
@@ -277,6 +281,35 @@ func _finish_pool() -> void:
 		return
 	_spend(price)
 	Sfx.play("place")
+
+
+## Room tool: four walls around the dragged rectangle in one go.
+func _finish_room() -> void:
+	var r := _floor_rect()
+	_floor_start = null
+	_wall_preview.visible = false
+	if r.size.x < 1 or r.size.y < 1:
+		return
+	var corners := [r.position, Vector2i(r.end.x, r.position.y), r.end, Vector2i(r.position.x, r.end.y)]
+	for k in 4:
+		for e in Lot.wall_run(corners[k], corners[(k + 1) % 4]):
+			if lot.walls.has(e) or lot.fences.has(e) or not lot.edge_in_bounds(e):
+				continue
+			if funds < Catalog.WALL_PRICE:
+				notice.emit("Out of funds.")
+				return
+			if lot.add_wall(e):
+				_spend(Catalog.WALL_PRICE)
+
+
+## Picks a roof style and colour for the whole house.
+func set_roof(style: int, color: int) -> void:
+	if style == lot.roof_style and color == lot.roof_color:
+		return
+	if not _spend(Lot.ROOF_PRICE):
+		return
+	roof_changed.emit(style, color)
+	_show_swatches()
 
 
 func _finish_floor() -> void:
@@ -453,7 +486,7 @@ func _refresh_overlays(p: Variant) -> void:
 					_wall_preview.visible = true
 			else:
 				_show_vertex(_vertex(at))
-		Tool.FLOOR, Tool.POOL:
+		Tool.FLOOR, Tool.POOL, Tool.ROOM:
 			if _floor_start != null:
 				_floor_end = lot.world_to_cell(at)
 				var r := _floor_rect()
@@ -566,7 +599,7 @@ func _build_ui() -> void:
 	tools_pill.add_theme_stylebox_override("panel", UiTheme.panel_style(28, 6))
 	tools_pill.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	tools_pill.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	tools_pill.position = Vector2(-216, 14)
+	tools_pill.position = Vector2(-268, 14)
 	root.add_child(tools_pill)
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 6)
@@ -575,6 +608,8 @@ func _build_ui() -> void:
 		[Tool.MOVE, "move", "Move objects: click to pick up, click to put down. R rotates, Delete sells."],
 		[Tool.WALL, "wall", "Wall tool: drag along the grid (§%d per segment)" % Catalog.WALL_PRICE],
 		[Tool.FENCE, "fence", "Fence tool: drag a picket fence along the grid (§%d per segment)" % Catalog.FENCE_PRICE],
+		[Tool.ROOM, "room", "Room tool: drag a rectangle to build four walls at once (§%d per segment)" % Catalog.WALL_PRICE],
+		[Tool.ROOF, "roof", "Roof tool: choose the roof shape and colour below (§%d)" % Lot.ROOF_PRICE],
 		[Tool.DOOR, "door", "Door tool: click a wall to add a door (§%d), or a fence for a gate (§%d)" % [Catalog.DOOR_PRICE, Catalog.GATE_PRICE]],
 		[Tool.WINDOW, "window", "Window tool: click a wall to add a window (§%d)" % Finishes.WINDOW_PRICE],
 		[Tool.PAINT, "paint", "Wall paint: pick a finish below, click a wall (Shift: every wall)"],
@@ -726,12 +761,15 @@ func _show_category(cat: String) -> void:
 func _show_swatches() -> void:
 	if _swatch_box == null:
 		return
-	var painting := tool == Tool.PAINT or tool == Tool.FLOOR
+	var painting := tool == Tool.PAINT or tool == Tool.FLOOR or tool == Tool.ROOF
 	_tiles_scroll.visible = not painting
 	_swatch_box.visible = painting
 	for c in _swatch_box.get_children():
 		c.queue_free()
 	if not painting:
+		return
+	if tool == Tool.ROOF:
+		_show_roof_swatches()
 		return
 	var list: Array = Finishes.WALLS if tool == Tool.PAINT else Finishes.FLOORS
 	var current := wall_style if tool == Tool.PAINT else floor_style
@@ -775,3 +813,77 @@ func _show_swatches() -> void:
 				floor_style = i
 			_show_swatches())
 		_swatch_box.add_child(b)
+
+
+## Roof tool: a button per shape, then a chip per colour.
+func _show_roof_swatches() -> void:
+	for i in Lot.ROOF_STYLE_NAMES.size():
+		var b := _roof_button(Lot.ROOF_STYLE_NAMES[i], lot.roof_style == i, Color(0.92, 0.94, 0.98))
+		var shape := RoofShape.new()
+		shape.style = i
+		shape.color = Lot.ROOF_COLORS[lot.roof_color][1]
+		shape.set_anchors_preset(Control.PRESET_FULL_RECT)
+		shape.offset_bottom = -22
+		shape.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(shape)
+		b.pressed.connect(func(): set_roof(i, lot.roof_color))
+		_swatch_box.add_child(b)
+	for i in Lot.ROOF_COLORS.size():
+		var b := _roof_button(Lot.ROOF_COLORS[i][0], lot.roof_color == i, Lot.ROOF_COLORS[i][1])
+		b.pressed.connect(func(): set_roof(lot.roof_style, i))
+		_swatch_box.add_child(b)
+
+
+func _roof_button(text: String, current: bool, chip_color: Color) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(112, 96)
+	b.tooltip_text = "%s\n§ %d" % [text, Lot.ROOF_PRICE]
+	var st := UiTheme.pill(Color.WHITE, UiTheme.GREEN if current else UiTheme.PANEL_EDGE, 10)
+	st.set_border_width_all(3 if current else 1)
+	b.add_theme_stylebox_override("normal", st)
+	b.add_theme_stylebox_override("hover", UiTheme.pill(UiTheme.HOVER, UiTheme.ACCENT, 10))
+	var v := VBoxContainer.new()
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 8
+	v.offset_right = -8
+	v.offset_top = 8
+	v.offset_bottom = -6
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(v)
+	var chip := Panel.new()
+	var cs := StyleBoxFlat.new()
+	cs.bg_color = chip_color
+	cs.set_corner_radius_all(6)
+	chip.add_theme_stylebox_override("panel", cs)
+	chip.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(chip)
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 11)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.clip_text = true
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(l)
+	return b
+
+
+## A little house silhouette with the given roof shape, for the Roof tool.
+class RoofShape:
+	extends Control
+	var style := 0
+	var color := Color.BROWN
+
+	func _draw() -> void:
+		var c := size * 0.5 + Vector2(0, 8)
+		var w := 30.0
+		draw_rect(Rect2(c + Vector2(-w * 0.8, -6), Vector2(w * 1.6, 22)), Color(0.97, 0.95, 0.9))
+		draw_rect(Rect2(c + Vector2(-5, 4), Vector2(10, 12)), Color(0.55, 0.38, 0.25))
+		match style:
+			Lot.RoofStyle.GABLE:
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-w, -6), c + Vector2(0, -30), c + Vector2(w, -6)]), color)
+			Lot.RoofStyle.HIP:
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-w, -6), c + Vector2(-w * 0.35, -26), c + Vector2(w * 0.35, -26), c + Vector2(w, -6)]), color)
+			Lot.RoofStyle.FLAT:
+				draw_rect(Rect2(c + Vector2(-w * 0.9, -12), Vector2(w * 1.8, 6)), color.lerp(Color(0.75, 0.75, 0.75), 0.55))

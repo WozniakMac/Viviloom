@@ -36,6 +36,7 @@ func _ready() -> void:
 	_test_swatches()
 	_test_fences()
 	_test_romance()
+	_test_room_and_roof()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -677,3 +678,28 @@ func _test_romance() -> void:
 	bed.free()
 	a.free()
 	b.free()
+
+
+func _test_room_and_roof() -> void:
+	var lot := _make_lot()
+	add_child(lot)
+	var build := BuildMode.new()
+	build.lot = lot
+	build.funds = 10000
+	build.tool = BuildMode.Tool.ROOM
+	build._wall_preview = MeshInstance3D.new()
+	build._floor_start = Vector2i(2, 2)
+	build._floor_end = Vector2i(5, 4)
+	build._finish_room()
+	_check(lot.walls.size() == 14, "the room tool walls in a 4x3 room in one drag")
+	_check(build.funds == 10000 - 14 * Catalog.WALL_PRICE, "each room wall is paid for")
+	lot._compute_interior()
+	_check(lot.is_indoors(Vector2i(3, 3)), "the new room counts as indoors")
+	for style in [Lot.RoofStyle.GABLE, Lot.RoofStyle.HIP, Lot.RoofStyle.FLAT]:
+		lot.set_roof(style, 2)
+		_check(lot._roof.mesh != null, "%s roofs are built" % Lot.ROOF_STYLE_NAMES[style])
+	lot.set_roof(Lot.RoofStyle.NONE, 0)
+	_check(lot._roof.mesh == null, "no roof at all is an option")
+	build._wall_preview.free()
+	build.free()
+	lot.queue_free()

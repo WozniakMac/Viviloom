@@ -536,6 +536,28 @@ func _compute_interior() -> void:
 
 ## Covers the bounding box of the indoor tiles with a gable roof whose ridge runs
 ## along the longer side, with a small overhang.
+## Roof shapes: gable (two slopes), hip (four), flat, or none at all.
+enum RoofStyle { GABLE, HIP, FLAT, NONE }
+const ROOF_STYLE_NAMES: Array[String] = ["Gable", "Hip", "Flat", "No Roof"]
+const ROOF_COLORS: Array = [
+	["Cocoa Shingle", Color(0.36, 0.27, 0.27)],
+	["Slate", Color(0.3, 0.34, 0.42)],
+	["Terracotta", Color(0.66, 0.33, 0.22)],
+	["Forest", Color(0.24, 0.36, 0.27)],
+	["Sandstone", Color(0.72, 0.64, 0.5)],
+	["Charcoal", Color(0.16, 0.16, 0.18)],
+]
+const ROOF_PRICE := 100
+var roof_style := RoofStyle.GABLE
+var roof_color := 0
+
+
+func set_roof(style: int, color: int) -> void:
+	roof_style = style as RoofStyle
+	roof_color = clampi(color, 0, ROOF_COLORS.size() - 1)
+	_rebuild_roof()
+
+
 func _rebuild_roof() -> void:
 	if _roof == null:
 		_roof = MeshInstance3D.new()
@@ -545,12 +567,15 @@ func _rebuild_roof() -> void:
 		m.shader.code = """
 shader_type spatial;
 render_mode cull_disabled;
+uniform vec3 shingle = vec3(0.36, 0.27, 0.27);
 varying vec3 wp;
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
-	vec3 c = vec3(0.36, 0.27, 0.27);
+	vec3 c = shingle;
 	if (COLOR.r > 0.5) {
 		c = vec3(0.92, 0.89, 0.82);
+	} else if (COLOR.g > 0.5) {
+		c = mix(shingle, vec3(0.75), 0.55);
 	} else {
 		float row = fract(wp.y * 5.0);
 		float x = fract((wp.x + wp.z) * 2.5 + floor(wp.y * 5.0) * 0.5);
@@ -563,7 +588,8 @@ void fragment() {
 """
 		_roof.material_override = m
 		add_child(_roof)
-	if _interior.is_empty():
+	(_roof.material_override as ShaderMaterial).set_shader_parameter("shingle", ROOF_COLORS[roof_color][1])
+	if _interior.is_empty() or roof_style == RoofStyle.NONE:
 		_roof.mesh = null
 		return
 	var lo := Vector2i(size.x, size.y)
@@ -571,45 +597,82 @@ void fragment() {
 	for c in _interior:
 		lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
 		hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
-	var oh := 0.4
+	var oh := 0.4 if roof_style != RoofStyle.FLAT else 0.15
 	var x0 := lo.x * CELL - oh
 	var x1 := (hi.x + 1) * CELL + oh
 	var z0 := lo.y * CELL - oh
 	var z1 := (hi.y + 1) * CELL + oh
 	var along_x := (x1 - x0) >= (z1 - z0)
-	var span := (z1 - z0) if along_x else (x1 - x0)
+	# Work in (u along the ridge, v across it) and map back to the lot.
+	var u0 := x0 if along_x else z0
+	var u1 := x1 if along_x else z1
+	var v0 := z0 if along_x else x0
+	var v1 := z1 if along_x else x1
+	var span := v1 - v0
 	var h := WALL_HEIGHT
 	var rise := span * 0.4
+	var vm := (v0 + v1) * 0.5
+	var um := (u0 + u1) * 0.5
+	var at := func(u: float, y: float, v: float) -> Vector3:
+		return Vector3(u, y, v) if along_x else Vector3(v, y, u)
+	var centre: Vector3 = at.call(um, h - 2.0, vm)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var shingle := Color.BLACK
 	var gable := Color.WHITE
-	if along_x:
-		var zm := (z0 + z1) * 0.5
-		var a := Vector3(x0, h, z0)
-		var b := Vector3(x1, h, z0)
-		var c := Vector3(x1, h + rise, zm)
-		var d := Vector3(x0, h + rise, zm)
-		var e := Vector3(x0, h, z1)
-		var f := Vector3(x1, h, z1)
-		_quad(st, a, b, c, d, shingle)
-		_quad(st, f, e, d, c, shingle)
-		_tri(st, Vector3(x0 + oh, h, z0 + oh), Vector3(x0 + oh, h, z1 - oh), Vector3(x0 + oh, h + rise, zm), gable)
-		_tri(st, Vector3(x1 - oh, h, z1 - oh), Vector3(x1 - oh, h, z0 + oh), Vector3(x1 - oh, h + rise, zm), gable)
-	else:
-		var xm := (x0 + x1) * 0.5
-		var a := Vector3(x0, h, z1)
-		var b := Vector3(x0, h, z0)
-		var c := Vector3(xm, h + rise, z0)
-		var d := Vector3(xm, h + rise, z1)
-		var e := Vector3(x1, h, z1)
-		var f := Vector3(x1, h, z0)
-		_quad(st, a, b, c, d, shingle)
-		_quad(st, f, e, d, c, shingle)
-		_tri(st, Vector3(x0 + oh, h, z0 + oh), Vector3(x1 - oh, h, z0 + oh), Vector3(xm, h + rise, z0 + oh), gable)
-		_tri(st, Vector3(x1 - oh, h, z1 - oh), Vector3(x0 + oh, h, z1 - oh), Vector3(xm, h + rise, z1 - oh), gable)
+	var flat := Color(0, 1, 0)
+	match roof_style:
+		RoofStyle.GABLE:
+			var a: Vector3 = at.call(u0, h, v0)
+			var b: Vector3 = at.call(u1, h, v0)
+			var c: Vector3 = at.call(u1, h + rise, vm)
+			var d: Vector3 = at.call(u0, h + rise, vm)
+			var e: Vector3 = at.call(u0, h, v1)
+			var f: Vector3 = at.call(u1, h, v1)
+			_quad_out(st, a, b, c, d, shingle, centre)
+			_quad_out(st, f, e, d, c, shingle, centre)
+			_tri_out(st, at.call(u0 + oh, h, v0 + oh), at.call(u0 + oh, h, v1 - oh), at.call(u0 + oh, h + rise, vm), gable, centre)
+			_tri_out(st, at.call(u1 - oh, h, v1 - oh), at.call(u1 - oh, h, v0 + oh), at.call(u1 - oh, h + rise, vm), gable, centre)
+		RoofStyle.HIP:
+			var inset := minf(span * 0.5, (u1 - u0) * 0.5)
+			var r0: Vector3 = at.call(u0 + inset, h + rise, vm)
+			var r1: Vector3 = at.call(u1 - inset, h + rise, vm)
+			var a: Vector3 = at.call(u0, h, v0)
+			var b: Vector3 = at.call(u1, h, v0)
+			var e: Vector3 = at.call(u0, h, v1)
+			var f: Vector3 = at.call(u1, h, v1)
+			_quad_out(st, a, b, r1, r0, shingle, centre)
+			_quad_out(st, f, e, r0, r1, shingle, centre)
+			_tri_out(st, e, a, r0, shingle, centre)
+			_tri_out(st, b, f, r1, shingle, centre)
+		RoofStyle.FLAT:
+			var t := h + 0.18
+			var a: Vector3 = at.call(u0, t, v0)
+			var b: Vector3 = at.call(u1, t, v0)
+			var c: Vector3 = at.call(u1, t, v1)
+			var d: Vector3 = at.call(u0, t, v1)
+			_quad_out(st, a, b, c, d, flat, centre)
+			var down := Vector3(0, -0.22, 0)
+			_quad_out(st, a, b, b + down, a + down, gable, centre)
+			_quad_out(st, b, c, c + down, b + down, gable, centre)
+			_quad_out(st, c, d, d + down, c + down, gable, centre)
+			_quad_out(st, d, a, a + down, d + down, gable, centre)
 	st.generate_normals()
 	_roof.mesh = st.commit()
+
+
+## A triangle wound so its face points away from `centre` (for proper lighting).
+func _tri_out(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, col: Color, centre: Vector3) -> void:
+	var n := (b - a).cross(c - a)
+	if n.dot((a + b + c) / 3.0 - centre) < 0.0:
+		_tri(st, a, c, b, col)
+	else:
+		_tri(st, a, b, c, col)
+
+
+func _quad_out(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, col: Color, centre: Vector3) -> void:
+	_tri_out(st, a, b, c, col, centre)
+	_tri_out(st, a, c, d, col, centre)
 
 
 func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, col: Color) -> void:
@@ -835,6 +898,8 @@ func clear_build() -> void:
 		remove_wall(e)
 	for e in fences.keys():
 		remove_fence(e)
+	roof_style = RoofStyle.GABLE
+	roof_color = 0
 	floor_tiles.clear()
 	_rebuild_floor()
 	pools.clear()
