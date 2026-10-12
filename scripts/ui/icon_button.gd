@@ -210,6 +210,15 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s, s * 0.7), c + Vector2(-s * 0.3, -s * 0.3), c + Vector2(0, s * 0.1), c + Vector2(s * 0.45, -s * 0.6), c + Vector2(s, s * 0.7)]), col)
 			for k in 3:
 				ci.draw_line(c + Vector2(-s * 0.6 + k * s * 0.5, s * 0.95), c + Vector2(-s * 0.5 + k * s * 0.5, s * 0.75), col, 2.0)
+		"palette":
+			ci.draw_arc(c, s * 0.9, 0.4, TAU - 0.4, 24, col, 3.0, true)
+			for k in 4:
+				var ang := -2.2 + k * 0.9
+				ci.draw_circle(c + Vector2(cos(ang), sin(ang)) * s * 0.5, s * 0.17, col)
+		"eyedropper":
+			ci.draw_line(c + Vector2(-s * 0.8, s * 0.8), c + Vector2(s * 0.2, -s * 0.2), col, 3.0)
+			ci.draw_circle(c + Vector2(s * 0.45, -s * 0.45), s * 0.35, col)
+			ci.draw_circle(c + Vector2(-s * 0.85, s * 0.85), s * 0.12, col)
 		"room":
 			ci.draw_rect(Rect2(c - Vector2(s * 0.8, s * 0.8), Vector2(s * 1.6, s * 1.6)), col, false, 3.0)
 			for d in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:

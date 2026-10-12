@@ -313,9 +313,11 @@ func _ready() -> void:
 	_build_sim_cluster()
 
 	_hint = Label.new()
-	_hint.text = "Click the ground to walk, objects to interact.   WASD / Q E / Z X: camera   PgUp/PgDn: floors   F3: build   V: walls"
+	_hint.text = "Click the ground to walk, objects to interact.   WASD, Q/E, , . , Z/X: camera   PgUp/PgDn: floors   Home/End: walls   F2 buy · F3 build   Tab: hide UI"
 	_hint.add_theme_font_size_override("font_size", 14)
 	_hint.add_theme_color_override("font_color", Color.WHITE)
+	# The reference game has no permanent hint line; controls are taught by tips.
+	_hint.visible = false
 	_hint.add_theme_color_override("font_outline_color", Color(0.05, 0.1, 0.25, 0.8))
 	_hint.add_theme_constant_override("outline_size", 5)
 	_hint.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -439,6 +441,15 @@ func _build_time_controls() -> void:
 	_root.add_child(box)
 	_live_ui.append(box)
 
+	# "PAUSED" above the speed buttons while the game is paused, like the reference.
+	_pause_label = Label.new()
+	_pause_label.text = "PAUSED"
+	_pause_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_pause_label.add_theme_font_size_override("font_size", 14)
+	_pause_label.add_theme_color_override("font_color", Color.WHITE)
+	_pause_label.add_theme_color_override("font_outline_color", Color(0.1, 0.15, 0.35, 0.8))
+	_pause_label.add_theme_constant_override("outline_size", 5)
+	box.add_child(_pause_label)
 	var pill := PanelContainer.new()
 	pill.add_theme_stylebox_override("panel", UiTheme.panel_style(26, 6))
 	box.add_child(pill)
@@ -447,7 +458,7 @@ func _build_time_controls() -> void:
 	speeds.add_theme_constant_override("separation", 6)
 	pill.add_child(speeds)
 	var ids := ["pause", "play", "fast", "ultra"]
-	var tips := ["Pause (P or 0)", "Normal speed (1)", "Fast (2)", "Ultra speed (3)"]
+	var tips := ["Pause (P, 0 or `)", "Normal speed (1)", "Fast (2)", "Ultra speed (3)"]
 	for i in ids.size():
 		var b := IconButton.make(ids[i], 40, tips[i])
 		b.toggle_mode = true
@@ -472,7 +483,37 @@ func _build_time_controls() -> void:
 	row.add_child(_date_label)
 
 
+var _pause_label: Label
+var _pause_frame: Panel
+
+
+## A thin red frame round the screen while paused (live mode only).
+func _ensure_pause_frame() -> void:
+	if _pause_frame != null:
+		return
+	_pause_frame = Panel.new()
+	var st := StyleBoxFlat.new()
+	st.draw_center = false
+	st.border_color = Color(0.85, 0.12, 0.15)
+	st.set_border_width_all(3)
+	_pause_frame.add_theme_stylebox_override("panel", st)
+	_pause_frame.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pause_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_pause_frame)
+	_live_ui.append(_pause_frame)
+
+
+## Opens a side panel by its hotkey, or closes it if it's already showing.
+## Pages: 0 needs, 1 skills, 2 simology, 3 relationships, 4 career, 5 aspiration, 6 inventory.
+func toggle_page(index: int) -> void:
+	_on_tab(index)
+
+
 func _on_speed_changed(speed: int) -> void:
+	_ensure_pause_frame()
+	_pause_frame.visible = speed == 0
+	if _pause_label != null:
+		_pause_label.modulate.a = 1.0 if speed == 0 else 0.0
 	for i in _speed_buttons.size():
 		_speed_buttons[i].button_pressed = i == speed
 		_speed_buttons[i].queue_redraw()

@@ -15,7 +15,7 @@ signal foundation_changed(height: float)
 ## Lot traits were picked (applies to every storey).
 signal lot_traits_changed(traits: Array)
 
-enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL, FENCE, ROOM, ROOF, TERRAIN }
+enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL, FENCE, ROOM, ROOF, TERRAIN, EYEDROPPER, DESIGN }
 
 var lot: Lot
 var sim: Sim
@@ -79,6 +79,9 @@ func enter() -> void:
 		return
 	if not allowed:
 		notice.emit("You can only build on your own lot.")
+		return
+	if lot.messes().any(func(m): return m.kind == "fire"):
+		notice.emit("You can't enter Build Mode while there's a fire on the lot!")
 		return
 	active = true
 	_speed_before = maxi(Clock.speed, 1)
@@ -154,10 +157,23 @@ func handle_input(event: InputEvent) -> void:
 			_refresh_overlays(p)
 	elif event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo:
 		match (event as InputEventKey).keycode:
-			KEY_R, KEY_PERIOD:
+			KEY_PERIOD:
 				_rotate_held(1)
 			KEY_COMMA:
 				_rotate_held(-1)
+			# Tool keys of the reference game: Hand, Wall, sledgehammer (K), Eyedropper, Design tool.
+			KEY_H:
+				set_tool(Tool.MOVE)
+			KEY_B:
+				set_tool(Tool.WALL)
+			KEY_K:
+				set_tool(Tool.DELETE)
+			KEY_E:
+				if _held == null:
+					set_tool(Tool.EYEDROPPER)
+			KEY_R:
+				if _held == null:
+					set_tool(Tool.DESIGN)
 			KEY_DELETE, KEY_BACKSPACE:
 				if _held != null:
 					_sell(_held)
@@ -217,6 +233,19 @@ func _on_press(p: Variant, screen_pos: Vector2) -> void:
 		Tool.FLOOR, Tool.POOL, Tool.ROOM, Tool.TERRAIN:
 			_floor_start = lot.world_to_cell(pt)
 			_floor_end = _floor_start
+		Tool.EYEDROPPER:
+			# Pick up a new copy of whatever was clicked, in the same colour.
+			var src := _furniture_under(screen_pos)
+			if src != null and Catalog.INFO.has(src.kind) and Catalog.INFO[src.kind][1] > 0:
+				var v := src.variant
+				start_place(src.kind)
+				if _held != null and v > 0:
+					_held.set_variant(v)
+		Tool.DESIGN:
+			# Click an object to try its next colour swatch (free, like recolouring).
+			var obj := _furniture_under(screen_pos)
+			if obj != null and not obj.swatch_colors().is_empty():
+				obj.set_variant((obj.variant + 1) % (obj.swatch_colors().size()))
 		Tool.DELETE:
 			var f := _furniture_under(screen_pos)
 			if f != null and f.kind == "pool":
@@ -610,6 +639,16 @@ func set_lot(l: Lot) -> void:
 	_refresh_overlays(null)
 
 
+var _ui_hidden := false
+
+
+## Tab (camera mode) hides the build interface too.
+func set_ui_hidden(h: bool) -> void:
+	_ui_hidden = h
+	if active:
+		_set_visible(not h)
+
+
 func _set_visible(v: bool) -> void:
 	_ui.visible = v
 	if not v:
@@ -632,14 +671,16 @@ func _build_ui() -> void:
 	tools_pill.add_theme_stylebox_override("panel", UiTheme.panel_style(28, 6))
 	tools_pill.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	tools_pill.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	tools_pill.position = Vector2(-320, 14)
+	tools_pill.position = Vector2(-372, 14)
 	root.add_child(tools_pill)
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 6)
 	tools_pill.add_child(tools)
 	var tool_defs := [
-		[Tool.MOVE, "move", "Move objects: click to pick up, click to put down. R rotates, Delete sells."],
-		[Tool.WALL, "wall", "Wall tool: drag along the grid (§%d per segment)" % Catalog.WALL_PRICE],
+		[Tool.MOVE, "move", "Hand tool (H): click to pick up, click to put down. , and . rotate, Delete sells."],
+		[Tool.EYEDROPPER, "eyedropper", "Eyedropper (E): click an object to buy another just like it"],
+		[Tool.DESIGN, "palette", "Design tool (R): click an object to change its colour"],
+		[Tool.WALL, "wall", "Wall tool (B): drag along the grid (§%d per segment)" % Catalog.WALL_PRICE],
 		[Tool.FENCE, "fence", "Fences & half walls: pick a style below, then drag along the grid"],
 		[Tool.ROOM, "room", "Room tool: drag a rectangle to build four walls at once (§%d per segment)" % Catalog.WALL_PRICE],
 		[Tool.ROOF, "roof", "Roof & Foundation: choose the roof shape and colour, or raise the house (§%d)" % Lot.ROOF_PRICE],
@@ -649,7 +690,7 @@ func _build_ui() -> void:
 		[Tool.FLOOR, "floor", "Floor tool: pick a finish below, drag over tiles"],
 		[Tool.TERRAIN, "terrain", "Terrain paint: pick a ground finish below, drag over the yard"],
 		[Tool.POOL, "pool", "Pool tool: drag out a swimming pool (§60 per tile)"],
-		[Tool.DELETE, "sell", "Sledgehammer: click an object, wall or fence to sell it"],
+		[Tool.DELETE, "sell", "Sledgehammer (K): click an object, wall or fence to sell it"],
 	]
 	for d in tool_defs:
 		var b := IconButton.make(d[1], 46, d[2])
@@ -1014,3 +1055,7 @@ func open_lot_traits() -> void:
 	await get_tree().process_frame
 	if _traits_panel != null:
 		_traits_panel.position = (_ui_root.size - _traits_panel.size) * 0.5
+
+
+func is_holding() -> bool:
+	return _held != null

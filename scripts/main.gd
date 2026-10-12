@@ -35,6 +35,7 @@ var _home_snapshot := {}
 ## The other households in this world (snapshots, same shape as a saved
 ## household), and keys of the save that belong to the whole world.
 var other_households: Array = []
+var _ui_hidden := false
 var _story_rng := RandomNumberGenerator.new()
 const WORLD_KEYS: Array[String] = ["version", "minutes", "townies", "tips", "others"]
 ## Modal event cards (doorbell, new baby, farewells, first-time tips). Scripted
@@ -445,12 +446,30 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F1:
 				build.exit()
 				return
-			KEY_F2, KEY_F3, KEY_B:
+			KEY_F2:
+				# Buy mode: the catalogue with the hand tool.
 				build.enter()
 				return
-			KEY_V:
-				lot.wall_view = ((lot.wall_view + 1) % 3) as Lot.WallView
+			KEY_F3:
+				# Build mode: straight to the wall tool.
+				build.enter()
+				if build.active:
+					build.set_tool(BuildMode.Tool.WALL)
+				return
+			KEY_HOME:
+				# Walls up one step (down / cutaway / up).
+				lot.wall_view = maxi(0, lot.wall_view - 1) as Lot.WallView
 				hud.refresh_walls_button(lot)
+				return
+			KEY_END:
+				lot.wall_view = mini(2, lot.wall_view + 1) as Lot.WallView
+				hud.refresh_walls_button(lot)
+				return
+			KEY_TAB:
+				# Camera mode: hide the whole interface (Tab again brings it back).
+				_ui_hidden = not _ui_hidden
+				hud.visible = not _ui_hidden and not build.active
+				build.set_ui_hidden(_ui_hidden)
 				return
 			KEY_PAGEUP:
 				set_level(active_level + 1)
@@ -463,8 +482,35 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match (event as InputEventKey).keycode:
-			KEY_P, KEY_0, KEY_KP_0:
+			KEY_P, KEY_0, KEY_KP_0, KEY_QUOTELEFT:
 				Clock.set_speed(1 if Clock.is_paused() else 0)
+			KEY_O:
+				hud.toggle_page(0)
+			KEY_L:
+				hud.toggle_page(1)
+			KEY_Y:
+				hud.toggle_page(2)
+			KEY_R:
+				hud.toggle_page(3)
+			KEY_J:
+				hud.toggle_page(4)
+			KEY_G:
+				hud.toggle_page(5)
+			KEY_I:
+				hud.toggle_page(6)
+			KEY_SPACE:
+				# Next Sim in the household.
+				var at := household.find(sim)
+				for k in range(1, household.size() + 1):
+					var nxt: Sim = household[(at + k) % household.size()]
+					if not nxt.away and nxt.visible:
+						select_sim(nxt)
+						break
+			KEY_ENTER, KEY_KP_ENTER:
+				if Input.is_key_pressed(KEY_SHIFT):
+					rig.frame(lot.center(), rig.yaw, rig.pitch, rig.distance)
+				else:
+					rig.frame(Vector3(sim.global_position.x, sim.lot.base_y(), sim.global_position.z), rig.yaw, rig.pitch, rig.distance)
 			KEY_1, KEY_KP_1:
 				Clock.set_speed(1)
 			KEY_2, KEY_KP_2:
@@ -607,6 +653,8 @@ func _furniture_at(screen_pos: Vector2) -> Furniture:
 
 
 func _process(delta: float) -> void:
+	rig.height_keys_enabled = not build.active
+	rig.rotate_keys_enabled = not (build.active and build.is_holding())
 	_update_audio()
 	_update_mess()
 	if _menu_orbit:
@@ -1603,6 +1651,22 @@ func _input_check() -> void:
 	# Speed keys.
 	await _key(KEY_3)
 	results["speed_keys"] = Clock.speed == 3
+	# The reference game's live-mode hotkeys.
+	await _key(KEY_L)
+	results["L_skills"] = hud._info_panel.visible and hud._pages[1].visible
+	await _key(KEY_G)
+	results["G_aspiration"] = hud._pages[5].visible
+	var walls_before_view := lot.wall_view
+	await _key(KEY_END)
+	results["End_walls_down"] = lot.wall_view == mini(2, walls_before_view + 1)
+	await _key(KEY_HOME)
+	results["Home_walls_up"] = lot.wall_view == walls_before_view
+	await _key(KEY_QUOTELEFT)
+	results["backtick_pause"] = Clock.speed == 0 and hud._pause_frame.visible
+	await _key(KEY_TAB)
+	results["Tab_hides_ui"] = not hud.visible
+	await _key(KEY_TAB)
+	results["Tab_shows_ui"] = hud.visible
 	var ok := results.values().all(func(v): return v)
 	print("INPUT %s %s" % ["OK" if ok else "FAIL", results])
 	get_tree().quit()
@@ -1837,6 +1901,9 @@ func _run_scenario(scenario: String, path: String) -> void:
 			lot.wall_view = Lot.WallView.CUTAWAY
 			rig.frame(pn.global_position, deg_to_rad(25.0), deg_to_rad(-35.0), 8.0)
 			await get_tree().create_timer(4.0).timeout
+		"paused":
+			Clock.set_speed(0)
+			await get_tree().create_timer(0.6).timeout
 		"garden":
 			var crops := ["tomato", "lettuce", "carrot", "strawberry"]
 			var pl: Array = []
