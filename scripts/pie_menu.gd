@@ -1,7 +1,10 @@
 class_name PieMenu
 extends Control
-## Interaction choices as white pills arranged in a ring around the cursor, with the
-## object's name in the middle. Clicking outside the options closes it.
+## Interaction choices as small white pills in a ring around the click, as in the
+## reference (checked against the running game): no title or centre disc; pills on
+## the left are right-aligned towards the centre, those on the right left-aligned,
+## and the top and bottom ones centred. Two options sit above and below. Clicking
+## outside the options, or Esc, closes it.
 
 signal chosen(index: int)
 
@@ -22,26 +25,24 @@ func open(at: Vector2, title: String, options: Array[String]) -> void:
 	var vp := get_viewport_rect().size
 	at = Vector2(clampf(at.x, RADIUS + 120, vp.x - RADIUS - 120), clampf(at.y, RADIUS + 60, vp.y - RADIUS - 60))
 
-	var center := Label.new()
-	center.text = title
-	center.add_theme_font_size_override("font_size", 15)
-	center.add_theme_color_override("font_color", Color.WHITE)
-	center.add_theme_color_override("font_outline_color", Color(0.05, 0.12, 0.3, 0.85))
-	center.add_theme_constant_override("outline_size", 5)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_place(center, at)
+	tooltip_text = title
 
 	var n := options.size()
 	for i in n:
 		# Start at the top and go clockwise; two options sit left and right.
 		var angle := -PI * 0.5 + TAU * i / maxi(n, 1)
 		if n == 2:
-			angle = PI if i == 0 else 0.0
+			angle = -PI * 0.5 if i == 0 else PI * 0.5
 		var b := Button.new()
 		b.text = options[i]
 		b.focus_mode = Control.FOCUS_NONE
-		b.add_theme_font_size_override("font_size", 15)
-		var normal := UiTheme.pill(Color(1, 1, 1, 0.97), UiTheme.PANEL_EDGE, 18)
+		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_color_override("font_color", Color(0.1, 0.22, 0.5))
+		var normal := UiTheme.pill(Color(1, 1, 1, 0.97), Color(0.85, 0.88, 0.94), 14)
+		normal.content_margin_top = 3
+		normal.content_margin_bottom = 3
+		normal.content_margin_left = 14
+		normal.content_margin_right = 14
 		normal.shadow_color = Color(0.05, 0.12, 0.3, 0.3)
 		normal.shadow_size = 4
 		normal.shadow_offset = Vector2(0, 2)
@@ -55,7 +56,11 @@ func open(at: Vector2, title: String, options: Array[String]) -> void:
 		pressed.bg_color = UiTheme.ACCENT
 		b.add_theme_stylebox_override("pressed", pressed)
 		b.pressed.connect(_on_pressed.bind(i))
-		_place(b, at + Vector2(cos(angle), sin(angle)) * Vector2(RADIUS * 1.25, RADIUS))
+		_place(b, at + Vector2(cos(angle), sin(angle)) * Vector2(RADIUS * 1.15, RADIUS * 0.85))
+		# Side pills hug the centre: their inner edge sits on the ring.
+		var cx := cos(angle)
+		if absf(cx) > 0.25:
+			b.position.x += b.size.x * 0.5 * signf(cx) - 12.0 * signf(cx)
 		# Pop in from the centre.
 		var target := b.position
 		b.position = at - b.size * 0.5
@@ -69,6 +74,12 @@ func open(at: Vector2, title: String, options: Array[String]) -> void:
 func close() -> void:
 	_clear()
 	visible = false
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if visible and event is InputEventKey and event.pressed and (event as InputEventKey).keycode == KEY_ESCAPE:
+		close()
+		get_viewport().set_input_as_handled()
 
 
 func _gui_input(event: InputEvent) -> void:

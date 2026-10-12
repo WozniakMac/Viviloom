@@ -2269,6 +2269,12 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"piemenu":
+			var bed := find_furniture("desk") if "--desk" in OS.get_cmdline_user_args() else find_furniture("bed")
+			rig.frame(bed.global_position, deg_to_rad(20.0), deg_to_rad(-50.0), 12.0)
+			await get_tree().create_timer(0.5).timeout
+			open_menu(bed, rig.camera.unproject_position(bed.global_position + Vector3(0, 0.5, 0)))
+			await get_tree().create_timer(0.6).timeout
 		"burglar":
 			Clock.total_minutes = 2 * 60.0 + 30.0
 			sim.global_position = lot.cell_to_world(Vector2i(4, 4))

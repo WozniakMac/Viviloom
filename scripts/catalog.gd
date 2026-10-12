@@ -260,6 +260,8 @@ static func create(kind: String) -> Furniture:
 				Interaction.new("Sleep", sleep_rates, 600.0, "energy", "lie").grants("well_rested", "energized", 1, "Well Rested", "Ready to take on the day!", 240.0),
 				Interaction.new("Nap", sleep_rates, 90.0, "energy", "lie"),
 				_woohoo(),
+				Interaction.new("Relax", {"fun": 12.0, "energy": 4.0}, 60.0, "", "lie").grants("relaxed_bed", "happy", 1, "Relaxed", "Just lying here for a bit.", 90.0),
+				Interaction.new("Sit", {"energy": 2.0}, 30.0, "", "sit"),
 			]
 		"toilet":
 			f.display_name = "Toilet"
@@ -575,6 +577,8 @@ static func create(kind: String) -> Furniture:
 				_cry(),
 				Interaction.new("Sleep", single_rates, 600.0, "energy", "lie").grants("well_rested", "energized", 1, "Well Rested", "Ready to take on the day!", 240.0),
 				Interaction.new("Nap", single_rates, 90.0, "energy", "lie"),
+				Interaction.new("Relax", {"fun": 12.0, "energy": 4.0}, 60.0, "", "lie").grants("relaxed_bed", "happy", 1, "Relaxed", "Just lying here for a bit.", 90.0),
+				Interaction.new("Sit", {"energy": 2.0}, 30.0, "", "sit"),
 			]
 		"armchair":
 			f.display_name = "Armchair"
