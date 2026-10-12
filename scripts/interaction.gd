@@ -84,6 +84,8 @@ func pays(base: int, per_level: int) -> Interaction:
 var creates := ""
 ## Needs this item in the Sim's inventory (and uses it up): "homework".
 var needs_item := ""
+## Done together with a partner (WooHoo): only offered when one is around, never autonomous.
+var with_partner := false
 ## Pie menu group this sits in ("Cook..."); "" for the top level.
 var menu := ""
 ## For cooking: the recipe made (see Catalog.RECIPES) and the Cooking level needed.

@@ -98,6 +98,8 @@ var perks: Array = []
 var wallet: BuildMode
 ## Married partner, if any.
 var spouse: Sim
+## Boyfriend or girlfriend (going steady, before marriage).
+var partner: Sim
 ## Things the Sim carries: paintings and the like (dictionaries with a "kind").
 var inventory: Array = []
 signal inventory_changed
@@ -512,6 +514,7 @@ func to_dict() -> Dictionary:
 		"perks": perks.duplicate(),
 		"inventory": inventory.duplicate(true),
 		"spouse": spouse.sim_name if spouse != null and is_instance_valid(spouse) else "",
+		"partner": partner.sim_name if partner != null and is_instance_valid(partner) else "",
 		"traits": traits,
 		"aspiration": aspiration,
 		"needs": needs.values.duplicate(),
@@ -563,9 +566,12 @@ func from_dict(d: Dictionary, others: Array) -> void:
 	global_position = Vector3(pos[0], 0.0, pos[1])
 	relationships.clear()
 	spouse = null
+	partner = null
 	for o in others:
 		if o != self and o.sim_name == d.get("spouse", "") and d.get("spouse", "") != "":
 			spouse = o
+		if o != self and o.sim_name == d.get("partner", "") and d.get("partner", "") != "":
+			partner = o
 		if o != self and d.get("relationships", {}).has(o.sim_name):
 			var r: Array = d["relationships"][o.sim_name]
 			relationships[o] = Vector2(r[0], r[1])
@@ -643,6 +649,8 @@ func romance_with(o: Sim) -> float:
 func relationship_label(o: Sim) -> String:
 	if spouse == o:
 		return "Spouse"
+	if partner == o:
+		return "Partner"
 	return Socials.friendship_label(friendship_with(o), romance_with(o))
 
 
@@ -656,7 +664,31 @@ func change_relationship(o: Sim, d_friend: float, d_romance: float) -> void:
 		a.relationships_changed.emit()
 
 
-## The category ("Friendly", "Romance", "Mean") of the social this Sim is in, or "".
+## How committed this Sim is to `o`: "spouse", "partner" or "".
+func status_with(o: Sim) -> String:
+	if spouse == o:
+		return "spouse"
+	if partner == o:
+		return "partner"
+	return ""
+
+
+## Whom this Sim would WooHoo with on the lot right now, or null.
+func woohoo_partner() -> Sim:
+	if lot == null or not Ages.is_adult(age_stage):
+		return null
+	var best: Sim = null
+	for o in lot.sims:
+		var other := o as Sim
+		if other == self or not is_instance_valid(other) or not other.visible or other.away or not Ages.is_adult(other.age_stage):
+			continue
+		if spouse == other or partner == other or romance_with(other) >= 50.0:
+			if best == null or romance_with(other) > romance_with(best):
+				best = other
+	return best
+
+
+## The category ("Friendly", "Funny", "Romance", "Mischief", "Mean") of the social this Sim is in, or "".
 func social_bubble() -> String:
 	if _social_with != null and _social_interaction != null:
 		return _social_interaction.social.get("category", "Friendly")
@@ -1059,7 +1091,21 @@ func _social_result(a: SimAction) -> void:
 	var s: Dictionary = a.interaction.social
 	if a.outcome and s.get("baby", false):
 		baby_tried.emit(t)
+	if a.outcome and s.get("partner", false):
+		partner = t
+		t.partner = self
+		announced.emit("%s and %s are now going steady!" % [sim_name, t.sim_name])
+	if a.outcome and s.get("break_up", false):
+		if spouse == t:
+			spouse = null
+			t.spouse = null
+		if partner == t:
+			partner = null
+			t.partner = null
+		announced.emit("%s broke up with %s." % [sim_name, t.sim_name])
 	if a.outcome and s.get("marry", false):
+		partner = null
+		t.partner = null
 		spouse = t
 		t.spouse = self
 		emotions.add("married", "happy", 3, "Just Married!", "Happily ever after starts now.", 1440.0)
@@ -1068,7 +1114,7 @@ func _social_result(a: SimAction) -> void:
 	if a.outcome and (s.get("move_in", false) or s.get("marry", false)):
 		moving_in.emit(t)
 	count_stat("socials")
-	var stat: String = {"Tell a Joke": "jokes", "Flirt": "flirts", "Kiss": "kisses"}.get(a.interaction.name, "")
+	var stat: String = {"Tell a Joke": "jokes", "Flirt": "flirts", "Kiss": "kisses", "Make Out": "kisses"}.get(a.interaction.name, "")
 	if stat != "" and a.outcome:
 		count_stat(stat)
 	activity_done.emit(a.interaction.name)
@@ -1142,6 +1188,9 @@ func _begin_perform(a: SimAction) -> void:
 	if facing.length() > 0.01:
 		rotation.y = atan2(-facing.x, -facing.z)
 	_set_pose(a.interaction.pose)
+	if a.interaction.with_partner and f.users.size() >= 2:
+		f.set_romp(true)
+		Sfx.play("select", -6.0)
 
 
 ## Experience gained for `minutes` of an activity, sped up by traits and by feeling

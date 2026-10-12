@@ -5,7 +5,7 @@ extends Control
 ## their heads.
 
 const NEED_ICONS := {"hunger": "food", "energy": "zzz", "bladder": "drop", "hygiene": "soap", "fun": "smile", "social": "relationships"}
-const CATEGORY_ICONS := {"Friendly": "smile", "Romance": "heart", "Mean": "bolt"}
+const CATEGORY_ICONS := {"Friendly": "smile", "Funny": "laugh", "Romance": "heart", "Mischief": "horns", "Mean": "bolt"}
 
 var lot: Lot
 var camera: Camera3D

@@ -500,14 +500,23 @@ func open_menu(f: Furniture, screen_pos: Vector2) -> void:
 			_on_pie_choice(func(j: int): sim.queue_interaction(f, sub[j]))
 			hud.pie_menu.open(screen_pos, top[idx], sub_names)
 		else:
-			sim.queue_interaction(f, top[idx]))
+			_queue_with_partner(f, top[idx]))
 	hud.pie_menu.open(screen_pos, f.display_name, names)
+
+
+## Queues an object interaction; WooHoo also calls the partner over to the bed.
+func _queue_with_partner(f: Furniture, i: Interaction) -> void:
+	sim.queue_interaction(f, i)
+	if i.with_partner:
+		var p := sim.woohoo_partner()
+		if p != null:
+			p.queue_interaction(f, i)
 
 
 ## Social pie menu for another Sim: first a ring of categories, then the socials in
 ## the chosen one.
 func open_sim_menu(other: Sim, screen_pos: Vector2) -> void:
-	var options := Socials.available(sim.friendship_with(other), sim.romance_with(other), sim.age_stage, other.age_stage, sim.emotions.mood(), other.emotions.mood())
+	var options := Socials.available(sim.friendship_with(other), sim.romance_with(other), sim.age_stage, other.age_stage, sim.emotions.mood(), other.emotions.mood(), sim.status_with(other))
 	var cats: Array[String] = []
 	for i in options:
 		var c: String = i.social["category"]
@@ -1484,6 +1493,10 @@ func _input_check() -> void:
 	var results := {}
 	# Click the TV: its pie menu opens; pick the first option.
 	var tv := find_furniture("tv")
+	# Frame the TV so it sits clear of the HUD whatever the window size.
+	_stop_pan()
+	rig.frame(tv.global_position, deg_to_rad(30.0), deg_to_rad(-45.0), 12.0)
+	await get_tree().process_frame
 	await _click(rig.camera.unproject_position(tv.global_position + Vector3(0, 0.8, 0)))
 	results["pie_opens"] = hud.pie_menu.visible
 	var option: Button = null
@@ -1787,11 +1800,26 @@ func _run_scenario(scenario: String, path: String) -> void:
 			await get_tree().process_frame
 			var names := visitors.townies.map(func(t): return t.sim_name)
 			print("MOVEINSAVE household=%s townies=%s neighbour=%s" % [household.map(func(m): return m.sim_name), names, visitors.neighbour.sim_name])
+		"woohoo":
+			var jules := visitors.neighbour
+			visitors.bring(jules, INF, lot.cell_to_world(Vector2i(10, 9)))
+			sim.change_relationship(jules, 70.0, 80.0)
+			sim.partner = jules
+			jules.partner = sim
+			var bed: Furniture = lot.furniture.filter(func(f): return f.kind == "bed")[0]
+			var wh: Interaction = bed.interactions.filter(func(i): return i.name == "WooHoo")[0]
+			_queue_with_partner(bed, wh)
+			Clock.set_speed(2)
+			rig.frame(bed.global_position, deg_to_rad(30.0), deg_to_rad(-40.0), 8.0)
+			await get_tree().create_timer(4.0).timeout
+			print("WOOHOO users=%d" % bed.users.size())
 		"movein":
 			var jules := visitors.neighbour
 			visitors.bring(jules, INF, lot.cell_to_world(Vector2i(10, 9)))
 			sim.global_position = lot.cell_to_world(Vector2i(13, 9))
 			sim.change_relationship(jules, 70.0, 80.0)
+			sim.partner = jules
+			jules.partner = sim
 			sim.queue_social(jules, Socials.find("Propose"))
 			Clock.set_speed(3)
 			await get_tree().create_timer(4.0).timeout

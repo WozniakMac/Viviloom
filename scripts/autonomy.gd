@@ -97,7 +97,7 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 				options.append([MESS_SCORE * like / (1.0 + dist / 20.0), f, f.interactions[0]])
 			continue
 		for i in f.available_interactions():
-			if not Ages.allows_for(sim, i):
+			if not Ages.allows_for(sim, i) or i.with_partner:
 				continue
 			# No cooking while there's food on the counter already.
 			if i.recipe != "" and meal_ready:

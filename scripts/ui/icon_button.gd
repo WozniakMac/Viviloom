@@ -165,6 +165,18 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			ci.draw_circle(c + Vector2(-s * 0.35, -s * 0.25), s * 0.13, col)
 			ci.draw_circle(c + Vector2(s * 0.35, -s * 0.25), s * 0.13, col)
 			ci.draw_arc(c + Vector2(0, s * 0.05), s * 0.5, 0.3, PI - 0.3, 12, col, 2.0, true)
+		"laugh":
+			ci.draw_arc(c, s, 0, TAU, 24, col, 2.0, true)
+			for ex in [-0.35, 0.35]:
+				ci.draw_arc(c + Vector2(s * ex, -s * 0.15), s * 0.16, PI + 0.3, TAU - 0.3, 8, col, 2.0, true)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.5, s * 0.1), c + Vector2(s * 0.5, s * 0.1), c + Vector2(s * 0.3, s * 0.5), c + Vector2(0, s * 0.6), c + Vector2(-s * 0.3, s * 0.5)]), col)
+		"horns":
+			ci.draw_arc(c + Vector2(0, s * 0.15), s * 0.8, 0, TAU, 24, col, 2.0, true)
+			for hx in [-1.0, 1.0]:
+				ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.3 * hx, -s * 0.55), c + Vector2(s * 0.75 * hx, -s * 0.35), c + Vector2(s * 0.8 * hx, -s * 1.0)]), col)
+			ci.draw_circle(c + Vector2(-s * 0.3, 0), s * 0.11, col)
+			ci.draw_circle(c + Vector2(s * 0.3, 0), s * 0.11, col)
+			ci.draw_arc(c + Vector2(0, s * 0.2), s * 0.4, 0.2, PI - 0.6, 10, col, 2.0, true)
 		"bolt":
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(s * 0.2, -s), c + Vector2(-s * 0.55, s * 0.15), c + Vector2(-s * 0.05, s * 0.15), c + Vector2(-s * 0.25, s), c + Vector2(s * 0.55, -s * 0.2), c + Vector2(s * 0.05, -s * 0.2)]), col)
 		"food":

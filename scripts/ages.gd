@@ -39,6 +39,8 @@ static func allows_for(sim: Sim, interaction: Interaction) -> bool:
 		return false
 	if interaction.needs_item != "" and not sim.inventory.any(func(it): return it.get("kind") == interaction.needs_item):
 		return false
+	if interaction.with_partner and sim.woohoo_partner() == null:
+		return false
 	return allows(sim.age_stage, interaction)
 
 

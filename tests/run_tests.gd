@@ -35,6 +35,7 @@ func _ready() -> void:
 	_test_more_traits()
 	_test_swatches()
 	_test_fences()
+	_test_romance()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -637,3 +638,42 @@ func _test_fences() -> void:
 	_check(not lot.is_indoors(Vector2i(2, 2)), "fenced yards are not rooms")
 	lot.remove_fence(Vector3i(3, 4, 0))
 	_check(lot.can_step(Vector2i(3, 3), Vector2i(3, 4)), "a removed fence no longer blocks")
+
+
+func _names(list: Array) -> Array:
+	return list.map(func(i): return i.name)
+
+
+func _test_romance() -> void:
+	var cats := {}
+	for i in Socials.all():
+		cats[i.social["category"]] = true
+	_check(cats.size() == 5, "socials come in Friendly, Funny, Romance, Mischief and Mean")
+	var single := _names(Socials.available(50.0, 55.0, "adult", "adult"))
+	_check(single.has("Ask to Be Partner") and not single.has("Propose") and not single.has("Break Up"), "ask to go steady before proposing")
+	var steady := _names(Socials.available(50.0, 80.0, "adult", "adult", "fine", "fine", "partner"))
+	_check(steady.has("Propose") and steady.has("Break Up") and not steady.has("Ask to Be Partner"), "partners can propose or break up")
+	_check(not _names(Socials.available(50.0, 80.0, "child", "child")).has("Make Out"), "no romance for children")
+	var a := Sim.new()
+	var b := Sim.new()
+	a.sim_name = "Ana"
+	b.sim_name = "Ben"
+	a.change_relationship(b, 50.0, 50.0)
+	var act := Sim.SimAction.new()
+	act.target_sim = b
+	act.interaction = Socials.find("Ask to Be Partner")
+	act.outcome = true
+	act.elapsed = 999.0
+	a._social_result(act)
+	_check(a.partner == b and b.partner == a and a.relationship_label(b) == "Partner", "going steady sets partners on both sides")
+	_check(a.to_dict()["partner"] == "Ben", "partners are saved")
+	act.interaction = Socials.find("Break Up")
+	a._social_result(act)
+	_check(a.partner == null and b.partner == null and b.emotions.mood() == "sad", "breaking up hurts")
+	var bed := Catalog.create("bed")
+	var woohoo: Array = bed.interactions.filter(func(i): return i.name == "WooHoo")
+	_check(woohoo.size() == 1 and woohoo[0].with_partner, "beds offer WooHoo for couples")
+	_check(not Ages.allows_for(a, woohoo[0]), "no WooHoo without someone special around")
+	bed.free()
+	a.free()
+	b.free()

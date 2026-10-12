@@ -59,6 +59,56 @@ func _update_covers() -> void:
 	var covers := get_node_or_null("Covers") as Node3D
 	if covers != null:
 		covers.visible = not users.is_empty()
+	if users.size() < 2:
+		set_romp(false)
+
+
+var _romp_tween: Tween
+var _romp_hearts: CPUParticles3D
+
+## WooHoo: the duvet bounces and little pink hearts float up.
+func set_romp(on: bool) -> void:
+	var covers := get_node_or_null("Covers") as Node3D
+	if covers == null or on == (_romp_tween != null):
+		return
+	if not on:
+		_romp_tween.kill()
+		_romp_tween = null
+		covers.position.y = covers.get_meta("rest_y", covers.position.y)
+		if is_instance_valid(_romp_hearts):
+			_romp_hearts.emitting = false
+			get_tree().create_timer(1.5).timeout.connect(_romp_hearts.queue_free)
+		_romp_hearts = null
+		return
+	covers.set_meta("rest_y", covers.position.y)
+	var y := covers.position.y
+	_romp_tween = create_tween().set_loops()
+	_romp_tween.tween_property(covers, "position:y", y + 0.07, 0.18).set_trans(Tween.TRANS_SINE)
+	_romp_tween.tween_property(covers, "position:y", y, 0.22).set_trans(Tween.TRANS_SINE)
+	var hearts := CPUParticles3D.new()
+	hearts.amount = 10
+	hearts.lifetime = 1.6
+	hearts.position = Vector3(0, 1.1, 0.3)
+	hearts.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	hearts.emission_box_extents = Vector3(0.6, 0.1, 0.5)
+	hearts.direction = Vector3.UP
+	hearts.spread = 20.0
+	hearts.gravity = Vector3(0, 0.3, 0)
+	hearts.initial_velocity_min = 0.3
+	hearts.initial_velocity_max = 0.6
+	hearts.mesh = _heart_mesh(0.16)
+	hearts.local_coords = true
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(1.0, 0.45, 0.65)
+	m.emission_enabled = true
+	m.emission = Color(1.0, 0.35, 0.6)
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	hearts.material_override = m
+	hearts.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(hearts)
+	_romp_hearts = hearts
 ## Colour swatch (0 = the original colours).
 var variant := 0
 ## Material name -> its own copy and original colour, for recolouring.
@@ -265,3 +315,20 @@ func set_variant(v: int) -> void:
 func set_ghost(ghost: bool) -> void:
 	for c in find_children("*", "MeshInstance3D", true, false):
 		(c as MeshInstance3D).transparency = 0.45 if ghost else 0.0
+
+
+## A flat heart (classic parametric outline), `size` metres across.
+static func _heart_mesh(size: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var pts: Array[Vector3] = []
+	for k in 32:
+		var t := TAU * k / 32.0
+		var x := 16.0 * pow(sin(t), 3)
+		var y := 13.0 * cos(t) - 5.0 * cos(2 * t) - 2.0 * cos(3 * t) - cos(4 * t)
+		pts.append(Vector3(x, y + 3.0, 0) * (size / 34.0))
+	for k in 32:
+		st.add_vertex(Vector3.ZERO)
+		st.add_vertex(pts[(k + 1) % 32])
+		st.add_vertex(pts[k])
+	return st.commit()

@@ -14,7 +14,7 @@ const FRIEND_LEVELS := [[80.0, "Best Friend"], [60.0, "Good Friend"], [30.0, "Fr
 static func all() -> Array[Interaction]:
 	var out: Array[Interaction] = []
 	out.append(_make("Chat", 25.0, {"social": 90.0, "fun": 10.0}, {"category": "Friendly", "friendship": 6.0}))
-	out.append(_make("Tell a Joke", 20.0, {"social": 80.0, "fun": 35.0}, {"category": "Friendly", "friendship": 9.0, "risky": true,
+	out.append(_make("Tell a Joke", 20.0, {"social": 80.0, "fun": 35.0}, {"category": "Funny", "friendship": 9.0, "risky": true,
 		"target_moodlet": ["amused", "playful", 1, "Amused", "That was a good one.", 120.0]}))
 	out.append(_make("Compliment", 15.0, {"social": 85.0}, {"category": "Friendly", "friendship": 7.0,
 		"target_moodlet": ["flattered", "happy", 1, "Flattered", "Someone noticed!", 120.0]}))
@@ -45,6 +45,27 @@ static func all() -> Array[Interaction]:
 	out.append(_make("Ask to Move In", 20.0, {"social": 60.0}, {"category": "Friendly", "friendship": 5.0, "min_friendship": 60.0, "move_in": true,
 		"target_moodlet": ["new_home", "happy", 2, "New Home", "Moving in together!", 480.0]}))
 	out.append(_make("Propose", 20.0, {"social": 80.0}, {"category": "Romance", "romance": 10.0, "min_romance": 75.0, "marry": true}))
+	out.append(_make("Make Funny Face", 10.0, {"social": 70.0, "fun": 30.0}, {"category": "Funny", "friendship": 5.0, "risky": true,
+		"target_moodlet": ["amused", "playful", 1, "Amused", "What a face!", 90.0]}))
+	out.append(_make("Do an Impression", 20.0, {"social": 80.0, "fun": 40.0}, {"category": "Funny", "friendship": 8.0, "risky": true, "min_friendship": 10.0,
+		"actor_moodlet": ["showman", "playful", 1, "Natural Showman", "Nailed that impression.", 120.0],
+		"target_moodlet": ["amused", "playful", 1, "Amused", "Spot on!", 120.0]}))
+	out.append(_make("Prank", 15.0, {"social": 60.0, "fun": 45.0}, {"category": "Mischief", "friendship": -4.0,
+		"actor_moodlet": ["prankster", "playful", 1, "Gotcha!", "Their face was priceless.", 120.0],
+		"target_moodlet": ["pranked", "embarrassed", 1, "Pranked", "Very funny. Not.", 120.0]}))
+	out.append(_make("Gossip", 20.0, {"social": 85.0, "fun": 15.0}, {"category": "Mischief", "friendship": 6.0, "min_friendship": 25.0,
+		"actor_moodlet": ["juicy", "playful", 1, "Juicy Gossip", "Did you hear...?", 120.0]}))
+	out.append(_make("Embrace", 10.0, {"social": 90.0}, {"category": "Romance", "romance": 6.0, "friendship": 2.0, "min_romance": 20.0,
+		"target_moodlet": ["embraced", "flirty", 1, "Romantic Embrace", "Held close.", 120.0]}))
+	out.append(_make("Make Out", 25.0, {"social": 100.0, "fun": 15.0}, {"category": "Romance", "romance": 10.0, "min_romance": 45.0,
+		"actor_moodlet": ["made_out", "flirty", 2, "Steamy Make Out", "Can't stop thinking about it.", 240.0],
+		"target_moodlet": ["made_out", "flirty", 2, "Steamy Make Out", "Can't stop thinking about it.", 240.0]}))
+	out.append(_make("Ask to Be Partner", 15.0, {"social": 70.0}, {"category": "Romance", "romance": 8.0, "min_romance": 40.0, "partner": true,
+		"actor_moodlet": ["going_steady", "happy", 2, "Going Steady", "We're official!", 480.0],
+		"target_moodlet": ["going_steady", "happy", 2, "Going Steady", "We're official!", 480.0]}))
+	out.append(_make("Break Up", 15.0, {"social": 20.0}, {"category": "Mean", "friendship": -20.0, "romance": -60.0, "break_up": true,
+		"actor_moodlet": ["broke_up", "sad", 1, "Broke Up", "It was for the best... right?", 360.0],
+		"target_moodlet": ["heartbroken", "sad", 3, "Heartbroken", "How could they?", 720.0]}))
 	out.append(_make("Insult", 10.0, {"social": 30.0}, {"category": "Mean", "friendship": -15.0,
 		"actor_moodlet": ["mean", "confident", 1, "Got That Off My Chest", "They had it coming.", 90.0],
 		"target_moodlet": ["insulted", "angry", 2, "Insulted", "How rude!", 180.0]}))
@@ -77,7 +98,8 @@ static func friendship_label(friendship: float, romance: float) -> String:
 
 ## Socials worth offering right now; ones that would surely be rejected are still
 ## shown (that's part of the fun) except kissing before any romance at all.
-static func available(friendship: float, romance: float, actor_stage := "young_adult", target_stage := "young_adult", actor_mood := "fine", target_mood := "fine") -> Array[Interaction]:
+## `status`: "spouse", "partner" or "" for how the two are committed to each other.
+static func available(friendship: float, romance: float, actor_stage := "young_adult", target_stage := "young_adult", actor_mood := "fine", target_mood := "fine", status := "") -> Array[Interaction]:
 	var out: Array[Interaction] = []
 	for i in all():
 		if i.social.get("category", "") == "Romance" and not Ages.romance_ok(actor_stage, target_stage):
@@ -92,7 +114,13 @@ static func available(friendship: float, romance: float, actor_stage := "young_a
 			continue
 		if i.name == "Kiss" and romance < 15.0:
 			continue
-		if i.name == "Propose" and (romance < 50.0 or actor_stage == "teen"):
+		if i.name == "Propose" and (romance < 50.0 or actor_stage == "teen" or status != "partner"):
+			continue
+		if i.name == "Ask to Be Partner" and (romance < 25.0 or status != ""):
+			continue
+		if i.name == "Break Up" and status == "":
+			continue
+		if i.name == "Make Out" and romance < 30.0:
 			continue
 		if i.name == "Ask to Move In" and (friendship < 40.0 or not Ages.is_adult(actor_stage)):
 			continue

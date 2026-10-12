@@ -177,6 +177,7 @@ static func create(kind: String) -> Furniture:
 				_cry(),
 				Interaction.new("Sleep", sleep_rates, 600.0, "energy", "lie").grants("well_rested", "energized", 1, "Well Rested", "Ready to take on the day!", 240.0),
 				Interaction.new("Nap", sleep_rates, 90.0, "energy", "lie"),
+				_woohoo(),
 			]
 		"toilet":
 			f.display_name = "Toilet"
@@ -729,4 +730,12 @@ static func _homework() -> Interaction:
 	var i := Interaction.new("Do Homework", {"fun": -10.0}, 60.0, "", "sit", true).practices("logic", 30.0) \
 		.grants("homework_done", "confident", 1, "Homework Done", "Free at last!", 180.0)
 	i.needs_item = "homework"
+	return i
+
+
+## Under the covers with someone special: a big boost to Fun and Social.
+static func _woohoo() -> Interaction:
+	var i := Interaction.new("WooHoo", {"fun": 80.0, "social": 80.0, "energy": -6.0, "hygiene": -10.0}, 45.0, "", "lie") \
+		.grants("woohoo", "happy", 2, "Fun Times", "Who knew a bed could be so much fun?", 360.0)
+	i.with_partner = true
 	return i
