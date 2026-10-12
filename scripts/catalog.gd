@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -69,6 +69,7 @@ const INFO := {
 	"activity_table": ["Kids' Activity Table", 250],
 	"rug": ["Area Rug", 120],
 	"sculpture": ["Modern Sculpture", 400],
+	"monkey_bars": ["Monkey Bars", 450],
 	"piano": ["Upright Piano", 1200],
 	"telescope": ["Telescope", 700],
 	"pond": ["Fishing Pond", 500],
@@ -90,7 +91,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -128,6 +129,7 @@ const DESCRIPTIONS := {
 	"dollhouse": "Endless make-believe. Builds a toddler's Imagination.",
 	"activity_table": "Crayons and blocks for little hands.",
 	"rug": "Ties the room together. Sims can walk on it.",
+	"monkey_bars": "Climbing, hanging, showing off. Builds a child's Motor skill.",
 	"sculpture": "Bold, baffling, beautiful. Raises a room's look.",
 	"piano": "Polished keys for budding virtuosos. Practise to play for tips.",
 	"telescope": "Gaze at the stars and ponder the universe. Good for Logic.",
@@ -587,7 +589,7 @@ static func create(kind: String) -> Furniture:
 				f.add_box(Vector3(0.1, 0.1, 0.1), Vector3(0.18 + k * 0.08, 0.58 + k * 0.1, -0.1), [Color(0.9, 0.3, 0.3), Color(0.3, 0.7, 0.4), Color(0.3, 0.5, 0.9)][k])
 			f.spots = [Vector3(0, 0, 0.8)]
 			f.interactions = [
-				Interaction.new("Draw a Picture", {"fun": 40.0}, 60.0, "fun", "stand", true).practices("painting", 35.0).grants("doodled", "inspired", 1, "Little Artist", "Look what I made!", 120.0),
+				Interaction.new("Draw a Picture", {"fun": 40.0}, 60.0, "fun", "stand", true).practices("creativity", 55.0).grants("doodled", "inspired", 1, "Little Artist", "Look what I made!", 120.0),
 				Interaction.new("Build with Blocks", {"fun": 45.0}, 45.0, "fun", "stand", true).practices("thinking", 60.0).grants("tower", "playful", 1, "Tall Tower", "It's SO tall!", 90.0),
 			]
 		"rug":
@@ -599,6 +601,24 @@ static func create(kind: String) -> Furniture:
 			f.add_box(Vector3(1.5, 0.017, 1.5), Vector3(0, 0.009, 0), Color(0.92, 0.82, 0.65))
 			f.add_box(Vector3(0.9, 0.019, 0.9), Vector3(0, 0.01, 0), Color(0.3, 0.45, 0.6))
 			f.decor = 2
+		"monkey_bars":
+			f.display_name = "Monkey Bars"
+			f.footprint = Vector2i(2, 1)
+			f.height = 1.9
+			var bar_col := Color(0.25, 0.6, 0.9)
+			for x in [-0.85, 0.85]:
+				for z in [-0.35, 0.35]:
+					f.add_box(Vector3(0.07, 1.8, 0.07), Vector3(x, 0.9, z), bar_col)
+				for k in 4:
+					f.add_box(Vector3(0.05, 0.05, 0.7), Vector3(x, 0.35 + k * 0.4, 0), Color(0.95, 0.75, 0.2))
+			for k in 7:
+				f.add_box(Vector3(0.04, 0.04, 0.74), Vector3(-0.72 + k * 0.24, 1.78, 0), Color(0.95, 0.75, 0.2))
+			for z in [-0.35, 0.35]:
+				f.add_box(Vector3(1.78, 0.06, 0.06), Vector3(0, 1.8, z), bar_col)
+			f.spots = [Vector3(0, 0, 0.9), Vector3(-1.4, 0, 0)]
+			var climb := Interaction.new("Play on Monkey Bars", {"fun": 60.0, "energy": -8.0, "hygiene": -5.0}, 60.0, "fun", "stand", true).practices("motor", 70.0).grants("monkey_fun", "energized", 1, "King of the Bars", "Made it all the way across!", 120.0)
+			climb.for_stages = ["child"]
+			f.interactions = [climb]
 		"sculpture":
 			f.display_name = "Modern Sculpture"
 			f.height = 1.4

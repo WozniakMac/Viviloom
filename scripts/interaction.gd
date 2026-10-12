@@ -93,6 +93,10 @@ func holding(p_prop: String) -> Interaction:
 	return self
 
 
+## Only Sims at these life stages may do it (empty: anyone the usual rules allow).
+var for_stages: Array = []
+
+
 ## Done together with a partner (WooHoo): only offered when one is around, never autonomous.
 var with_partner := false
 ## Pie menu group this sits in ("Cook..."); "" for the top level.

@@ -30,12 +30,26 @@ const INFO := {
 	"potty": ["Potty", "fine"],
 	"thinking": ["Thinking", "focused"],
 	"imagination": ["Imagination", "playful"],
+	"creativity": ["Creativity", "inspired"],
+	"mental": ["Mental", "focused"],
+	"motor": ["Motor", "energized"],
+	"child_social": ["Social", "happy"],
+}
+## Skills only children learn.
+const CHILD_SKILLS: Array[String] = ["creativity", "mental", "motor", "child_social"]
+## What each activity teaches a child instead (children can't learn grown-up skills).
+const CHILD_MAP := {
+	"logic": "mental", "programming": "mental", "gaming": "mental", "thinking": "mental", "fishing": "mental",
+	"painting": "creativity", "writing": "creativity", "guitar": "creativity", "piano": "creativity", "imagination": "creativity", "cooking": "creativity",
+	"fitness": "motor", "movement": "motor", "handiness": "motor", "gardening": "motor",
+	"charisma": "child_social", "comedy": "child_social", "communication": "child_social", "mischief": "child_social",
 }
 ## Skills only toddlers learn (from grown-ups' teaching and play).
 const TODDLER_SKILLS: Array[String] = ["communication", "movement", "potty", "thinking", "imagination"]
 const ORDER: Array[String] = ["cooking", "logic", "painting", "gaming", "fitness", "charisma", "guitar", "gardening", "writing", "handiness",
 	"comedy", "mischief", "mixology", "programming", "piano", "fishing",
-	"communication", "movement", "potty", "thinking", "imagination"]
+	"communication", "movement", "potty", "thinking", "imagination",
+	"creativity", "mental", "motor", "child_social"]
 const EMOTION_BONUS := 1.5
 
 var xp := {}
@@ -92,6 +106,23 @@ func add_xp(skill: String, amount: float) -> void:
 
 static func label(skill: String) -> String:
 	return INFO[skill][0]
+
+
+## The skill a Sim at `stage` actually learns from an activity that teaches
+## `skill` ("" if none): children learn child skills, toddlers only toddler skills,
+## and older Sims don't learn little ones' skills.
+static func for_stage(skill: String, stage: String) -> String:
+	if skill == "":
+		return ""
+	match stage:
+		"toddler":
+			return skill if TODDLER_SKILLS.has(skill) else ""
+		"child":
+			if CHILD_SKILLS.has(skill):
+				return skill
+			return CHILD_MAP.get(skill, "")
+		_:
+			return "" if TODDLER_SKILLS.has(skill) or CHILD_SKILLS.has(skill) else skill
 
 
 static func boosting_emotion(skill: String) -> String:

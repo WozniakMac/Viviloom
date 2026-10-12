@@ -45,6 +45,7 @@ func _ready() -> void:
 	_test_toddler_parenting()
 	_test_new_furniture()
 	_test_townie_lives()
+	_test_child_skills()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -896,3 +897,20 @@ func _test_townie_lives() -> void:
 	v.queue_free()
 	v2.queue_free()
 	lot.queue_free()
+
+
+func _test_child_skills() -> void:
+	_check(Skills.for_stage("logic", "child") == "mental" and Skills.for_stage("painting", "child") == "creativity", "children learn child skills from grown-up activities")
+	_check(Skills.for_stage("motor", "adult") == "" and Skills.for_stage("logic", "toddler") == "", "skills stay with their life stage")
+	var kid := Sim.new()
+	kid.age_stage = "child"
+	var chess := Interaction.new("Play Chess", {}, 60.0).practices("logic", 60.0)
+	kid._practise(chess, 60.0)
+	_check(kid.skills.xp["mental"] > 0.0 and kid.skills.xp["logic"] == 0.0, "chess builds a child's Mental skill")
+	var bars := Catalog.create("monkey_bars")
+	_check(Ages.allows_for(kid, bars.interactions[0]), "children can play on the monkey bars")
+	var grown := Sim.new()
+	_check(not Ages.allows_for(grown, bars.interactions[0]), "grown-ups can't")
+	bars.free()
+	kid.free()
+	grown.free()

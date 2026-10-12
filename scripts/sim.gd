@@ -1201,10 +1201,12 @@ func _social_result(a: SimAction) -> void:
 		count_stat(stat)
 	activity_done.emit(a.interaction.name)
 	if a.interaction.skill != "":
-		skills.add_xp(a.interaction.skill, skill_gain(a.interaction, a.interaction.max_minutes) * (1.0 if a.outcome else 0.5))
+		learn(a.interaction.skill, skill_gain(a.interaction, a.interaction.max_minutes) * (1.0 if a.outcome else 0.5))
+	if age_stage == "child":
+		learn("child_social", 25.0 if a.outcome else 10.0)
 	if a.outcome and s.has("target_skill"):
 		var before := t.skills.level(s["target_skill"])
-		t.skills.add_xp(s["target_skill"], 70.0 * a.interaction.max_minutes / 30.0)
+		t.learn(s["target_skill"], 70.0 * a.interaction.max_minutes / 30.0)
 		if t.skills.level(s["target_skill"]) > before:
 			announced.emit("%s's %s skill went up thanks to %s!" % [t.sim_name, Skills.label(s["target_skill"]), sim_name])
 	if a.outcome:
@@ -1301,7 +1303,15 @@ func skill_gain(interaction: Interaction, minutes: float) -> float:
 
 func _practise(interaction: Interaction, minutes: float) -> void:
 	if interaction.skill != "":
-		skills.add_xp(interaction.skill, skill_gain(interaction, minutes))
+		learn(interaction.skill, skill_gain(interaction, minutes))
+
+
+## Adds experience, translated for the Sim's life stage (a child at the chess table
+## builds Mental, not Logic).
+func learn(skill: String, amount: float) -> void:
+	var s := Skills.for_stage(skill, age_stage)
+	if s != "":
+		skills.add_xp(s, amount)
 
 
 ## Moodlet and pay for an activity done long enough. Skill makes both better.

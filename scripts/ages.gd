@@ -41,6 +41,8 @@ static func allows_for(sim: Sim, interaction: Interaction) -> bool:
 		return false
 	if interaction.with_partner and sim.woohoo_partner() == null:
 		return false
+	if not interaction.for_stages.is_empty() and not interaction.for_stages.has(sim.age_stage):
+		return false
 	return allows(sim.age_stage, interaction)
 
 
