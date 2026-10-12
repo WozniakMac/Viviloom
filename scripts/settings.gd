@@ -44,6 +44,8 @@ const UI_SCALES: Array[float] = [0.9, 1.0, 1.15]
 const AUTOSAVE_MINUTES: Array[int] = [0, 10, 30, 60]
 
 static var values := {}
+## The world's environment, so Graphics Quality can turn effects up or down.
+static var environment: Environment
 
 
 static func get_value(key: String) -> Variant:
@@ -81,6 +83,12 @@ static func apply(tree: SceneTree) -> void:
 	var q: int = get_value("quality")
 	tree.root.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_4X][q]
 	tree.root.scaling_3d_scale = [0.7, 0.85, 1.0, 1.0][q]
+	if environment != null:
+		environment.ssao_enabled = q >= 1
+		environment.ssil_enabled = q >= 2
+		environment.glow_enabled = q >= 1
+	RenderingServer.directional_soft_shadow_filter_set_quality([RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][q])
+	RenderingServer.positional_soft_shadow_filter_set_quality([RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][q])
 	tree.root.content_scale_factor = UI_SCALES[get_value("ui_scale")]
 	_set_bus("Master", get_value("master"))
 	_set_bus("Music", get_value("music"))

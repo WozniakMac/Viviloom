@@ -65,8 +65,8 @@ var _menu_orbit := false
 
 
 func _ready() -> void:
-	Settings.apply(get_tree())
 	_setup_environment()
+	Settings.apply(get_tree())
 
 	lot = Lot.new()
 	lot.name = "Lot"
@@ -894,8 +894,39 @@ func _setup_environment() -> void:
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = 0.9
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	# A soft, warm, filmic look like the reference's: ACES tone mapping, contact
+	# shadows in corners (SSAO), light bouncing off walls and floors (SSIL), a
+	# gentle bloom on bright lamps and windows, and a little colour grading.
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.tonemap_exposure = 0.95
+	env.tonemap_white = 6.0
 	env.ssao_enabled = true
+	env.ssao_radius = 1.2
+	env.ssao_intensity = 2.2
+	env.ssao_light_affect = 0.15
+	env.ssil_enabled = true
+	env.ssil_radius = 4.0
+	env.ssil_intensity = 0.7
+	env.glow_enabled = true
+	env.glow_intensity = 0.25
+	env.glow_bloom = 0.0
+	env.glow_hdr_threshold = 1.4
+	env.adjustment_enabled = true
+	env.adjustment_saturation = 1.15
+	env.adjustment_contrast = 1.02
+	# Distant haze softens the neighbourhood towards the horizon.
+	env.fog_enabled = true
+	env.fog_light_color = Color(0.72, 0.8, 0.9)
+	env.fog_mode = Environment.FOG_MODE_DEPTH
+	env.fog_depth_begin = 60.0
+	env.fog_depth_end = 260.0
+	env.fog_density = 0.6
+	env.fog_sky_affect = 0.0
+	Settings.environment = env
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--fx-off="):
+			for fx in arg.trim_prefix("--fx-off=").split(","):
+				env.set(fx + "_enabled", false)
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
@@ -906,6 +937,10 @@ func _setup_environment() -> void:
 	sun.light_energy = 1.1
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
+	# Soft shadows that blur with distance from the caster, like the reference.
+	sun.light_angular_distance = 1.2
+	sun.shadow_blur = 1.4
+	sun.shadow_bias = 0.04
 	add_child(sun)
 
 	carpool = Carpool.new()

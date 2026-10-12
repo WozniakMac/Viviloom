@@ -84,6 +84,7 @@ func enter() -> void:
 		notice.emit("You can't enter Build Mode while there's a fire on the lot!")
 		return
 	active = true
+	lot.show_grid(true)
 	_speed_before = maxi(Clock.speed, 1)
 	Clock.set_speed(0)
 	for m in household:
@@ -99,6 +100,7 @@ func exit() -> void:
 	_cancel_held()
 	_wall_start = null
 	active = false
+	lot.show_grid(false)
 	_set_visible(false)
 	Clock.set_speed(_speed_before)
 

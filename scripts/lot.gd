@@ -1146,11 +1146,18 @@ func _build_ground() -> void:
 	for r in [Rect2(-100, -100, w + 200, 100), Rect2(-100, d, w + 200, 100), Rect2(-100, 0, 100, d), Rect2(w, 0, 100, d)]:
 		_quad_xz(st, r, -0.02)
 	outer.mesh = st.commit()
-	var outer_mat := StandardMaterial3D.new()
-	outer_mat.albedo_color = Color(0.27, 0.42, 0.2)
-	outer_mat.roughness = 1.0
+	# The same lawn as the lot, a touch darker, so the edge doesn't show.
+	var outer_mat := ShaderMaterial.new()
+	outer_mat.shader = preload("res://shaders/lot_ground.gdshader")
+	outer_mat.set_shader_parameter("grass_color", Color(0.33, 0.52, 0.24))
 	outer.material_override = outer_mat
 	add_child(outer)
+
+
+## The build grid on the lawn: shown in Build mode only, as in the reference.
+func show_grid(on: bool) -> void:
+	if _ground_mesh != null:
+		(_ground_mesh.material_override as ShaderMaterial).set_shader_parameter("grid_strength", 0.4 if on else 0.0)
 
 
 func _quad_xz(st: SurfaceTool, r: Rect2, y: float) -> void:
