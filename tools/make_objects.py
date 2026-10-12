@@ -323,11 +323,13 @@ def sink(M):
 def plant(M):
     cylinder(0.17, 0.32, (0, 0.16, 0), M["pot"], 24, 0.21)
     cylinder(0.19, 0.02, (0, 0.31, 0), M["dark"], 24)
-    for k in range(9):
+    leaf_light = mat("LeafLight", (0.11, 0.27, 0.04), 0.7)
+    for k in range(16):
         a = k * 2.4
-        r = 0.08 + 0.02 * (k % 3)
-        leaf = sphere((0.08, 0.2, 0.035), (math.sin(a) * r, 0.5 + 0.06 * (k % 4), math.cos(a) * r), M["leaf"])
-        leaf.rotation_euler = (math.radians(25) * math.cos(a), math.radians(25) * math.sin(a), a)
+        r = 0.06 + 0.025 * (k % 4)
+        tilt = 20 + 6 * (k % 4)
+        leaf = sphere((0.075, 0.26 - 0.02 * (k % 3), 0.03), (math.sin(a) * r, 0.52 + 0.05 * (k % 4), math.cos(a) * r), M["leaf"] if k % 2 else leaf_light)
+        leaf.rotation_euler = (math.radians(tilt) * math.cos(a), math.radians(tilt) * math.sin(a), a)
         bpy.ops.object.select_all(action="DESELECT")
 
 
@@ -348,15 +350,74 @@ def bench(M):
         box((1.7, 0.08, 0.03), (0, 0.6 + k * 0.11, -0.22), M["wood_light"], 0.008)
 
 
+def foliage(r, center, material, seed, squash=0.85):
+    """A lumpy clump of leaves: an icosphere pushed in and out by noise, so the
+    canopy reads as many small leaf masses rather than one smooth ball."""
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=1.0, location=to_blender(center))
+    o = bpy.context.active_object
+    o.name = "Part"
+    o.scale = size_blender((r, r * squash, r))
+    bpy.ops.object.transform_apply(scale=True)
+    tex = bpy.data.textures.new("LeafNoise%d" % seed, type="CLOUDS")
+    tex.noise_scale = 0.35
+    tex.noise_depth = 2
+    disp = o.modifiers.new("Lumps", "DISPLACE")
+    disp.texture = tex
+    disp.strength = r * 0.32
+    disp.mid_level = 0.5
+    disp.texture_coords = "GLOBAL"
+    bpy.ops.object.modifier_apply(modifier="Lumps")
+    o.data.materials.append(material)
+    bpy.ops.object.shade_smooth()
+    return o
+
+
+def branch(start, end, r0, r1, material):
+    """A tapered branch between two game-space points."""
+    import mathutils
+    a = mathutils.Vector(to_blender(start))
+    b = mathutils.Vector(to_blender(end))
+    d = b - a
+    bpy.ops.mesh.primitive_cone_add(vertices=10, radius1=r0, radius2=r1, depth=d.length, location=(a + b) / 2)
+    o = bpy.context.active_object
+    o.name = "Part"
+    o.rotation_euler = d.to_track_quat("Z", "Y").to_euler()
+    bpy.ops.object.transform_apply(rotation=True)
+    o.data.materials.append(material)
+    bpy.ops.object.shade_smooth()
+    return o
+
+
 def tree(M):
-    cylinder(0.12, 1.8, (0, 0.9, 0), M["wood_dark"], 12, 0.08)
-    for (x, y, z, r) in ((0, 2.3, 0, 0.9), (0.45, 2.0, 0.2, 0.6), (-0.4, 2.05, -0.15, 0.62), (0.1, 2.75, -0.1, 0.6), (-0.2, 1.9, 0.4, 0.5)):
-        sphere((r, r * 0.85, r), (x, y, z), M["leaf"])
+    bark = mat("Bark", (0.09, 0.05, 0.028), 0.9)
+    leaf_dark = mat("LeafDark", (0.035, 0.12, 0.03), 0.75)
+    leaf_light = mat("LeafLight", (0.11, 0.27, 0.04), 0.7)
+    # Trunk with a slight lean, flared roots and three main branches.
+    branch((0, 0, 0), (0.05, 1.7, 0.02), 0.17, 0.1, bark)
+    for a in (0.3, 2.4, 4.4):
+        cylinder(0.07, 0.25, (math.sin(a) * 0.14, 0.06, math.cos(a) * 0.14), bark, 8, 0.02)
+    tips = []
+    for k, a in enumerate((0.6, 2.7, 4.6)):
+        tip = (math.sin(a) * 0.65, 2.25 + 0.15 * k, math.cos(a) * 0.6)
+        branch((0.05, 1.5, 0.02), tip, 0.08, 0.04, bark)
+        tips.append(tip)
+    # Layered canopy: darker clumps inside and below, lighter sunlit ones on top.
+    clumps = [((0, 2.45, 0), 0.85, leaf_dark)]
+    for k, t in enumerate(tips):
+        clumps.append((t, 0.62, leaf_dark if k % 2 else leaf_light))
+    for k in range(6):
+        a = k * 1.05 + 0.3
+        clumps.append(((math.sin(a) * 0.55, 2.65 + 0.12 * (k % 3), math.cos(a) * 0.5), 0.5, leaf_light))
+    clumps.append(((0.1, 3.05, -0.05), 0.55, leaf_light))
+    for i, (c, r, m) in enumerate(clumps):
+        foliage(r, c, m, i)
 
 
 def bush(M):
-    for (x, y, z, r) in ((0, 0.35, 0, 0.42), (0.25, 0.3, 0.15, 0.3), (-0.25, 0.28, -0.1, 0.32)):
-        sphere((r, r * 0.8, r), (x, y, z), M["leaf"])
+    leaf_dark = mat("LeafDark", (0.035, 0.12, 0.03), 0.75)
+    leaf_light = mat("LeafLight", (0.11, 0.27, 0.04), 0.7)
+    for i, (x, y, z, r) in enumerate(((0, 0.38, 0, 0.42), (0.28, 0.32, 0.16, 0.32), (-0.27, 0.3, -0.1, 0.33), (0.05, 0.55, -0.1, 0.3), (-0.12, 0.3, 0.25, 0.28))):
+        foliage(r, (x, y, z), leaf_light if i % 2 else leaf_dark, 100 + i, 0.8)
 
 
 def grill(M):
@@ -486,8 +547,11 @@ def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     os.makedirs(OUT_DIR, exist_ok=True)
     M = palette()
+    import sys
+    only = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     for kind, builder in OBJECTS.items():
-        export(kind, builder, M)
+        if not only or kind in only:
+            export(kind, builder, M)
 
 
 main()

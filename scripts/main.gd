@@ -2143,6 +2143,11 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"parktrees":
+			Clock.total_minutes = 11 * 60.0
+			await travel("park")
+			rig.frame(lot.cell_to_world(Vector2i(6, 4)), deg_to_rad(20.0), deg_to_rad(-28.0), 11.0)
+			await get_tree().create_timer(1.5).timeout
 		"nightout", "dayout":
 			Clock.total_minutes = (22 if scenario == "nightout" else 12) * 60.0
 			lot.wall_view = Lot.WallView.UP
