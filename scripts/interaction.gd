@@ -99,6 +99,8 @@ var for_stages: Array = []
 
 ## Changes into this outfit category when started (the dresser's Change Outfit).
 var outfit := ""
+## A small icon drawn on the pie-menu pill (IconButton ids), like the reference's wrench.
+var icon := ""
 ## Garden planters: only offered when the planter is "empty", "growing" or "ripe".
 var garden_state := ""
 

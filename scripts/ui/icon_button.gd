@@ -118,6 +118,9 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 		"door":
 			ci.draw_rect(Rect2(c - Vector2(s * 0.65, s), Vector2(s * 1.3, s * 2)), col, false, 2.0)
 			ci.draw_circle(c + Vector2(s * 0.35, 0), s * 0.12, col)
+		"wrench":
+			ci.draw_line(c + Vector2(-s * 0.7, s * 0.7), c + Vector2(s * 0.25, -s * 0.25), col, s * 0.32)
+			ci.draw_arc(c + Vector2(s * 0.45, -s * 0.45), s * 0.38, PI * 0.15, PI * 1.6, 12, col, s * 0.26, true)
 		"sell":
 			ci.draw_rect(Rect2(c + Vector2(-s * 0.7, -s * 0.5), Vector2(s * 1.4, s * 1.5)), col, false, 2.0)
 			ci.draw_line(c + Vector2(-s, -s * 0.6), c + Vector2(s, -s * 0.6), col, 2.0)

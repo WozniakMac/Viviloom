@@ -238,13 +238,55 @@ func available_interactions() -> Array[Interaction]:
 	if not broken:
 		var on: bool = get_meta("on", false)
 		var gs := garden_state()
-		return interactions.filter(func(i: Interaction): return not (i.needs_on and not on) and not (i.needs_off and on) \
+		var list := interactions.filter(func(i: Interaction): return not (i.needs_on and not on) and not (i.needs_off and on) \
 			and (i.garden_state == "" or i.garden_state == gs))
+		for x in extra_interactions():
+			if x.effect != "upgrade" or not is_upgraded():
+				list.append(x)
+		var typed: Array[Interaction] = []
+		typed.assign(list)
+		return typed
 	if repair_interaction == null:
 		repair_interaction = Interaction.new("Repair", {"fun": 4.0}, 60.0, "", "stand", true).practices("handiness", 80.0).grants("handy", "confident", 1, "Handy", "Fixed it all by themselves.", 180.0)
 		repair_interaction.fixes = true
 	var out: Array[Interaction] = [repair_interaction]
 	return out
+
+
+var _extra_interactions: Array[Interaction] = []
+
+
+## Upgrade... (Handiness 2, a wrench in the pie menu) for things that break and
+## beds, and Assign Bed for beds, as in the reference.
+func extra_interactions() -> Array[Interaction]:
+	if not _extra_interactions.is_empty() or kind == "":
+		return _extra_interactions
+	if kind in ["bed", "single_bed"]:
+		var assign := Interaction.new("Assign Bed", {}, 2.0, "", "stand", true)
+		assign.effect = "assign"
+		_extra_interactions.append(assign)
+	if kind in ["bed", "single_bed"] or Catalog.BREAKABLE.has(kind):
+		var up := Interaction.new("Upgrade...", {"fun": 6.0}, 90.0, "", "stand", true).practices("handiness", 90.0).grants("upgraded_it", "confident", 1, "Handy Upgrade", "Better than new!", 180.0)
+		up.effect = "upgrade"
+		up.icon = "wrench"
+		_extra_interactions.append(up)
+	return _extra_interactions
+
+
+## Upgraded beds give a deeper sleep; upgraded appliances never break.
+func _apply_upgrade() -> void:
+	if kind in ["bed", "single_bed"]:
+		for i in interactions:
+			if i.rates.has("energy") and i.pose == "lie":
+				i.rates["energy"] = i.rates["energy"] * 1.3
+
+
+func is_upgraded() -> bool:
+	return get_meta("item", {}).get("upgraded", false)
+
+
+func owner_name() -> String:
+	return get_meta("item", {}).get("owner", "")
 
 
 ## Planter state from its saved data: "empty", "growing" or "ripe" ("" if not a planter).
@@ -317,6 +359,12 @@ func apply_effect(e: String) -> void:
 	if e.begins_with("plant:"):
 		set_meta("item", {"crop": e.trim_prefix("plant:"), "growth": 0.0, "watered": Clock.day()})
 		refresh_garden()
+		return
+	if e == "upgrade":
+		var item: Dictionary = get_meta("item", {}).duplicate()
+		item["upgraded"] = true
+		set_meta("item", item)
+		_apply_upgrade()
 		return
 	if e in ["water", "weed", "fertilize"]:
 		var g: Dictionary = get_meta("item", {}).duplicate()

@@ -19,7 +19,7 @@ func _ready() -> void:
 	visible = false
 
 
-func open(at: Vector2, title: String, options: Array[String]) -> void:
+func open(at: Vector2, title: String, options: Array[String], icons: Array[String] = []) -> void:
 	Sfx.play("menu_open", -6.0)
 	_clear()
 	var vp := get_viewport_rect().size
@@ -56,6 +56,16 @@ func open(at: Vector2, title: String, options: Array[String]) -> void:
 		pressed.bg_color = UiTheme.ACCENT
 		b.add_theme_stylebox_override("pressed", pressed)
 		b.pressed.connect(_on_pressed.bind(i))
+		if i < icons.size() and icons[i] != "":
+			# A small icon on the left of the pill, like the reference's wrench.
+			for st in ["normal", "hover", "pressed"]:
+				(b.get_theme_stylebox(st) as StyleBoxFlat).content_margin_left = 30
+			var glyph := Glyph.new()
+			glyph.icon_id = icons[i]
+			glyph.position = Vector2(7, 3)
+			glyph.size = Vector2(18, 18)
+			glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			b.add_child(glyph)
 		_place(b, at + Vector2(cos(angle), sin(angle)) * Vector2(RADIUS * 1.15, RADIUS * 0.85))
 		# Side pills hug the centre: their inner edge sits on the ring.
 		var cx := cos(angle)
@@ -104,3 +114,11 @@ func _clear() -> void:
 	for c in _items:
 		c.queue_free()
 	_items.clear()
+
+
+class Glyph:
+	extends Control
+	var icon_id := ""
+
+	func _draw() -> void:
+		IconButton.draw_icon(self, icon_id, size * 0.5, size.x * 0.42, Color(0.1, 0.22, 0.5))

@@ -1448,6 +1448,9 @@ func _begin_perform(a: SimAction) -> void:
 		var want := outfit_for(a.interaction)
 		if want != "everyday":
 			change_outfit(want)
+	if a.interaction.effect == "upgrade" and skills.level("handiness") < 2:
+		_fail(a, "%s needs Handiness level 2 to upgrade the %s." % [sim_name, a.furniture.display_name])
+		return
 	if a.interaction.cost > 0 and wallet != null:
 		if wallet.funds < a.interaction.cost:
 			_fail(a, "%s can't afford that (§%d)." % [sim_name, a.interaction.cost])
@@ -1580,14 +1583,20 @@ func _end_perform(a: SimAction, finished := false) -> void:
 	elif finished and traits.has("slob") and lot != null and a.furniture.blocks and _rng.randf() < 0.25:
 		# Slobs leave a little mess wherever they go.
 		lot.add_mess("dishes", a.spot if a.spot != Vector3.ZERO else global_position)
-	if finished and a.interaction.effect != "":
+	if finished and a.interaction.effect == "assign":
+		# This side of the bed is now theirs.
+		var item: Dictionary = a.furniture.get_meta("item", {}).duplicate()
+		item["owner"] = sim_name
+		a.furniture.set_meta("item", item)
+		announced.emit("The %s is now %s's." % [a.furniture.display_name, sim_name])
+	elif finished and a.interaction.effect != "":
 		a.furniture.apply_effect(a.interaction.effect)
 	if finished and a.interaction.clears_emotion != "":
 		emotions.clear_emotion(a.interaction.clears_emotion)
 	if finished and a.interaction.fixes:
 		a.furniture.set_broken(false)
 		announced.emit("%s repaired the %s." % [sim_name, a.furniture.display_name])
-	elif finished and lot != null and Catalog.BREAKABLE.has(a.furniture.kind) and _rng.randf() < Catalog.BREAK_CHANCE * LotTraits.break_mult(lot.lot_traits):
+	elif finished and lot != null and Catalog.BREAKABLE.has(a.furniture.kind) and not a.furniture.is_upgraded() and _rng.randf() < Catalog.BREAK_CHANCE * LotTraits.break_mult(lot.lot_traits):
 		a.furniture.set_broken(true)
 		Sfx.play("demolish", -6.0)
 		announced.emit("Oh no, the %s broke! Click it to repair it." % a.furniture.display_name)

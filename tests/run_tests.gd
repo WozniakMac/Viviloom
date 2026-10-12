@@ -60,6 +60,7 @@ func _ready() -> void:
 	_test_social_events()
 	_test_date_event()
 	_test_burglars()
+	_test_bed_assign_and_upgrade()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -459,7 +460,7 @@ func _test_messes() -> void:
 
 func _test_repairs_and_fire() -> void:
 	var tv := Catalog.create("tv")
-	_check(tv.available_interactions() == tv.interactions, "working objects offer their usual interactions")
+	_check(tv.available_interactions().slice(0, tv.interactions.size()) == tv.interactions, "working objects offer their usual interactions (plus Upgrade)")
 	tv.set_broken(true)
 	var offered := tv.available_interactions()
 	_check(offered.size() == 1 and offered[0].fixes and offered[0].skill == "handiness", "broken objects can only be repaired")
@@ -1197,3 +1198,19 @@ func _test_burglars() -> void:
 	alarm.free()
 	_check(Settings.DEFAULTS["allow_burglars"] == true, "burglar visits are on by default, as in the reference")
 	lot.queue_free()
+
+
+func _test_bed_assign_and_upgrade() -> void:
+	var bed := Catalog.create("bed")
+	var names := _names(bed.available_interactions())
+	_check(names.has("Assign Bed") and names.has("Upgrade..."), "beds offer Assign Bed and Upgrade, as in the reference")
+	var up: Interaction = bed.available_interactions().filter(func(i): return i.name == "Upgrade...")[0]
+	_check(up.icon == "wrench", "Upgrade shows a wrench in the pie menu")
+	var energy_before: float = bed.interactions.filter(func(i): return i.name == "Sleep")[0].rates["energy"]
+	bed.apply_effect("upgrade")
+	_check(bed.is_upgraded() and not _names(bed.available_interactions()).has("Upgrade..."), "an upgraded bed can't be upgraded again")
+	_check(bed.interactions.filter(func(i): return i.name == "Sleep")[0].rates["energy"] > energy_before, "upgraded beds restore energy faster")
+	bed.free()
+	var tv := Catalog.create("tv")
+	_check(_names(tv.available_interactions()).has("Upgrade..."), "appliances that break can be upgraded")
+	tv.free()

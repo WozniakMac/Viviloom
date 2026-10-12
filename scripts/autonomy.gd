@@ -104,9 +104,14 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 				continue
 			if not urgent.is_empty() and not restores_any(i, urgent):
 				continue
+			if i.effect in ["assign", "upgrade"]:
+				continue
 			var s := score(sim.needs, i) / (1.0 + dist / 20.0)
 			if urgent.is_empty():
 				s *= preference(sim, f, i)
+			# Someone else's assigned bed is a last resort.
+			if f.owner_name() != "" and f.owner_name() != sim.sim_name:
+				s *= 0.2
 			if s >= MIN_SCORE:
 				options.append([s, f, i])
 	# Other Sims on the lot: a chat or a joke when Social or Fun need it.

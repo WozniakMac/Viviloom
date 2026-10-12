@@ -657,7 +657,10 @@ func open_menu(f: Furniture, screen_pos: Vector2) -> void:
 			hud.pie_menu.open(screen_pos, top[idx], sub_names)
 		else:
 			_queue_with_partner(f, top[idx]))
-	hud.pie_menu.open(screen_pos, f.display_name, names)
+	var icons: Array[String] = []
+	for t in top:
+		icons.append("" if t is String else (t as Interaction).icon)
+	hud.pie_menu.open(screen_pos, f.display_name, names, icons)
 
 
 ## Queues an object interaction; WooHoo also calls the partner over to the bed.
@@ -1531,9 +1534,12 @@ func _apply_lot_dict(d: Dictionary) -> void:
 				placed.set_broken(true)
 			if o.size() > 5 and int(o[5]) > 0:
 				placed.set_variant(int(o[5]))
-			if o[0] == "planter" and o.size() > 6:
+			if o.size() > 6 and o[6] is Dictionary and not (o[6] as Dictionary).is_empty():
 				placed.set_meta("item", (o[6] as Dictionary).duplicate())
-				placed.refresh_garden()
+				if o[0] == "planter":
+					placed.refresh_garden()
+				if placed.is_upgraded():
+					placed._apply_upgrade()
 
 
 func save_game() -> void:
