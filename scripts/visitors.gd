@@ -57,6 +57,15 @@ func setup(p_lot: Lot) -> void:
 	neighbour = townies[0]
 
 
+## Takes a townie out of the pool (they moved in with the household); someone
+## else becomes the neighbour who drops by.
+func remove_townie(t: Sim) -> void:
+	townies.erase(t)
+	_leave_at.erase(t)
+	if neighbour == t:
+		neighbour = townies[0] if not townies.is_empty() else null
+
+
 func present() -> Array[Sim]:
 	var out: Array[Sim] = []
 	for t in townies:
@@ -70,7 +79,7 @@ func _process(_delta: float) -> void:
 		return
 	var h := Clock.hour()
 	# The neighbour drops by most mornings while the household is home.
-	if at_home and neighbour.away and h >= ARRIVE_HOUR and h < LEAVE_HOUR - 2 and Clock.day() != _last_visit_day:
+	if at_home and neighbour != null and neighbour.away and h >= ARRIVE_HOUR and h < LEAVE_HOUR - 2 and Clock.day() != _last_visit_day:
 		_last_visit_day = Clock.day()
 		bring(neighbour, LEAVE_HOUR * 60.0 + floorf(Clock.total_minutes / 1440.0) * 1440.0)
 		arrived.emit(neighbour)

@@ -250,7 +250,7 @@ func _on_moving_in(other: Sim) -> void:
 	if household.size() >= MAX_HOUSEHOLD:
 		hud.show_notice("The household is full, so %s can't move in." % other.sim_name, "Household")
 		return
-	visitors.townies.erase(other)
+	visitors.remove_townie(other)
 	other.is_visitor = false
 	other.reparent(self)
 	other.lot = lot
@@ -955,6 +955,14 @@ func load_game() -> void:
 		household[i].from_dict(m.get("sim", {}), everyone)
 		(works[household[i]] as Work).from_dict(m.get("work", {}))
 		(trackers[household[i]] as AspirationTracker).from_dict(m.get("aspiration", {}))
+	# Townies who moved in live in the household now, not the townie pool.
+	for m in household:
+		for t in visitors.townies.duplicate():
+			if t.sim_name == m.sim_name:
+				visitors.remove_townie(t)
+				everyone.erase(t)
+				lot.sims.erase(t)
+				t.queue_free()
 	if d.has("townies"):
 		visitors.from_dict(d["townies"], everyone)
 	elif d.has("neighbour"):
@@ -1490,6 +1498,15 @@ func _run_scenario(scenario: String, path: String) -> void:
 			await travel(scenario)
 			Clock.set_speed(2)
 			await get_tree().create_timer(4.0).timeout
+		"moveinsave":
+			var jj := visitors.neighbour
+			sim.change_relationship(jj, 70.0, 0.0)
+			_on_moving_in(jj)
+			save_game()
+			load_game()
+			await get_tree().process_frame
+			var names := visitors.townies.map(func(t): return t.sim_name)
+			print("MOVEINSAVE household=%s townies=%s neighbour=%s" % [household.map(func(m): return m.sim_name), names, visitors.neighbour.sim_name])
 		"movein":
 			var jules := visitors.neighbour
 			visitors.bring(jules, INF, lot.cell_to_world(Vector2i(10, 9)))
