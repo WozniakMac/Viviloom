@@ -26,6 +26,7 @@ var visitors: Visitors
 var work: Work
 var daylight: Daylight
 var bills: Bills
+var carpool: Carpool
 var life: LifeCycle
 ## "home" or a community lot id (see COMMUNITY_LOTS); the home's build is kept in
 ## _home_snapshot while the household is out.
@@ -192,6 +193,7 @@ func add_to_household(s: Sim) -> void:
 	w.lot = lot
 	add_child(w)
 	w.paid.connect(build.earn)
+	w.carpool = carpool
 	hud.watch_work(w)
 	works[s] = w
 	var t := AspirationTracker.new()
@@ -594,6 +596,7 @@ func _place_house(layout := "cottage") -> void:
 	_place("treadmill", Vector2i(16, 9))
 	_place("mirror", Vector2i(9, 10))
 	_place("guitar", Vector2i(13, 10))
+	_place("stereo", Vector2i(14, 5))
 
 
 ## Hedges and the floor finish of a home; walls and objects come separately so a
@@ -704,6 +707,11 @@ func _setup_environment() -> void:
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 80.0
 	add_child(sun)
+
+	carpool = Carpool.new()
+	carpool.name = "Carpool"
+	add_child(carpool)
+	carpool.road_z = 20 + 3.6
 
 	var around := Surroundings.new()
 	around.name = "Surroundings"
@@ -1570,6 +1578,20 @@ func _run_scenario(scenario: String, path: String) -> void:
 		"hover":
 			_hover(rig.camera.unproject_position(find_furniture("sofa").global_position + Vector3(0, 0.4, 0)))
 			await get_tree().create_timer(0.6).timeout
+		"dance":
+			var st := find_furniture("stereo")
+			sim.queue_interaction(st, st.interactions[0])
+			sim.queue_interaction(st, st.interactions[2])
+			Clock.set_speed(2)
+			await get_tree().create_timer(4.0).timeout
+			print("DANCE on=%s action=%s anim=%s" % [st.get_meta("on", false), sim.current_action().label if sim.current_action() else "-", sim._anim.current_animation])
+		"carpool":
+			work.join("tech")
+			Clock.total_minutes = 8.0 * 60.0 + 58.0
+			Clock.set_speed(1)
+			rig.frame(lot.cell_to_world(Vector2i(13, 17)), deg_to_rad(10.0), deg_to_rad(-30.0), 22.0)
+			await get_tree().create_timer(6.5).timeout
+			print("CARPOOL state=%d away=%s" % [work.state, sim.away])
 		"store":
 			aspirations.satisfaction = 2300
 			hud._show_page(5)

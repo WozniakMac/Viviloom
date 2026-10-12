@@ -8,7 +8,7 @@ signal notice(text: String, title: String)
 signal paid(amount: int)
 signal changed
 
-enum State { HOME, LEAVING, AT_WORK }
+enum State { HOME, LEAVING, WAITING, AT_WORK, RETURNING }
 
 var sim: Sim
 var lot: Lot
@@ -16,6 +16,8 @@ var career := ""
 var level := 0
 var performance := 0.0
 var state := State.HOME
+## Picks the Sim up at the curb and drops them back (null = they just go).
+var carpool: Carpool
 var _last_shift_day := 0
 var _mood_at_start := "fine"
 
@@ -70,12 +72,20 @@ func _process(_delta: float) -> void:
 			if Careers.is_work_day(Clock.day()) and h >= info["start"] and h < info["end"] and Clock.day() != _last_shift_day:
 				_leave_for_work()
 		State.LEAVING:
-			# The walk to the curb is done (or was cancelled): off to work.
+			# The walk to the curb is done (or was cancelled): the carpool comes.
 			if sim.queue.is_empty():
-				_arrive_at_work()
+				state = State.WAITING
+				if carpool != null:
+					carpool.visit(curb(), _arrive_at_work)
+				else:
+					_arrive_at_work()
 		State.AT_WORK:
 			if h >= info["end"] or h < info["start"]:
-				_return_home(true)
+				if carpool != null:
+					state = State.RETURNING
+					carpool.visit(curb(), _return_home.bind(true))
+				else:
+					_return_home(true)
 
 
 func curb() -> Vector3:

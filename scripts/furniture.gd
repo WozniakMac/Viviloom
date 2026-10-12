@@ -127,12 +127,35 @@ func set_broken(b: bool) -> void:
 ## What can be done with the object right now (just Repair while broken).
 func available_interactions() -> Array[Interaction]:
 	if not broken:
-		return interactions
+		var on: bool = get_meta("on", false)
+		return interactions.filter(func(i: Interaction): return not (i.needs_on and not on) and not (i.needs_off and on))
 	if repair_interaction == null:
 		repair_interaction = Interaction.new("Repair", {"fun": 4.0}, 60.0, "", "stand", true).practices("handiness", 80.0).grants("handy", "confident", 1, "Handy", "Fixed it all by themselves.", 180.0)
 		repair_interaction.fixes = true
 	var out: Array[Interaction] = [repair_interaction]
 	return out
+
+
+## Effects of finishing an interaction (switching the stereo on or off).
+func apply_effect(e: String) -> void:
+	match e:
+		"stereo_on":
+			set_meta("on", true)
+			var player := get_node_or_null("Music") as AudioStreamPlayer3D
+			if player == null:
+				player = AudioStreamPlayer3D.new()
+				player.name = "Music"
+				player.position.y = 0.4
+				player.unit_size = 5.0
+				player.max_db = -4.0
+				add_child(player)
+			player.stream = Sfx.stream("music_build", true)
+			player.play()
+		"stereo_off":
+			set_meta("on", false)
+			var player := get_node_or_null("Music") as AudioStreamPlayer3D
+			if player != null:
+				player.stop()
 
 
 func set_ghost(ghost: bool) -> void:

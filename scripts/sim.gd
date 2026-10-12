@@ -1040,6 +1040,8 @@ func _end_perform(a: SimAction, finished := false) -> void:
 	a.furniture.user = null
 	if finished and a.interaction.leaves_mess != "" and lot != null:
 		lot.add_mess(a.interaction.leaves_mess, a.spot if a.spot != Vector3.ZERO else global_position)
+	if finished and a.interaction.effect != "":
+		a.furniture.apply_effect(a.interaction.effect)
 	if finished and a.interaction.clears_emotion != "":
 		emotions.clear_emotion(a.interaction.clears_emotion)
 	if finished and a.interaction.fixes:
@@ -1141,6 +1143,8 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 			_body.position.y = 0.0
 			if moving or (cur != null and cur.performing and cur.interaction != null and cur.interaction.pose == "run"):
 				anim = "walk"
+			elif cur != null and cur.performing and cur.interaction != null and cur.interaction.pose == "dance":
+				anim = "dance"
 			elif talking:
 				anim = "talk"
 			elif busy:

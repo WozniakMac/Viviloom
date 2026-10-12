@@ -431,6 +431,31 @@ def animations(rig):
         }
     make_action(rig, "use", 31, use)
 
+    # Dance: bouncing knees, swaying hips and arms pumping to the beat.
+    dance = {}
+    for f in range(1, 62, 5):
+        ph = (f - 1) / 60.0 * 2 * math.pi * 2
+        s1 = math.sin(ph)
+        s2 = math.sin(ph * 0.5)
+        dance[f] = {
+            "thigh.L": (-15 - 10 * max(0, s1), 0, 0), "thigh.R": (-15 - 10 * max(0, -s1), 0, 0),
+            "shin.L": (25 + 15 * max(0, s1), 0, 0), "shin.R": (25 + 15 * max(0, -s1), 0, 0),
+            "spine": (5, 12 * s2, 6 * s1), "chest": (0, -8 * s2, 0),
+            "upperarm.L": (-60 - 40 * max(0, s1), 0, 25), "upperarm.R": (-60 - 40 * max(0, -s1), 0, -25),
+            "forearm.L": (-70, 0, 0), "forearm.R": (-70, 0, 0),
+            "head": (-5 + 8 * s1, 10 * s2, 0),
+            "hips_loc": (0.04 * s2, -0.06 + 0.03 * abs(s1), 0),
+        }
+    make_action(rig, "dance", 61, dance)
+
+    # Wave: a friendly greeting with the right hand.
+    wave = {}
+    for f in range(1, 32, 5):
+        s1 = math.sin((f - 1) / 30.0 * 2 * math.pi * 2)
+        wave[f] = {"upperarm.R": (-160, 0, -20), "forearm.R": (-20 + 25 * s1, 0, 0), "head": (-5, 8, 0),
+                   "upperarm.L": (0, 0, 4)}
+    make_action(rig, "wave", 31, wave)
+
 
 def main():
     clear_scene()

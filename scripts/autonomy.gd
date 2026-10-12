@@ -82,7 +82,7 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 			if urgent.is_empty() and not sim.is_visitor and Ages.allows(sim.age_stage, f.interactions[0]):
 				options.append([MESS_SCORE / (1.0 + dist / 20.0), f, f.interactions[0]])
 			continue
-		for i in f.interactions:
+		for i in f.available_interactions():
 			if not Ages.allows_for(sim, i):
 				continue
 			if not urgent.is_empty() and not restores_any(i, urgent):

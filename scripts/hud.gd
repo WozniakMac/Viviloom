@@ -1079,7 +1079,7 @@ func _refresh_career() -> void:
 	head.text = "%s  ·  Level %d" % [Careers.title(c2, work.level), work.level + 1]
 	_career_box.add_child(head)
 	var info := Label.new()
-	var status: String = ["At home", "Heading to work", "At work"][work.state]
+	var status: String = ["At home", "Heading to work", "Waiting for the carpool", "At work", "On the way home"][work.state]
 	info.text = "%s career · §%d/h\n%s\n%s" % [Careers.label(c2), Careers.hourly(c2, work.level), Careers.schedule_text(c2), status]
 	info.add_theme_font_size_override("font_size", 13)
 	info.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)

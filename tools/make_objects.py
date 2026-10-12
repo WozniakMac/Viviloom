@@ -431,13 +431,34 @@ def pizza(M):
     cylinder(0.18, 0.02, (0, 0.07, 0), M["yellow"], 24)
 
 
+def stereo(M):
+    box((0.9, 0.55, 0.38), (0, 0.3, -0.12), M["wood_dark"], 0.03)
+    for x in (-0.3, 0.3):
+        cylinder(0.12, 0.02, (x, 0.32, 0.075), M["dark"], 24, None, "Part", "z")
+        cylinder(0.05, 0.025, (x, 0.32, 0.085), M["metal"], 16, None, "Part", "z")
+    box((0.3, 0.12, 0.02), (0, 0.48, 0.075), M["screen"], 0.005)
+    box((0.86, 0.04, 0.34), (0, 0.6, -0.12), M["metal"], 0.01)
+
+
+def car(M):
+    body = mat("CarBody", (0.85, 0.25, 0.2), 0.3, 0.3)
+    box((4.2, 0.75, 1.8), (0, 0.65, 0), body, 0.12)
+    box((2.4, 0.65, 1.66), (-0.2, 1.3, 0), body, 0.15)
+    box((2.3, 0.55, 1.68), (-0.2, 1.32, 0), M["glass"], 0.1)
+    for x in (-1.35, 1.35):
+        for z in (-0.88, 0.88):
+            cylinder(0.36, 0.25, (x, 0.36, z), M["dark"], 20, None, "Part", "z")
+    for z in (-0.6, 0.6):
+        box((0.06, 0.15, 0.3), (2.1, 0.75, z), M["yellow"], 0.02)
+
+
 OBJECTS = {
     "fridge": fridge, "bed": bed, "toilet": toilet, "shower": shower, "tv": tv, "desk": desk,
     "bookshelf": bookshelf, "easel": easel, "chess": chess, "lamp": lamp, "sofa": sofa,
     "dining_table": dining_table, "chair": chair, "counter": counter, "stove": stove,
     "sink": sink, "plant": plant, "mailbox": mailbox, "bench": bench, "tree": tree, "bush": bush,
     "grill": grill, "picnic_table": picnic_table, "fountain": fountain,
-    "treadmill": treadmill, "mirror": mirror, "guitar": guitar, "bar": bar, "pizza": pizza,
+    "treadmill": treadmill, "mirror": mirror, "guitar": guitar, "bar": bar, "pizza": pizza, "stereo": stereo, "car": car,
 }
 
 

@@ -29,6 +29,11 @@ var leaves_mess := ""
 var consumes := false
 ## Repairing: finishing fixes the object.
 var fixes := false
+## Something the object does when this finishes ("stereo_on", "stereo_off").
+var effect := ""
+## Only offered while the object is switched on (or off).
+var needs_on := false
+var needs_off := false
 ## Simoleons it costs the household each time (a drink at the bar).
 var cost := 0
 ## Only offered while the Sim feels this emotion ("" = any time).
