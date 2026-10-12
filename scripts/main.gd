@@ -142,6 +142,9 @@ func _ready() -> void:
 	add_child(life)
 	life.notice.connect(func(t: String, title: String): hud.show_notice(t, title))
 	life.day_passed.connect(func(day: int):
+		for f in lot.furniture:
+			if f.kind == "planter":
+				f.grow_garden(day)
 		var news := Story.advance_day(other_households, day, _story_rng)
 		news.append_array(visitors.new_day(_story_rng))
 		for n in news:
@@ -1201,6 +1204,9 @@ func _apply_lot_dict(d: Dictionary) -> void:
 				placed.set_broken(true)
 			if o.size() > 5 and int(o[5]) > 0:
 				placed.set_variant(int(o[5]))
+			if o[0] == "planter" and o.size() > 6:
+				placed.set_meta("item", (o[6] as Dictionary).duplicate())
+				placed.refresh_garden()
 
 
 func save_game() -> void:
@@ -1831,6 +1837,22 @@ func _run_scenario(scenario: String, path: String) -> void:
 			lot.wall_view = Lot.WallView.CUTAWAY
 			rig.frame(pn.global_position, deg_to_rad(25.0), deg_to_rad(-35.0), 8.0)
 			await get_tree().create_timer(4.0).timeout
+		"garden":
+			var crops := ["tomato", "lettuce", "carrot", "strawberry"]
+			var pl: Array = []
+			for k in 4:
+				var f := _place("planter", Vector2i(14 + k * 2, 18))
+				f.apply_effect("plant:" + crops[k])
+				var g: Dictionary = f.get_meta("item").duplicate()
+				g["growth"] = [0.1, 0.5, 1.0, 1.0][k]
+				f.set_meta("item", g)
+				f.refresh_garden()
+				pl.append(f)
+			sim.global_position = lot.cell_to_world(Vector2i(13, 19))
+			sim.queue_interaction(pl[0], pl[0].available_interactions()[0])
+			Clock.set_speed(2)
+			rig.frame(lot.cell_to_world(Vector2i(17, 18)), deg_to_rad(15.0), deg_to_rad(-35.0), 7.0)
+			await get_tree().create_timer(2.5).timeout
 		"fencestyles":
 			for st in 4:
 				for e in Lot.wall_run(Vector2i(2 + st * 5, 16), Vector2i(6 + st * 5, 16)):

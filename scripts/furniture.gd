@@ -237,7 +237,9 @@ func set_broken(b: bool) -> void:
 func available_interactions() -> Array[Interaction]:
 	if not broken:
 		var on: bool = get_meta("on", false)
-		return interactions.filter(func(i: Interaction): return not (i.needs_on and not on) and not (i.needs_off and on))
+		var gs := garden_state()
+		return interactions.filter(func(i: Interaction): return not (i.needs_on and not on) and not (i.needs_off and on) \
+			and (i.garden_state == "" or i.garden_state == gs))
 	if repair_interaction == null:
 		repair_interaction = Interaction.new("Repair", {"fun": 4.0}, 60.0, "", "stand", true).practices("handiness", 80.0).grants("handy", "confident", 1, "Handy", "Fixed it all by themselves.", 180.0)
 		repair_interaction.fixes = true
@@ -245,8 +247,80 @@ func available_interactions() -> Array[Interaction]:
 	return out
 
 
+## Planter state from its saved data: "empty", "growing" or "ripe" ("" if not a planter).
+func garden_state() -> String:
+	if kind != "planter":
+		return ""
+	var g: Dictionary = get_meta("item", {})
+	if g.get("crop", "") == "":
+		return "empty"
+	return "ripe" if g.get("growth", 0.0) >= 1.0 else "growing"
+
+
+## One night of growth: watered plants grow much faster.
+func grow_garden(day: int) -> void:
+	var g: Dictionary = get_meta("item", {}).duplicate()
+	if g.get("crop", "") == "" or g.get("growth", 0.0) >= 1.0:
+		return
+	var watered: bool = int(g.get("watered", -10)) >= day - 1
+	g["growth"] = minf(1.0, g.get("growth", 0.0) + (0.35 if watered else 0.12))
+	set_meta("item", g)
+	refresh_garden()
+
+
+## Draws the crop: a sprout, a leafy plant, then one with ripe produce.
+func refresh_garden() -> void:
+	var old := get_node_or_null("Crop")
+	if old != null:
+		old.free()
+	var g: Dictionary = get_meta("item", {})
+	var crop: String = g.get("crop", "")
+	if crop == "":
+		return
+	var n := Node3D.new()
+	n.name = "Crop"
+	add_child(n)
+	var growth: float = g.get("growth", 0.0)
+	var leaf := Color(0.3, 0.6, 0.25)
+	var h := 0.08 + 0.35 * growth
+	for k in 4:
+		var ang := k * TAU / 4.0 + 0.4
+		var m := MeshInstance3D.new()
+		var b := BoxMesh.new()
+		b.size = Vector3(0.06, h, 0.2 + 0.15 * growth)
+		m.mesh = b
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = leaf
+		m.material_override = mat
+		m.position = Vector3(cos(ang) * 0.12, 0.32 + h * 0.5, sin(ang) * 0.12)
+		m.rotation = Vector3(0.35, ang, 0)
+		n.add_child(m)
+	if growth >= 1.0:
+		var col: Color = Catalog.CROPS[crop][3]
+		for k in 5:
+			var fruit := MeshInstance3D.new()
+			var sp := SphereMesh.new()
+			sp.radius = 0.05
+			sp.height = 0.1
+			fruit.mesh = sp
+			var fm := StandardMaterial3D.new()
+			fm.albedo_color = col
+			fruit.material_override = fm
+			fruit.position = Vector3(cos(k * 1.3) * 0.15, 0.4 + 0.08 * (k % 3), sin(k * 1.3) * 0.15)
+			n.add_child(fruit)
+
+
 ## Effects of finishing an interaction (switching the stereo on or off).
 func apply_effect(e: String) -> void:
+	if e.begins_with("plant:"):
+		set_meta("item", {"crop": e.trim_prefix("plant:"), "growth": 0.0, "watered": Clock.day()})
+		refresh_garden()
+		return
+	if e == "water":
+		var g: Dictionary = get_meta("item", {}).duplicate()
+		g["watered"] = Clock.day()
+		set_meta("item", g)
+		return
 	match e:
 		"stereo_on":
 			set_meta("on", true)

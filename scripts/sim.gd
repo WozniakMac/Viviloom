@@ -656,9 +656,28 @@ func sell_item(index: int) -> void:
 	if item.get("kind") == "painting":
 		count_stat("paintings_sold")
 	earned.emit(item.get("value", 0))
-	var what: String = item.get("name", "fish").to_lower() if item.get("kind") == "fish" else "painting"
+	var what: String = item.get("name", "fish").to_lower() if item.get("kind") in ["fish", "produce"] else "painting"
 	announced.emit("%s sold a %s for §%d." % [sim_name, what, item.get("value", 0)])
 	inventory_changed.emit()
+
+
+var _last_garden: Furniture
+
+## Picks the ripe crop: better gardeners get more and better produce.
+func _harvest(planter: Furniture, lvl: int) -> void:
+	var g: Dictionary = planter.get_meta("item", {})
+	var crop: String = g.get("crop", "")
+	if crop == "":
+		return
+	var info: Array = Catalog.CROPS[crop]
+	var count := 2 + lvl / 3 + _rng.randi_range(0, 1)
+	for k in count:
+		inventory.append({"kind": "produce", "name": info[4], "value": int(info[2]) + lvl})
+	inventory_changed.emit()
+	count_stat("harvests")
+	planter.set_meta("item", {})
+	planter.refresh_garden()
+	announced.emit("%s harvested %d %s!" % [sim_name, count, info[0].to_lower()])
 
 
 ## A fishing trip may land something: better anglers catch rarer, pricier fish.
@@ -1234,6 +1253,8 @@ func _social_result(a: SimAction) -> void:
 func _begin_perform(a: SimAction) -> void:
 	if a.furniture != null:
 		_last_cook_spot = a.furniture
+		if a.furniture.kind == "planter":
+			_last_garden = a.furniture
 	if a.target_sim != null:
 		change_outfit("everyday")
 		_begin_social(a)
@@ -1335,6 +1356,8 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 		_serve_meal(i, lvl)
 	if finished and i.creates == "fish":
 		_catch_fish(lvl)
+	if finished and i.creates == "produce" and _last_garden != null and is_instance_valid(_last_garden):
+		_harvest(_last_garden, lvl)
 	if finished and i.creates == "painting":
 		var q := clampi(lvl / 3, 0, 3)
 		var value := 20 + lvl * 22 + q * 15 + _rng.randi_range(0, 20)

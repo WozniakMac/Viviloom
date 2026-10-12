@@ -926,7 +926,7 @@ func _refresh_inventory() -> void:
 		var l := Label.new()
 		if item.get("kind") == "homework":
 			l.text = "Homework  (do it at a desk or table)"
-		elif item.get("kind") == "fish":
+		elif item.get("kind") in ["fish", "produce"]:
 			l.text = "%s  ·  §%d" % [item.get("name", "Fish"), item.get("value", 0)]
 		else:
 			l.text = "%s Painting  ·  §%d" % [Catalog.PAINTING_QUALITY[item.get("quality", 0)], item.get("value", 0)]

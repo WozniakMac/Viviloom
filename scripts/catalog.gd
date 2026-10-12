@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -18,6 +18,13 @@ const RECIPES := [
 	["Baked Alaska", 9, 8, 90.0, Color(0.98, 0.92, 0.85)],
 ]
 const MEAL_QUALITY: Array[String] = ["Poor", "Normal", "Good", "Excellent"]
+## Garden crops: id -> [label, seed cost, produce value, colour, one item's name]
+const CROPS := {
+	"tomato": ["Tomatoes", 10, 8, Color(0.85, 0.15, 0.12), "Tomato"],
+	"lettuce": ["Lettuce", 6, 5, Color(0.55, 0.85, 0.35), "Lettuce"],
+	"carrot": ["Carrots", 8, 6, Color(0.95, 0.5, 0.1), "Carrot"],
+	"strawberry": ["Strawberries", 15, 12, Color(0.9, 0.1, 0.3), "Strawberry"],
+}
 ## Fish from the pond, commonest first: [name, base value].
 const FISH := [["Minnow", 4], ["Perch", 9], ["Bass", 15], ["Trout", 22], ["Catfish", 30], ["Salmon", 42], ["Golden Koi", 75]]
 ## Objects that wear out and sometimes break when used.
@@ -71,6 +78,7 @@ const INFO := {
 	"sculpture": ["Modern Sculpture", 400],
 	"monkey_bars": ["Monkey Bars", 450],
 	"column": ["Classic Column", 160],
+	"planter": ["Garden Planter", 150],
 	"piano": ["Upright Piano", 1200],
 	"telescope": ["Telescope", 700],
 	"pond": ["Fishing Pond", 500],
@@ -92,7 +100,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "planter": "outdoor",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -130,6 +138,7 @@ const DESCRIPTIONS := {
 	"dollhouse": "Endless make-believe. Builds a toddler's Imagination.",
 	"activity_table": "Crayons and blocks for little hands.",
 	"rug": "Ties the room together. Sims can walk on it.",
+	"planter": "Plant seeds, water them every day and harvest fresh produce to sell.",
 	"column": "A full-height column to frame porches and open-plan rooms.",
 	"monkey_bars": "Climbing, hanging, showing off. Builds a child's Motor skill.",
 	"sculpture": "Bold, baffling, beautiful. Raises a room's look.",
@@ -603,6 +612,34 @@ static func create(kind: String) -> Furniture:
 			f.add_box(Vector3(1.5, 0.017, 1.5), Vector3(0, 0.009, 0), Color(0.92, 0.82, 0.65))
 			f.add_box(Vector3(0.9, 0.019, 0.9), Vector3(0, 0.01, 0), Color(0.3, 0.45, 0.6))
 			f.decor = 2
+		"planter":
+			f.display_name = "Garden Planter"
+			f.height = 0.4
+			f.add_box(Vector3(0.9, 0.3, 0.9), Vector3(0, 0.15, 0), Color(0.5, 0.33, 0.2))
+			f.add_box(Vector3(0.8, 0.02, 0.8), Vector3(0, 0.31, 0), Color(0.3, 0.2, 0.12))
+			f.spots = [Vector3(0, 0, 0.9), Vector3(0.9, 0, 0), Vector3(-0.9, 0, 0)]
+			f.set_meta("item", {})
+			var garden: Array[Interaction] = []
+			for c in CROPS:
+				var info: Array = CROPS[c]
+				var sow := Interaction.new("Plant %s" % info[0], {"fun": 8.0}, 20.0, "", "stand", true).practices("gardening", 50.0)
+				sow.cost = info[1]
+				sow.effect = "plant:" + c
+				sow.garden_state = "empty"
+				sow.menu = "Plant..."
+				garden.append(sow)
+			var water := Interaction.new("Water", {"fun": 10.0}, 15.0, "", "stand", true).practices("gardening", 60.0).grants("green_thumb", "happy", 1, "Green Thumb", "The plants look grateful.", 90.0)
+			water.effect = "water"
+			water.garden_state = "growing"
+			garden.append(water)
+			var weed := Interaction.new("Weed", {"fun": 5.0}, 20.0, "", "stand", true).practices("gardening", 70.0)
+			weed.effect = "water"
+			weed.garden_state = "growing"
+			garden.append(weed)
+			var harvest := Interaction.new("Harvest", {"fun": 15.0}, 20.0, "", "stand", true).practices("gardening", 50.0).makes("produce").grants("harvest", "happy", 1, "Bountiful Harvest", "Grew it themselves!", 180.0)
+			harvest.garden_state = "ripe"
+			garden.append(harvest)
+			f.interactions = garden
 		"column":
 			f.display_name = "Classic Column"
 			f.height = 2.8

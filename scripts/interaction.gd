@@ -97,6 +97,10 @@ func holding(p_prop: String) -> Interaction:
 var for_stages: Array = []
 
 
+## Garden planters: only offered when the planter is "empty", "growing" or "ripe".
+var garden_state := ""
+
+
 ## Done together with a partner (WooHoo): only offered when one is around, never autonomous.
 var with_partner := false
 ## Pie menu group this sits in ("Cook..."); "" for the top level.

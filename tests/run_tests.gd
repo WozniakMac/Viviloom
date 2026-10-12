@@ -50,6 +50,7 @@ func _ready() -> void:
 	_test_terrain()
 	_test_townie_babies()
 	_test_fence_styles()
+	_test_gardening()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1006,3 +1007,27 @@ func _test_fence_styles() -> void:
 	_check(col.blocks and col.decor > 0, "columns stand in the way and look nice")
 	col.free()
 	lot.queue_free()
+
+
+func _test_gardening() -> void:
+	var p := Catalog.create("planter")
+	_check(p.garden_state() == "empty" and _names(p.available_interactions()).has("Plant Tomatoes"), "an empty planter offers seeds")
+	p.apply_effect("plant:tomato")
+	_check(p.garden_state() == "growing" and _names(p.available_interactions()).has("Water"), "planted crops want watering")
+	var day := Clock.day()
+	p.grow_garden(day + 1)
+	var watered: float = p.get_meta("item")["growth"]
+	p.grow_garden(day + 5)
+	var dry: float = p.get_meta("item")["growth"] - watered
+	_check(watered > dry, "watered plants grow faster")
+	for k in 6:
+		p.apply_effect("water")
+		p.grow_garden(Clock.day())
+	_check(p.garden_state() == "ripe" and _names(p.available_interactions()) == ["Harvest"], "ripe crops are ready to harvest")
+	var s := Sim.new()
+	s._harvest(p, 3)
+	var produce := s.inventory.filter(func(it): return it.get("kind") == "produce")
+	_check(produce.size() >= 3 and produce[0]["name"] == "Tomato", "harvesting fills the inventory")
+	_check(p.garden_state() == "empty", "the planter is ready to sow again")
+	s.free()
+	p.free()
