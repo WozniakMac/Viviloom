@@ -203,7 +203,8 @@ func _ready() -> void:
 			if location != "home" or social_event.active:
 				hud.show_notice("You can only throw one event at a time, at home.", "Phone")
 			else:
-				social_event.start(service.trim_prefix("event:"), household, visitors)
+				var hosts: Array = [sim] + household.filter(func(m): return m != sim)
+				social_event.start(service.trim_prefix("event:"), hosts, visitors)
 				hud.show_notice("%s has started! Complete the goals before time runs out." % social_event.title, "Social Event")
 			return
 		match service:

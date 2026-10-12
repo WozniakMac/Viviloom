@@ -58,6 +58,7 @@ func _ready() -> void:
 	_test_room_presets_and_undo()
 	_test_sticky_outfits()
 	_test_social_events()
+	_test_date_event()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1154,6 +1155,25 @@ func _test_social_events() -> void:
 	ev.finished.connect(func(m, _t): got.append(m))
 	ev.end()
 	_check(got == [3] and not ev.active, "the event ends with its medal")
+	ev.queue_free()
+	host.free()
+	v.queue_free()
+	lot.queue_free()
+
+
+func _test_date_event() -> void:
+	var lot := _make_lot()
+	add_child(lot)
+	var v := Visitors.new()
+	add_child(v)
+	v.setup(lot)
+	var host := Sim.new()
+	var crush: Sim = v.townies[2]
+	host.change_relationship(crush, 30.0, 40.0)
+	var ev := SocialEvent.new()
+	add_child(ev)
+	ev.start("date", [host], v)
+	_check(ev.guests == [crush], "a date brings your romantic interest, alone")
 	ev.queue_free()
 	host.free()
 	v.queue_free()

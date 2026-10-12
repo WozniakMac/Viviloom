@@ -19,6 +19,12 @@ const KINDS := {
 		["Have a drink or a bite to eat", ["Order a Drink", "Mix a Drink", "Grab a Serving", "Grab a Snack", "Have a Proper Meal"], 2],
 		["Tell a joke", ["Tell a Joke", "Do an Impression", "Make Funny Face"], 1],
 	]],
+	"date": ["Date", [
+		["Flirt with your date", ["Flirt"], 2],
+		["Share a kiss", ["Kiss", "Make Out"], 1],
+		["Eat or drink together", ["Have a Proper Meal", "Grab a Serving", "Order a Drink", "Mix a Drink"], 1],
+		["Have a deep conversation", ["Deep Conversation"], 1],
+	]],
 	"dinner_party": ["Dinner Party", [
 		["Cook a group meal", ["Cook..."], 1],
 		["Eat together at the table", ["Have a Proper Meal"], 2],
@@ -46,7 +52,13 @@ func start(p_kind: String, household: Array, visitors: Visitors) -> void:
 	guests.clear()
 	var pool: Array = visitors.townies.filter(func(t: Sim): return t.away and Ages.is_adult(t.age_stage))
 	pool.shuffle()
-	for t in pool.slice(0, 3):
+	var count := 3
+	if kind == "date":
+		# The townie the host likes most romantically comes alone.
+		var host: Sim = household[0]
+		pool.sort_custom(func(a: Sim, b: Sim): return host.romance_with(a) > host.romance_with(b))
+		count = 1
+	for t in pool.slice(0, count):
 		visitors.bring(t, ends_at)
 		guests.append(t)
 	for m in household:

@@ -924,6 +924,7 @@ func _fill_phone() -> void:
 			_phone_button("Pay Bills", func(): phone_service.emit("pay_bills"))
 			_phone_button("Plan a House Party", func(): phone_service.emit("event:house_party"))
 			_phone_button("Plan a Dinner Party", func(): phone_service.emit("event:dinner_party"))
+			_phone_button("Go on a Date", func(): phone_service.emit("event:date"))
 	# Grow upwards from the button.
 	_phone_panel.reset_size()
 	await get_tree().process_frame
