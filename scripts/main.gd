@@ -118,6 +118,7 @@ func _ready() -> void:
 	build.lot_traits_changed.connect(func(t: Array):
 		for l in levels:
 			(l as Lot).lot_traits = t.duplicate())
+	build.foundation_changed.connect(set_foundation)
 	build.roof_changed.connect(func(style: int, color: int):
 		for l in levels:
 			(l as Lot).set_roof(style, color))
@@ -646,7 +647,14 @@ func _ground_point(screen_pos: Vector2) -> Variant:
 	var cam := rig.camera
 	var origin := cam.project_ray_origin(screen_pos)
 	var dir := cam.project_ray_normal(screen_pos)
-	return Plane(Vector3.UP, active_level * Lot.WALL_HEIGHT).intersects_ray(origin, dir)
+	var here: Lot = levels[active_level]
+	var hit: Variant = Plane(Vector3.UP, here.base_y()).intersects_ray(origin, dir)
+	# On a foundation, aim at the raised floor instead.
+	if hit != null and here.floor_height(here.world_to_cell(hit)) > 0.0:
+		var raised: Variant = Plane(Vector3.UP, here.base_y() + here.foundation).intersects_ray(origin, dir)
+		if raised != null and here.floor_height(here.world_to_cell(raised)) > 0.0:
+			return raised
+	return hit
 
 
 func _show_marker(at: Vector3) -> void:
@@ -1101,7 +1109,16 @@ func _lot_dict() -> Dictionary:
 	var fences: Array = []
 	for e in lot.fences:
 		fences.append([e.x, e.y, e.z, lot.gates.has(e)])
-	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "fences": fences, "roof": [lot.roof_style, lot.roof_color], "lot_traits": lot.lot_traits.duplicate(), "upper": _level_dict(upper)}
+	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "fences": fences, "roof": [lot.roof_style, lot.roof_color], "foundation": lot.foundation, "lot_traits": lot.lot_traits.duplicate(), "upper": _level_dict(upper)}
+
+
+## Raises (or lowers) the house onto a foundation; the upper storey moves with it.
+func set_foundation(h: float) -> void:
+	lot.set_foundation(h)
+	upper.y_offset = h
+	upper.position.y = Lot.WALL_HEIGHT + h
+	for s in upper.sims:
+		(s as Sim).global_position.y = upper.base_y()
 
 
 ## Walls, floors and objects of an upper level.
@@ -1158,6 +1175,7 @@ func _apply_lot_dict(d: Dictionary) -> void:
 		for f in d["floors"]:
 			lot.floor_tiles[Vector2i(int(f[0]), int(f[1]))] = int(f[2])
 		lot.add_floor(Rect2i(), 0)
+	set_foundation(d.get("foundation", 0.0))
 	var roof: Array = d.get("roof", [0, 0])
 	for l in levels:
 		(l as Lot).set_roof(int(roof[0]), int(roof[1]))
@@ -1810,6 +1828,21 @@ func _run_scenario(scenario: String, path: String) -> void:
 			lot.wall_view = Lot.WallView.CUTAWAY
 			rig.frame(pn.global_position, deg_to_rad(25.0), deg_to_rad(-35.0), 8.0)
 			await get_tree().create_timer(4.0).timeout
+		"foundationcut":
+			set_foundation(Lot.FOUNDATION_HEIGHT)
+			lot.wall_view = Lot.WallView.CUTAWAY
+			rig.frame(lot.cell_to_world(Vector2i(11, 9)), deg_to_rad(30.0), deg_to_rad(-30.0), 17.0)
+			await get_tree().create_timer(1.5).timeout
+		"foundation":
+			set_foundation(Lot.FOUNDATION_HEIGHT)
+			sim.global_position = lot.cell_to_world(Vector2i(11, 16))
+			sim.queue_go(lot.cell_to_world(Vector2i(11, 10)))
+			lot.wall_view = Lot.WallView.UP
+			Clock.set_speed(1)
+			rig.frame(lot.cell_to_world(Vector2i(11, 13)), deg_to_rad(15.0), deg_to_rad(-22.0), 10.0)
+			for k in 6:
+				await get_tree().create_timer(0.5).timeout
+				print("FOUNDATION t=%d cell=%s sim_y=%.2f floor=%.2f" % [k, lot.world_to_cell(sim.global_position), sim.global_position.y, lot.floor_y_at(sim.global_position)])
 		"monkeybars":
 			await travel("park")
 			sim.set_age("child")
@@ -1884,7 +1917,9 @@ func _run_scenario(scenario: String, path: String) -> void:
 			Clock.set_speed(1)
 			rig.frame(lot.cell_to_world(Vector2i(10, 15)), deg_to_rad(25.0), deg_to_rad(-35.0), 13.0)
 			await get_tree().create_timer(1.6).timeout
-		"upstairs", "twostorey":
+		"upstairs", "twostorey", "twostoreyfound":
+			if scenario == "twostoreyfound":
+				set_foundation(Lot.FOUNDATION_HEIGHT)
 			upper.add_floor(Rect2i(3, 2, 15, 10), 2)
 			for r in [[Vector2i(3, 2), Vector2i(18, 2)], [Vector2i(3, 12), Vector2i(18, 12)], [Vector2i(3, 2), Vector2i(3, 12)], [Vector2i(18, 2), Vector2i(18, 12)]]:
 				for e in Lot.wall_run(r[0], r[1]):

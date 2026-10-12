@@ -40,6 +40,15 @@ var wall_styles := {}
 var fences := {}
 ## Lot traits (see LotTraits) for the home; community lots have none.
 var lot_traits: Array = []
+## Foundation: the house's rooms stand this high on a stone plinth (0 = none).
+## Only the ground level has one; upper levels are lifted by `y_offset`.
+var foundation := 0.0
+const FOUNDATION_HEIGHT := 0.55
+const FOUNDATION_PRICE := 400
+## Extra height of this whole level (upper storeys over a foundation).
+var y_offset := 0.0
+var _plinth: MeshInstance3D
+var _steps: Array[Node3D] = []
 var gates := {}
 const FENCE_HEIGHT := 0.9
 ## Vector2i tile -> Finishes.FLOORS index.
@@ -76,7 +85,30 @@ func _ready() -> void:
 
 ## Height of this level's floor in the world.
 func base_y() -> float:
-	return level * WALL_HEIGHT
+	return level * WALL_HEIGHT + y_offset
+
+
+## Height of the floor at tile `c` above this level's base (foundation rooms are raised).
+func floor_height(c: Vector2i) -> float:
+	if foundation <= 0.0:
+		return 0.0
+	if _rooms_dirty:
+		_compute_interior()
+	return foundation if _interior.has(c) else 0.0
+
+
+## World height of the floor under a point.
+func floor_y_at(p: Vector3) -> float:
+	return base_y() + floor_height(world_to_cell(p))
+
+
+func set_foundation(h: float) -> void:
+	foundation = h
+	if _rooms_dirty:
+		_compute_interior()
+	else:
+		_apply_foundation()
+		_rebuild_roof()
 
 
 ## Kept for callers that build a lot outside the scene tree (tests).
@@ -384,7 +416,7 @@ func _rebuild_floor() -> void:
 		st.set_color(col)
 		var x0: float = c.x * CELL
 		var z0: float = c.y * CELL
-		var y := 0.021
+		var y := 0.021 + (foundation if _interior.has(c) else 0.0)
 		var a := Vector3(x0, y, z0)
 		var b := Vector3(x0 + CELL, y, z0)
 		var d := Vector3(x0, y, z0 + CELL)
@@ -467,6 +499,77 @@ func _make_wall_visual(e: Vector3i, with_door: bool) -> Node3D:
 	return n
 
 
+## Puts the stone plinth under indoor tiles, lifts floors, walls and furniture onto
+## it, and adds steps outside each outer door.
+func _apply_foundation() -> void:
+	for s in _steps:
+		s.queue_free()
+	_steps.clear()
+	if _plinth == null:
+		_plinth = MeshInstance3D.new()
+		_plinth.name = "Foundation"
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.66, 0.62, 0.56)
+		m.roughness = 0.95
+		_plinth.material_override = m
+		add_child(_plinth)
+	var h := foundation
+	for e in walls:
+		var a := Vector2i(e.x, e.y - 1) if e.z == 0 else Vector2i(e.x - 1, e.y)
+		var b := Vector2i(e.x, e.y)
+		(walls[e] as Node3D).position.y = h if (_interior.has(a) or _interior.has(b)) else 0.0
+	for f in furniture:
+		if not f.wall_mounted and f.kind != "pool":
+			f.position.y = floor_height(f.cell)
+		elif f.wall_mounted:
+			f.position.y = 1.45 + floor_height(f.cell)
+	_rebuild_floor()
+	if h <= 0.0 or _interior.is_empty():
+		_plinth.mesh = null
+		return
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var out := 0.06
+	for c: Vector2i in _interior:
+		var x0 := c.x * CELL
+		var z0 := c.y * CELL
+		var x1 := x0 + CELL
+		var z1 := z0 + CELL
+		# Top (under the floor finish) and the sides that face outdoors.
+		_quad(st, Vector3(x0, h, z0), Vector3(x1, h, z0), Vector3(x1, h, z1), Vector3(x0, h, z1), Color.WHITE)
+		if not _interior.has(c + Vector2i(0, -1)):
+			_quad(st, Vector3(x1, 0, z0 - out), Vector3(x0, 0, z0 - out), Vector3(x0, h, z0 - out), Vector3(x1, h, z0 - out), Color.WHITE)
+		if not _interior.has(c + Vector2i(0, 1)):
+			_quad(st, Vector3(x0, 0, z1 + out), Vector3(x1, 0, z1 + out), Vector3(x1, h, z1 + out), Vector3(x0, h, z1 + out), Color.WHITE)
+		if not _interior.has(c + Vector2i(-1, 0)):
+			_quad(st, Vector3(x0 - out, 0, z0), Vector3(x0 - out, 0, z1), Vector3(x0 - out, h, z1), Vector3(x0 - out, h, z0), Color.WHITE)
+		if not _interior.has(c + Vector2i(1, 0)):
+			_quad(st, Vector3(x1 + out, 0, z1), Vector3(x1 + out, 0, z0), Vector3(x1 + out, h, z0), Vector3(x1 + out, h, z1), Color.WHITE)
+	st.generate_normals()
+	_plinth.mesh = st.commit()
+	(_plinth.material_override as StandardMaterial3D).cull_mode = BaseMaterial3D.CULL_DISABLED
+	# Two steps outside each door that leads outdoors.
+	var step_mat := _plinth.material_override
+	for e in doors:
+		var a := Vector2i(e.x, e.y - 1) if e.z == 0 else Vector2i(e.x - 1, e.y)
+		var b := Vector2i(e.x, e.y)
+		if _interior.has(a) == _interior.has(b):
+			continue
+		var outside := b if _interior.has(a) else a
+		var step_off: Vector2i = outside - (a if outside == b else b)
+		var dir := Vector3(step_off.x, 0, step_off.y).normalized()
+		var n := Node3D.new()
+		n.name = "Steps"
+		n.position = edge_center(e)
+		add_child(n)
+		for k in 2:
+			var depth := 0.28
+			var sh := h * (2 - k) / 3.0
+			var size3 := Vector3(1.0, sh, depth) if e.z == 0 else Vector3(depth, sh, 1.0)
+			_wall_box(n, size3, dir * (0.16 + depth * (k + 0.5)) + Vector3(0, sh * 0.5, 0), step_mat)
+		_steps.append(n)
+
+
 func _wall_box(parent: Node3D, box_size: Vector3, pos: Vector3, mat: Material) -> void:
 	var m := MeshInstance3D.new()
 	var box := BoxMesh.new()
@@ -533,6 +636,7 @@ func _compute_interior() -> void:
 			if not outside.has(Vector2i(x, y)):
 				_interior[Vector2i(x, y)] = true
 	_rooms_dirty = false
+	_apply_foundation()
 	_rebuild_roof()
 
 
@@ -611,7 +715,7 @@ void fragment() {
 	var v0 := z0 if along_x else x0
 	var v1 := z1 if along_x else x1
 	var span := v1 - v0
-	var h := WALL_HEIGHT
+	var h := WALL_HEIGHT + foundation
 	var rise := span * 0.4
 	var vm := (v0 + v1) * 0.5
 	var um := (u0 + u1) * 0.5
@@ -848,13 +952,13 @@ func position_furniture(f: Furniture, at_cell: Vector2i, rot_steps: int) -> void
 	f.cell = at_cell
 	if f.wall_mounted:
 		# Against the wall, at eye level, facing into the tile.
-		var c := Vector3((at_cell.x + 0.5) * CELL, 1.45, (at_cell.y + 0.5) * CELL)
+		var c := Vector3((at_cell.x + 0.5) * CELL, 1.45 + floor_height(at_cell), (at_cell.y + 0.5) * CELL)
 		var back := Vector3.FORWARD.rotated(Vector3.UP, f.rot_steps * PI * 0.5)
 		f.position = c + back * (CELL * 0.5 - WALL_THICKNESS * 0.5 - 0.03)
 		f.rotation.y = f.rot_steps * PI * 0.5
 		return
 	var fp := f.rotated_footprint()
-	f.position = Vector3((at_cell.x + fp.x * 0.5) * CELL, 0.0, (at_cell.y + fp.y * 0.5) * CELL)
+	f.position = Vector3((at_cell.x + fp.x * 0.5) * CELL, floor_height(at_cell), (at_cell.y + fp.y * 0.5) * CELL)
 	f.rotation.y = f.rot_steps * PI * 0.5
 
 
@@ -900,6 +1004,7 @@ func clear_build() -> void:
 		remove_wall(e)
 	for e in fences.keys():
 		remove_fence(e)
+	foundation = 0.0
 	roof_style = RoofStyle.GABLE
 	roof_color = 0
 	lot_traits = []

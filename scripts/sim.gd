@@ -1518,6 +1518,11 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 		_preview_walk -= get_process_delta_time()
 		anim = "walk"
 	_apply_walk_style(anim == "walk", delta)
+	# Step up onto (and down off) foundations smoothly.
+	if lot != null and _pose == "stand" and (cur == null or cur.stairs == null):
+		var fy := lot.floor_y_at(global_position)
+		if absf(global_position.y - fy) > 0.001:
+			global_position.y = move_toward(global_position.y, fy, maxf(get_process_delta_time(), 0.0) * 3.0 * maxf(Clock.SPEED_FACTORS[Clock.speed], 1.0))
 	_update_expression()
 	var want_prop := ""
 	if cur != null and cur.performing and cur.interaction != null:

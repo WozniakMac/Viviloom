@@ -10,6 +10,8 @@ signal entered
 signal placed(f: Furniture)
 ## The roof style or colour was changed (applies to every storey).
 signal roof_changed(style: int, color: int)
+## The foundation was added (height) or removed (0).
+signal foundation_changed(height: float)
 ## Lot traits were picked (applies to every storey).
 signal lot_traits_changed(traits: Array)
 
@@ -611,7 +613,7 @@ func _build_ui() -> void:
 		[Tool.WALL, "wall", "Wall tool: drag along the grid (§%d per segment)" % Catalog.WALL_PRICE],
 		[Tool.FENCE, "fence", "Fence tool: drag a picket fence along the grid (§%d per segment)" % Catalog.FENCE_PRICE],
 		[Tool.ROOM, "room", "Room tool: drag a rectangle to build four walls at once (§%d per segment)" % Catalog.WALL_PRICE],
-		[Tool.ROOF, "roof", "Roof tool: choose the roof shape and colour below (§%d)" % Lot.ROOF_PRICE],
+		[Tool.ROOF, "roof", "Roof & Foundation: choose the roof shape and colour, or raise the house (§%d)" % Lot.ROOF_PRICE],
 		[Tool.DOOR, "door", "Door tool: click a wall to add a door (§%d), or a fence for a gate (§%d)" % [Catalog.DOOR_PRICE, Catalog.GATE_PRICE]],
 		[Tool.WINDOW, "window", "Window tool: click a wall to add a window (§%d)" % Finishes.WINDOW_PRICE],
 		[Tool.PAINT, "paint", "Wall paint: pick a finish below, click a wall (Shift: every wall)"],
@@ -821,8 +823,23 @@ func _show_swatches() -> void:
 		_swatch_box.add_child(b)
 
 
-## Roof tool: a button per shape, then a chip per colour.
+## Roof tool: a button per shape, then a chip per colour, then the foundation.
 func _show_roof_swatches() -> void:
+	_show_roof_buttons()
+	for raised in [false, true]:
+		var b := _roof_button("Foundation" if raised else "No Foundation", (lot.foundation > 0.0) == raised, Color(0.66, 0.62, 0.56) if raised else Color(0.45, 0.68, 0.38))
+		b.tooltip_text = "Raise the house on a stone foundation with steps (§%d)" % Lot.FOUNDATION_PRICE if raised else "Rooms sit on the ground"
+		b.pressed.connect(func():
+			if (lot.foundation > 0.0) == raised:
+				return
+			if raised and not _spend(Lot.FOUNDATION_PRICE):
+				return
+			foundation_changed.emit(Lot.FOUNDATION_HEIGHT if raised else 0.0)
+			_show_swatches())
+		_swatch_box.add_child(b)
+
+
+func _show_roof_buttons() -> void:
 	for i in Lot.ROOF_STYLE_NAMES.size():
 		var b := _roof_button(Lot.ROOF_STYLE_NAMES[i], lot.roof_style == i, Color(0.92, 0.94, 0.98))
 		var shape := RoofShape.new()

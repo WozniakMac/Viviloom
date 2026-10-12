@@ -46,6 +46,7 @@ func _ready() -> void:
 	_test_new_furniture()
 	_test_townie_lives()
 	_test_child_skills()
+	_test_foundation()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -914,3 +915,24 @@ func _test_child_skills() -> void:
 	bars.free()
 	kid.free()
 	grown.free()
+
+
+func _test_foundation() -> void:
+	var lot := _make_lot()
+	add_child(lot)
+	var corners := [Vector2i(2, 2), Vector2i(6, 2), Vector2i(6, 6), Vector2i(2, 6)]
+	for k in 4:
+		for e in Lot.wall_run(corners[k], corners[(k + 1) % 4]):
+			lot.add_wall(e)
+	lot.add_door(Vector3i(3, 6, 0))
+	var chair := Catalog.create("chair")
+	lot.place_furniture(chair, Vector2i(4, 4))
+	lot.set_foundation(Lot.FOUNDATION_HEIGHT)
+	_check(lot.floor_height(Vector2i(4, 4)) == Lot.FOUNDATION_HEIGHT and lot.floor_height(Vector2i(10, 10)) == 0.0, "rooms are raised, the garden isn't")
+	_check(is_equal_approx(chair.position.y, Lot.FOUNDATION_HEIGHT), "furniture sits on the foundation")
+	_check(is_equal_approx((lot.walls[Vector3i(3, 2, 0)] as Node3D).position.y, Lot.FOUNDATION_HEIGHT), "walls stand on the foundation")
+	_check(lot._steps.size() == 1, "the outer door gets steps")
+	_check(not lot.find_path(lot.cell_to_world(Vector2i(3, 9)), lot.cell_to_world(Vector2i(4, 4))).is_empty(), "Sims can still walk in")
+	lot.set_foundation(0.0)
+	_check(chair.position.y == 0.0 and lot._steps.is_empty(), "removing the foundation lowers everything")
+	lot.queue_free()
