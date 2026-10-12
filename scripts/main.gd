@@ -1631,6 +1631,12 @@ func _place_community(dest: String) -> void:
 	_place("chess", Vector2i(17, 3))
 	_place("pond", Vector2i(3, 15))
 	_place("monkey_bars", Vector2i(17, 17))
+	for c in [Vector2i(22, 5), Vector2i(1, 9)]:
+		_place("pine", c)
+	for c in [Vector2i(8, 4), Vector2i(14, 11), Vector2i(20, 12)]:
+		_place("flower_shrub", c)
+	_place("flower_bed", Vector2i(13, 5))
+	_place("flower_bed", Vector2i(9, 14))
 	_place("telescope", Vector2i(19, 5))
 	for c in [Vector2i(1, 1), Vector2i(8, 1), Vector2i(15, 1), Vector2i(21, 2), Vector2i(2, 13), Vector2i(7, 15), Vector2i(20, 8), Vector2i(4, 7)]:
 		_place("tree", c)
@@ -2146,7 +2152,7 @@ func _run_scenario(scenario: String, path: String) -> void:
 		"parktrees":
 			Clock.total_minutes = 11 * 60.0
 			await travel("park")
-			rig.frame(lot.cell_to_world(Vector2i(6, 4)), deg_to_rad(20.0), deg_to_rad(-28.0), 11.0)
+			rig.frame(lot.cell_to_world(Vector2i(12, 7)), deg_to_rad(20.0), deg_to_rad(-38.0), 20.0)
 			await get_tree().create_timer(1.5).timeout
 		"nightout", "dayout":
 			Clock.total_minutes = (22 if scenario == "nightout" else 12) * 60.0

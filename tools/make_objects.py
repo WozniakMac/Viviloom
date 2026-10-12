@@ -420,6 +420,58 @@ def bush(M):
         foliage(r, (x, y, z), leaf_light if i % 2 else leaf_dark, 100 + i, 0.8)
 
 
+def pine(M):
+    bark = mat("Bark", (0.09, 0.05, 0.028), 0.9)
+    needles = mat("Needles", (0.02, 0.08, 0.04), 0.8)
+    needles_light = mat("NeedlesLight", (0.04, 0.14, 0.06), 0.8)
+    cylinder(0.12, 1.2, (0, 0.6, 0), bark, 10, 0.08)
+    # Stacked, drooping tiers of needles, smaller towards the top.
+    for k in range(5):
+        r = 1.05 - k * 0.19
+        y = 0.9 + k * 0.62
+        bpy.ops.mesh.primitive_cone_add(vertices=14, radius1=r, radius2=r * 0.25, depth=0.95, location=to_blender((0, y, 0)))
+        o = bpy.context.active_object
+        o.name = "Part"
+        tex = bpy.data.textures.new("PineNoise%d" % k, type="CLOUDS")
+        tex.noise_scale = 0.25
+        disp = o.modifiers.new("Rough", "DISPLACE")
+        disp.texture = tex
+        disp.strength = 0.12
+        bpy.ops.object.modifier_apply(modifier="Rough")
+        o.data.materials.append(needles if k % 2 == 0 else needles_light)
+        bpy.ops.object.shade_smooth()
+
+
+def flower_shrub(M):
+    leaf = mat("LeafDark", (0.035, 0.12, 0.03), 0.75)
+    pink = mat("Blossom", (0.85, 0.22, 0.4), 0.6)
+    for i, (x, y, z, r) in enumerate(((0, 0.45, 0, 0.45), (0.3, 0.35, 0.18, 0.32), (-0.3, 0.36, -0.12, 0.34), (0.05, 0.7, -0.05, 0.32))):
+        foliage(r, (x, y, z), leaf, 200 + i, 0.85)
+    # Blossoms dotted over the outside of the shrub.
+    for k in range(26):
+        a = k * 2.39996
+        h = 0.25 + (k % 7) * 0.08
+        rr = 0.42 + 0.05 * math.sin(k)
+        sphere((0.055, 0.045, 0.055), (math.cos(a) * rr * (1.0 - (h - 0.25) * 0.6), h + 0.1, math.sin(a) * rr * (1.0 - (h - 0.25) * 0.6)), pink)
+
+
+def flower_bed(M):
+    soil = mat("Soil", (0.08, 0.05, 0.03), 0.95)
+    stem = mat("LeafLight", (0.11, 0.27, 0.04), 0.7)
+    colours = [mat("PetalYellow", (0.9, 0.62, 0.05), 0.6), mat("PetalWhite", (0.85, 0.85, 0.82), 0.6),
+               mat("PetalPurple", (0.3, 0.08, 0.55), 0.6), mat("PetalRed", (0.75, 0.05, 0.06), 0.6)]
+    box((1.9, 0.14, 0.9), (0, 0.07, 0), soil, 0.04)
+    k = 0
+    for ix in range(7):
+        for iz in range(3):
+            x = -0.8 + ix * 0.27 + (0.06 if iz % 2 else 0.0)
+            z = -0.28 + iz * 0.28
+            h = 0.22 + 0.06 * ((ix * 3 + iz) % 3)
+            cylinder(0.012, h, (x, 0.14 + h / 2, z), stem, 6)
+            sphere((0.08, 0.05, 0.08), (x, 0.16 + h, z), colours[(ix + iz * 2) % 4])
+            k += 1
+
+
 def grill(M):
     for x in (-0.25, 0.25):
         for z in (-0.18, 0.18):
@@ -518,6 +570,7 @@ OBJECTS = {
     "bookshelf": bookshelf, "easel": easel, "chess": chess, "lamp": lamp, "sofa": sofa,
     "dining_table": dining_table, "chair": chair, "counter": counter, "stove": stove,
     "sink": sink, "plant": plant, "mailbox": mailbox, "bench": bench, "tree": tree, "bush": bush,
+    "pine": pine, "flower_shrub": flower_shrub, "flower_bed": flower_bed,
     "grill": grill, "picnic_table": picnic_table, "fountain": fountain,
     "treadmill": treadmill, "mirror": mirror, "guitar": guitar, "bar": bar, "pizza": pizza, "stereo": stereo, "car": car,
 }

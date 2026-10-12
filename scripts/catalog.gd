@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter", "dresser"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter", "dresser", "pine", "flower_shrub", "flower_bed"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -111,6 +111,9 @@ const INFO := {
 	"sculpture": ["Modern Sculpture", 400],
 	"monkey_bars": ["Monkey Bars", 450],
 	"column": ["Classic Column", 160],
+	"pine": ["Tall Pine", 160],
+	"flower_shrub": ["Flowering Shrub", 70],
+	"flower_bed": ["Flower Bed", 95],
 	"planter": ["Garden Planter", 150],
 	"dresser": ["Dresser", 300],
 	"piano": ["Upright Piano", 1200],
@@ -134,7 +137,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "planter": "outdoor", "dresser": "bedroom",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "pine": "outdoor", "flower_shrub": "outdoor", "flower_bed": "outdoor", "planter": "outdoor", "dresser": "bedroom",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -158,6 +161,9 @@ const DESCRIPTIONS := {
 	"bench": "Sit a while and watch the world go by.",
 	"tree": "Leafy, shady, and very good at standing still.",
 	"bush": "A tidy little bush.",
+	"pine": "An evergreen that stays green all year round.",
+	"flower_shrub": "A shrub covered in pink blossom. Brightens any yard.",
+	"flower_bed": "Rows of bright flowers. Sims enjoy stopping to smell them.",
 	"grill": "Burgers taste better outdoors.",
 	"picnic_table": "Room for a whole family's lunch.",
 	"fountain": "Toss in a coin and make a wish.",
@@ -462,9 +468,19 @@ static func create(kind: String) -> Furniture:
 			f.use_position = Vector3(0, 0.0, 0.0)
 			f.use_facing = Vector3(0, 0, 1)
 			f.interactions = [Interaction.new("Sit", {"fun": 6.0, "energy": 2.0}, 60.0, "", "sit")]
-		"tree", "bush":
+		"tree", "bush", "pine", "flower_shrub":
 			f.display_name = INFO[kind][0]
-			f.height = 3.0 if kind == "tree" else 0.8
+			f.height = {"tree": 3.0, "pine": 3.6, "bush": 0.8, "flower_shrub": 0.9}[kind]
+			f.decor = 1
+		"flower_bed":
+			f.display_name = "Flower Bed"
+			f.footprint = Vector2i(2, 1)
+			f.height = 0.5
+			f.decor = 2
+			f.spots = [Vector3(0, 0, 0.9), Vector3(0, 0, -0.9)]
+			f.interactions = [
+				Interaction.new("Smell the Flowers", {"fun": 10.0}, 10.0, "", "stand").grants("smelled_flowers", "happy", 1, "Stopped to Smell the Flowers", "Life's good.", 180.0),
+			]
 		"grill":
 			f.display_name = "Charcoal Grill"
 			f.height = 1.0
