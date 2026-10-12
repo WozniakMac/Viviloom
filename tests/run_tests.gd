@@ -33,6 +33,7 @@ func _ready() -> void:
 	_test_upper_floor()
 	_test_outfits()
 	_test_more_traits()
+	_test_swatches()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -541,3 +542,15 @@ func _test_more_traits() -> void:
 	_check(Traits.skill_mult(foodie, "cooking") > 1.0, "foodies learn cooking faster")
 	for t in Traits.ORDER:
 		_check(TraitHex.TRAIT_COLORS.has(t), "trait %s has a colour" % t)
+
+
+func _test_swatches() -> void:
+	var sofa := Catalog.create("sofa")
+	var cols := sofa.swatch_colors()
+	_check(cols.size() == 6, "sofas come in six colours")
+	sofa.set_variant(2)
+	_check(sofa.variant == 2, "a colour can be picked")
+	var other := Catalog.create("sofa")
+	_check(other.swatch_colors()[0] == cols[0], "recolouring one sofa leaves others alone")
+	sofa.free()
+	other.free()

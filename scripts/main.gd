@@ -928,7 +928,7 @@ func _lot_dict() -> Dictionary:
 	for f in lot.furniture:
 		if f.kind == "fire" or f.kind == "pool":
 			continue
-		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps, f.broken])
+		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps, f.broken, f.variant])
 	var pool_rects: Array = []
 	for r in lot.pools:
 		pool_rects.append([r.position.x, r.position.y, r.size.x, r.size.y])
@@ -996,6 +996,8 @@ func _apply_lot_dict(d: Dictionary) -> void:
 			var placed := _place(o[0], Vector2i(int(o[1]), int(o[2])), int(o[3]))
 			if o.size() > 4 and o[4]:
 				placed.set_broken(true)
+			if o.size() > 5 and int(o[5]) > 0:
+				placed.set_variant(int(o[5]))
 
 
 func save_game() -> void:
@@ -1663,6 +1665,16 @@ func _run_scenario(scenario: String, path: String) -> void:
 			Clock.set_speed(1)
 			await get_tree().create_timer(7.0).timeout
 			print("DEATH household=%d tombstones=%d mourning=%s" % [household.size(), lot.furniture.filter(func(f): return f.kind == "tombstone").size(), sim.emotions.has("mourning")])
+		"swatches":
+			find_furniture("sofa").set_variant(1)
+			find_furniture("bed").set_variant(3)
+			find_furniture("fridge").set_variant(2)
+			build.enter()
+			build.start_place("sofa")
+			build._held.set_variant(4)
+			build._show_object_swatches()
+			build._refresh_overlays(Vector3(12, 0, 14))
+			await get_tree().create_timer(2.5).timeout
 		"store":
 			aspirations.satisfaction = 2300
 			hud._show_page(5)

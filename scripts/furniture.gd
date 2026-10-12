@@ -21,6 +21,22 @@ var use_position: Variant = null
 ## Local direction the Sim faces while at `use_position`.
 var use_facing := Vector3(0, 0, 1)
 var user: Node3D = null
+## Colour swatch (0 = the original colours).
+var variant := 0
+## Material name -> its own copy and original colour, for recolouring.
+var _recolor := {}
+
+## Swatches: the main material family -> colours for variants 1.. (0 is original).
+const SWATCHES := {
+	"fabric": [Color(0.85, 0.45, 0.5), Color(0.9, 0.72, 0.3), Color(0.5, 0.68, 0.45), Color(0.3, 0.3, 0.35), Color(0.55, 0.4, 0.7)],
+	"wood": [Color(0.8, 0.66, 0.46), Color(0.32, 0.2, 0.12), Color(0.94, 0.93, 0.9), Color(0.16, 0.16, 0.18), Color(0.45, 0.62, 0.72)],
+	"white": [Color(0.75, 0.82, 0.9), Color(0.95, 0.85, 0.6), Color(0.2, 0.2, 0.22), Color(0.72, 0.85, 0.7), Color(0.9, 0.6, 0.6)],
+	"car": [Color(0.2, 0.4, 0.8), Color(0.95, 0.95, 0.95), Color(0.15, 0.15, 0.17), Color(0.95, 0.75, 0.2), Color(0.3, 0.6, 0.35)],
+}
+const MATERIAL_FAMILY := {
+	"FabricBlue": "fabric", "FabricTeal": "fabric", "FabricGrey": "fabric",
+	"Wood": "wood", "WoodLight": "wood", "Cabinet": "white", "White": "white", "CarBody": "car",
+}
 ## Messes (dirty dishes, puddles) sit on a tile without blocking it.
 var blocks := true
 ## Broken objects can only be repaired until fixed.
@@ -156,6 +172,53 @@ func apply_effect(e: String) -> void:
 			var player := get_node_or_null("Music") as AudioStreamPlayer3D
 			if player != null:
 				player.stop()
+
+
+## The swatch colours available for this object, or empty if it has none.
+func swatch_colors() -> Array:
+	_collect_recolor()
+	for name in _recolor:
+		return [_recolor[name][1]] + SWATCHES[MATERIAL_FAMILY[name]]
+	return []
+
+
+func _collect_recolor() -> void:
+	if not _recolor.is_empty():
+		return
+	for c in find_children("*", "MeshInstance3D", true, false):
+		var mi := c as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		for i in mi.mesh.get_surface_count():
+			var m := mi.mesh.surface_get_material(i) as BaseMaterial3D
+			if m == null or not MATERIAL_FAMILY.has(m.resource_name):
+				continue
+			if not _recolor.has(m.resource_name):
+				var own := m.duplicate() as BaseMaterial3D
+				_recolor[m.resource_name] = [own, m.albedo_color]
+			mi.set_surface_override_material(i, _recolor[m.resource_name][0])
+		break
+	# Only the first (main) recolourable material family is changed.
+	var first := ""
+	for name in _recolor:
+		if first == "":
+			first = name
+	for name in _recolor.keys():
+		if MATERIAL_FAMILY[name] != MATERIAL_FAMILY[first]:
+			_recolor.erase(name)
+
+
+## Applies colour swatch `v` (0 restores the original colours).
+func set_variant(v: int) -> void:
+	_collect_recolor()
+	if _recolor.is_empty():
+		return
+	variant = v
+	for name in _recolor:
+		var orig: Color = _recolor[name][1]
+		var fam: Array = SWATCHES[MATERIAL_FAMILY[name]]
+		var col: Color = orig if v <= 0 else fam[(v - 1) % fam.size()]
+		(_recolor[name][0] as BaseMaterial3D).albedo_color = col
 
 
 func set_ghost(ghost: bool) -> void:

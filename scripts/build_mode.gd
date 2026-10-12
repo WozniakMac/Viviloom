@@ -40,13 +40,15 @@ var _ui: CanvasLayer
 var _tool_buttons := {}
 var _category_buttons := {}
 var _tiles := {}
-var _tiles_box: HFlowContainer
+var _tiles_box: HBoxContainer
+var _tiles_scroll: ScrollContainer
 var _funds_label: Label
 var _thumbs: Thumbnails
 ## Selected wall and floor finishes (Finishes indices).
 var wall_style := 1
 var floor_style := 0
 var _swatch_box: HFlowContainer
+var _swatch_row: HBoxContainer
 var _floor_start: Variant = null
 var _floor_end := Vector2i.ZERO
 
@@ -277,6 +279,37 @@ func _finish_floor() -> void:
 	_wall_preview.visible = false
 
 
+## While an object is held, its colour swatches appear above the catalogue.
+func _show_object_swatches() -> void:
+	if _swatch_row == null:
+		return
+	for c in _swatch_row.get_children():
+		c.queue_free()
+	_swatch_row.visible = _held != null and not _held.swatch_colors().is_empty()
+	if not _swatch_row.visible:
+		return
+	var l := Label.new()
+	l.text = "Colours:"
+	l.add_theme_font_size_override("font_size", 13)
+	_swatch_row.add_child(l)
+	var cols := _held.swatch_colors()
+	for i in cols.size():
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(30, 30)
+		b.focus_mode = Control.FOCUS_NONE
+		var st := StyleBoxFlat.new()
+		st.bg_color = cols[i]
+		st.set_corner_radius_all(15)
+		st.border_color = UiTheme.GREEN if i == _held.variant else Color.WHITE
+		st.set_border_width_all(3)
+		b.add_theme_stylebox_override("normal", st)
+		b.add_theme_stylebox_override("hover", st)
+		b.pressed.connect(func():
+			_held.set_variant(i)
+			_show_object_swatches())
+		_swatch_row.add_child(b)
+
+
 func _pick_up(f: Furniture, is_new: bool) -> void:
 	_held = f
 	_held_is_new = is_new
@@ -286,6 +319,7 @@ func _pick_up(f: Furniture, is_new: bool) -> void:
 	if not is_new:
 		lot.remove_furniture(f)
 	f.set_ghost(true)
+	_show_object_swatches()
 
 
 func _drop() -> void:
@@ -301,6 +335,7 @@ func _drop() -> void:
 	_held = null
 	if tool == Tool.PLACE:
 		set_tool(Tool.MOVE)
+	_show_object_swatches()
 
 
 func _cancel_held() -> void:
@@ -313,6 +348,7 @@ func _cancel_held() -> void:
 		_held.set_ghost(false)
 	_held = null
 	_footprint.visible = false
+	_show_object_swatches()
 
 
 func _sell(f: Furniture) -> void:
@@ -550,13 +586,23 @@ func _build_ui() -> void:
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right.add_theme_constant_override("separation", 8)
 	row.add_child(right)
-	_tiles_box = HFlowContainer.new()
-	_tiles_box.add_theme_constant_override("h_separation", 8)
-	_tiles_box.add_theme_constant_override("v_separation", 8)
-	right.add_child(_tiles_box)
+	# One row of catalogue cards that scrolls sideways (mouse wheel works too).
+	_tiles_scroll = ScrollContainer.new()
+	_tiles_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_tiles_scroll.custom_minimum_size = Vector2(0, 146)
+	_tiles_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.add_child(_tiles_scroll)
+	_tiles_box = HBoxContainer.new()
+	_tiles_box.add_theme_constant_override("separation", 8)
+	_tiles_scroll.add_child(_tiles_box)
 	for kind in Catalog.KINDS:
 		_tiles[kind] = _make_tile(kind)
 		_tiles_box.add_child(_tiles[kind])
+	_swatch_row = HBoxContainer.new()
+	_swatch_row.add_theme_constant_override("separation", 6)
+	_swatch_row.visible = false
+	right.add_child(_swatch_row)
+	right.move_child(_swatch_row, 0)
 	_swatch_box = HFlowContainer.new()
 	_swatch_box.add_theme_constant_override("h_separation", 8)
 	_swatch_box.add_theme_constant_override("v_separation", 8)
@@ -632,7 +678,7 @@ func _show_swatches() -> void:
 	if _swatch_box == null:
 		return
 	var painting := tool == Tool.PAINT or tool == Tool.FLOOR
-	_tiles_box.visible = not painting
+	_tiles_scroll.visible = not painting
 	_swatch_box.visible = painting
 	for c in _swatch_box.get_children():
 		c.queue_free()
