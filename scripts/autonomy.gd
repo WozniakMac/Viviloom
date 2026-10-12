@@ -59,7 +59,7 @@ static func score(needs: Needs, interaction: Interaction) -> float:
 ## Personality and mood on top of needs: traits favour some activities, and a Sim
 ## feeling the emotion that suits a skill is drawn to practising it.
 static func preference(sim: Sim, f: Furniture, interaction: Interaction) -> float:
-	var m := Traits.liking(sim.traits, f.kind, interaction)
+	var m := Traits.liking(sim.traits, f.kind, interaction) * sim.like_mult(interaction.skill)
 	if interaction.skill != "" and sim.emotions.mood() == Skills.boosting_emotion(interaction.skill):
 		m *= 1.5
 	return m

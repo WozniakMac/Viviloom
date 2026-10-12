@@ -1409,6 +1409,19 @@ func _rebuild_traits() -> void:
 		col.add_child(desc)
 		row.add_child(col)
 		_traits_box.add_child(row)
+	# Likes & Dislikes.
+	if not sim.likes.is_empty() or not sim.dislikes.is_empty():
+		var lh := UiTheme.title(Label.new(), 16)
+		lh.text = "Likes & Dislikes"
+		_traits_box.add_child(lh)
+		var ld := Label.new()
+		ld.text = "Likes: %s
+Dislikes: %s" % [", ".join(PackedStringArray(sim.likes.map(func(k): return Skills.label(k)))), ", ".join(PackedStringArray(sim.dislikes.map(func(k): return Skills.label(k))))]
+		ld.add_theme_font_size_override("font_size", 13)
+		ld.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+		ld.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ld.custom_minimum_size = Vector2(330, 0)
+		_traits_box.add_child(ld)
 
 
 func _refresh_skills() -> void:

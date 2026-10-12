@@ -67,6 +67,7 @@ func _ready() -> void:
 	_test_surface_decor()
 	_test_more_aspirations()
 	_test_trait_batch_two()
+	_test_likes_dislikes()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1312,3 +1313,15 @@ func _test_trait_batch_two() -> void:
 	_check(Traits.liking(mean, "", insult) > 1.0 and Traits.liking(t, "", insult) < 1.0, "mean Sims enjoy insults, good ones avoid them")
 	var g: Array[String] = ["geek"]
 	_check(Traits.skill_mult(g, "gaming") > 1.0, "geeks learn gaming faster")
+
+
+func _test_likes_dislikes() -> void:
+	var s := Sim.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	s.roll_likes(rng)
+	_check(s.likes.size() >= 2 and s.dislikes.size() == 1 and not s.likes.has(s.dislikes[0]), "Sims get a few likes and a dislike")
+	_check(s.like_mult(s.likes[0]) > 1.0 and s.like_mult(s.dislikes[0]) < 1.0, "they seek out likes and avoid dislikes")
+	var d := s.to_dict()
+	_check(d["likes"] == s.likes and d["dislikes"] == s.dislikes, "likes and dislikes are saved")
+	s.free()

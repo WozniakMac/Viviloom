@@ -2292,6 +2292,9 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"simology":
+			hud.toggle_page(2)
+			await get_tree().create_timer(0.6).timeout
 		"decor":
 			var desk := find_furniture("desk")
 			var dc := desk.cell

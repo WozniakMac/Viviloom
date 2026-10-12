@@ -193,6 +193,8 @@ var _materials := {}
 
 
 func _ready() -> void:
+	if likes.is_empty() and dislikes.is_empty():
+		roll_likes(_rng)
 	_build_visual()
 	set_age(age_stage)
 	skills.leveled_up.connect(func(s: String, l: int):
@@ -657,6 +659,8 @@ func to_dict() -> Dictionary:
 		"spouse": spouse.sim_name if spouse != null and is_instance_valid(spouse) else "",
 		"partner": partner.sim_name if partner != null and is_instance_valid(partner) else "",
 		"traits": traits,
+		"likes": likes,
+		"dislikes": dislikes,
 		"aspiration": aspiration,
 		"needs": needs.values.duplicate(),
 		"skills": skills.xp.duplicate(),
@@ -701,6 +705,8 @@ func from_dict(d: Dictionary, others: Array) -> void:
 	for x in d.get("traits", []):
 		t.append(x)
 	set_traits(t)
+	likes = d.get("likes", likes).duplicate()
+	dislikes = d.get("dislikes", dislikes).duplicate()
 	aspiration = d.get("aspiration", aspiration)
 	for n in d.get("needs", {}):
 		needs.set_value(n, d["needs"][n])
@@ -1536,12 +1542,39 @@ func learn(skill: String, amount: float) -> void:
 		skills.add_xp(s, amount)
 
 
+## Likes & Dislikes, as in the reference: activities (by skill) this Sim enjoys
+## or can't stand. Rolled once, saved, shown in Simology.
+var likes: Array = []
+var dislikes: Array = []
+const LIKEABLE := ["cooking", "logic", "painting", "gaming", "fitness", "charisma", "guitar", "gardening", "writing", "handiness", "comedy", "mixology", "programming", "piano", "fishing"]
+
+
+func roll_likes(rng: RandomNumberGenerator) -> void:
+	var pool := LIKEABLE.duplicate()
+	pool.shuffle()
+	var n := rng.randi_range(2, 3)
+	likes = pool.slice(0, n)
+	dislikes = pool.slice(n, n + 1)
+
+
+func like_mult(skill: String) -> float:
+	if likes.has(skill):
+		return 1.5
+	if dislikes.has(skill):
+		return 0.4
+	return 1.0
+
+
 ## Moodlet and pay for an activity done long enough. Skill makes both better.
 ## Pay only comes when the activity is finished, not cancelled.
 func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 	if minutes_done < i.reward_after():
 		return
 	activity_done.emit(i.name)
+	if likes.has(i.skill):
+		emotions.add("like_" + i.skill, "happy", 1, "Doing Something I Like", "%s is one of my favourite things!" % Skills.label(i.skill), 180.0)
+	elif dislikes.has(i.skill):
+		emotions.add("dislike_" + i.skill, "tense", 1, "Doing Something I Dislike", "Ugh, %s again." % Skills.label(i.skill).to_lower(), 180.0)
 	var lvl := skills.level(i.skill) if i.skill != "" else 0
 	if not i.moodlet.is_empty():
 		var m := i.moodlet
