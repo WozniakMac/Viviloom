@@ -43,6 +43,7 @@ func _ready() -> void:
 	_test_walk_styles()
 	_test_story()
 	_test_toddler_parenting()
+	_test_new_furniture()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -843,3 +844,20 @@ func _test_toddler_parenting() -> void:
 	life.free()
 	mum.free()
 	kid.free()
+
+
+func _test_new_furniture() -> void:
+	for kind in ["single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture"]:
+		_check(Catalog.INFO.has(kind) and Catalog.CATEGORY_OF.has(kind) and Catalog.KINDS.has(kind), "%s is in the catalogue" % kind)
+		var f := Catalog.create(kind)
+		_check(f.display_name != "", "%s builds" % kind)
+		f.free()
+	var rug := Catalog.create("rug")
+	_check(not rug.blocks and rug.decor > 0, "rugs decorate and can be walked on")
+	rug.free()
+	var bed := Catalog.create("single_bed")
+	_check(bed.capacity() == 1 and bed.get_node_or_null("Covers") != null, "single beds sleep one under a duvet")
+	bed.free()
+	var art := Catalog.make_painting({"quality": 3, "value": 300})
+	_check(art.decor == 4, "better paintings decorate more")
+	art.free()

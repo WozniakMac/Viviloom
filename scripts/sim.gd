@@ -1236,7 +1236,7 @@ func _begin_perform(a: SimAction) -> void:
 		change_outfit("everyday")
 		_begin_social(a)
 		return
-	if a.furniture.kind != "bed" or a.interaction.pose == "lie":
+	if not a.furniture.kind in ["bed", "single_bed"] or a.interaction.pose == "lie":
 		change_outfit(outfit_for(a.interaction))
 	if a.interaction.cost > 0 and wallet != null:
 		if wallet.funds < a.interaction.cost:
@@ -1266,7 +1266,7 @@ func _begin_perform(a: SimAction) -> void:
 		global_position = f.to_global(place)
 		facing = f.global_basis * f.use_facing
 	# Sharing a bed with someone special is lovely.
-	if f.kind == "bed" and a.interaction.pose == "lie":
+	if f.kind in ["bed", "single_bed"] and a.interaction.pose == "lie":
 		for other in f.users:
 			if other != self and is_instance_valid(other) and (spouse == other or romance_with(other) >= 30.0):
 				emotions.add("cozy", "happy", 1, "Cozy Together", "Nothing beats falling asleep next to them.", 480.0)

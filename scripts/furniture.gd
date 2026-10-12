@@ -109,6 +109,8 @@ func set_romp(on: bool) -> void:
 	hearts.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(hearts)
 	_romp_hearts = hearts
+## How much this object adds to a room's look (environment score).
+var decor := 0
 ## Colour swatch (0 = the original colours).
 var variant := 0
 ## Material name -> its own copy and original colour, for recolouring.

@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -60,6 +60,15 @@ const INFO := {
 	"bar": ["Bar Counter", 1400],
 	"stereo": ["Stereo", 350],
 	"toybox": ["Toy Box", 120],
+	"single_bed": ["Single Bed", 450],
+	"armchair": ["Armchair", 380],
+	"coffee_table": ["Coffee Table", 150],
+	"end_table": ["End Table", 90],
+	"bathtub": ["Bathtub", 900],
+	"dollhouse": ["Dollhouse", 300],
+	"activity_table": ["Kids' Activity Table", 250],
+	"rug": ["Area Rug", 120],
+	"sculpture": ["Modern Sculpture", 400],
 	"piano": ["Upright Piano", 1200],
 	"telescope": ["Telescope", 700],
 	"pond": ["Fishing Pond", 500],
@@ -81,7 +90,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -111,6 +120,15 @@ const DESCRIPTIONS := {
 	"treadmill": "Run for miles without leaving the room.",
 	"mirror": "Practise speeches until you believe them.",
 	"guitar": "Strum, practise, maybe even get good.",
+	"single_bed": "A cosy bed for one. Perfect for kids' rooms.",
+	"armchair": "A plump chair for reading the paper or sulking in style.",
+	"coffee_table": "Somewhere to put your feet up. Brightens a room.",
+	"end_table": "A little table with a vase on top.",
+	"bathtub": "Bubble baths, relaxing soaks and squeaky-clean Sims.",
+	"dollhouse": "Endless make-believe. Builds a toddler's Imagination.",
+	"activity_table": "Crayons and blocks for little hands.",
+	"rug": "Ties the room together. Sims can walk on it.",
+	"sculpture": "Bold, baffling, beautiful. Raises a room's look.",
 	"piano": "Polished keys for budding virtuosos. Practise to play for tips.",
 	"telescope": "Gaze at the stars and ponder the universe. Good for Logic.",
 	"pond": "A little stocked pond. Cast a line and see what bites.",
@@ -298,6 +316,7 @@ static func create(kind: String) -> Furniture:
 			]
 		"lamp":
 			f.display_name = "Floor Lamp"
+			f.decor = 1
 			f.height = 1.7
 			f.add_box(Vector3(0.35, 0.04, 0.35), Vector3(0, 0.02, 0), DARK)
 			f.add_box(Vector3(0.04, 1.45, 0.04), Vector3(0, 0.74, 0), DARK)
@@ -374,6 +393,7 @@ static func create(kind: String) -> Furniture:
 			]
 		"plant":
 			f.display_name = "Potted Plant"
+			f.decor = 1
 			f.height = 0.8
 			f.spots = [Vector3(0, 0, 0.8)]
 			f.interactions = [
@@ -472,6 +492,126 @@ static func create(kind: String) -> Furniture:
 			var mix := Interaction.new("Mix a Drink", {"fun": 20.0, "social": 5.0}, 30.0, "", "stand", true).holding("drink").practices("mixology", 65.0).grants("mixed", "confident", 1, "Shaken, Not Stirred", "Mixed a mean drink.", 120.0)
 			mix.cost = 5
 			f.interactions = [drink, mix, Interaction.new("Chat with the Bartender", {"social": 70.0}, 30.0, "social", "stand", true)]
+		"single_bed":
+			f.display_name = "Single Bed"
+			f.footprint = Vector2i(1, 2)
+			f.height = 0.8
+			f.add_box(Vector3(0.95, 0.35, 1.95), Vector3(0, 0.18, 0), WOOD)
+			f.add_box(Vector3(0.88, 0.2, 1.85), Vector3(0, 0.45, 0.02), WHITE)
+			f.add_box(Vector3(0.9, 0.06, 1.25), Vector3(0, 0.57, 0.33), Color(0.85, 0.55, 0.3))
+			f.add_box(Vector3(0.6, 0.12, 0.35), Vector3(0, 0.6, -0.7), WHITE)
+			f.add_box(Vector3(1.0, 0.8, 0.1), Vector3(0, 0.4, -0.95), WOOD)
+			f.spots = [Vector3(-1.0, 0, 0.2), Vector3(1.0, 0, 0.2)]
+			f.use_position = Vector3(0, 0.62, 0.92)
+			f.use_facing = Vector3(0, 0, 1)
+			var single_rates := {"energy": 13.0, "hunger": -3.0, "bladder": -4.0, "hygiene": -2.0, "fun": 0.0, "social": -2.0}
+			f.interactions = [
+				_cry(),
+				Interaction.new("Sleep", single_rates, 600.0, "energy", "lie").grants("well_rested", "energized", 1, "Well Rested", "Ready to take on the day!", 240.0),
+				Interaction.new("Nap", single_rates, 90.0, "energy", "lie"),
+			]
+		"armchair":
+			f.display_name = "Armchair"
+			f.height = 0.95
+			var fabric := Color(0.55, 0.62, 0.45)
+			f.add_box(Vector3(0.85, 0.42, 0.8), Vector3(0, 0.21, 0), fabric)
+			f.add_box(Vector3(0.85, 0.55, 0.18), Vector3(0, 0.65, -0.32), fabric)
+			for x in [-0.37, 0.37]:
+				f.add_box(Vector3(0.14, 0.25, 0.8), Vector3(x, 0.52, 0), fabric.darkened(0.1))
+			f.add_box(Vector3(0.6, 0.1, 0.6), Vector3(0, 0.47, 0.05), fabric.lightened(0.15))
+			f.spots = [Vector3(0, 0, 0.9)]
+			f.use_position = Vector3(0, 0.05, 0.08)
+			f.use_facing = Vector3(0, 0, 1)
+			f.interactions = [
+				Interaction.new("Sit", {"fun": 6.0, "energy": 4.0}, 60.0, "", "sit"),
+				Interaction.new("Read the Paper", {"fun": 25.0}, 45.0, "fun", "sit", true).practices("logic", 15.0).holding("book"),
+				Interaction.new("Sulk", {"fun": 4.0}, 45.0, "", "sit").when_feeling("angry").clearing("angry").grants("calmed", "fine", 0, "Calmed Down", "Got it out of their system.", 60.0),
+			]
+		"coffee_table":
+			f.display_name = "Coffee Table"
+			f.footprint = Vector2i(2, 1)
+			f.height = 0.45
+			f.add_box(Vector3(1.4, 0.06, 0.6), Vector3(0, 0.42, 0), WOOD)
+			for p in [Vector3(-0.62, 0.2, -0.24), Vector3(0.62, 0.2, -0.24), Vector3(-0.62, 0.2, 0.24), Vector3(0.62, 0.2, 0.24)]:
+				f.add_box(Vector3(0.06, 0.4, 0.06), p, WOOD.darkened(0.2))
+			f.add_box(Vector3(0.25, 0.04, 0.18), Vector3(0.3, 0.47, 0.05), Color(0.8, 0.3, 0.3))
+			f.decor = 1
+		"end_table":
+			f.display_name = "End Table"
+			f.height = 0.6
+			f.add_box(Vector3(0.5, 0.5, 0.5), Vector3(0, 0.25, 0), WOOD)
+			f.add_box(Vector3(0.52, 0.04, 0.52), Vector3(0, 0.52, 0), WOOD.lightened(0.1))
+			f.add_box(Vector3(0.12, 0.22, 0.12), Vector3(0.1, 0.65, 0.05), Color(0.35, 0.55, 0.8))
+			f.decor = 1
+		"bathtub":
+			f.display_name = "Bathtub"
+			f.footprint = Vector2i(2, 1)
+			f.height = 0.6
+			f.add_box(Vector3(1.75, 0.2, 0.8), Vector3(0, 0.1, 0), WHITE)
+			for side in [-1.0, 1.0]:
+				f.add_box(Vector3(1.75, 0.38, 0.1), Vector3(0, 0.37, 0.35 * side), WHITE)
+				f.add_box(Vector3(0.1, 0.38, 0.6), Vector3(0.825 * side, 0.37, 0), WHITE)
+			var water_tub := f.add_box(Vector3(1.55, 0.03, 0.6), Vector3(0, 0.42, 0), Color(0.6, 0.82, 0.95))
+			water_tub.name = "Water"
+			f.add_box(Vector3(0.05, 0.25, 0.05), Vector3(-0.8, 0.65, 0), Color(0.75, 0.75, 0.8))
+			f.spots = [Vector3(0, 0, 0.9)]
+			f.use_position = Vector3(0.1, 0.12, 0.0)
+			f.use_facing = Vector3(1, 0, 0)
+			f.interactions = [
+				Interaction.new("Take a Bath", {"hygiene": 150.0, "energy": 4.0, "fun": 8.0}, 60.0, "hygiene", "lie").grants("relaxing_bath", "happy", 1, "Relaxing Bath", "Soaked all the stress away.", 180.0),
+				Interaction.new("Take a Bubble Bath", {"hygiene": 140.0, "fun": 25.0}, 60.0, "hygiene", "lie").grants("bubbles", "playful", 1, "Bubble Fun", "Bubbles everywhere!", 180.0),
+				Interaction.new("Soak Away the Tension", {"hygiene": 120.0, "energy": 6.0}, 60.0, "hygiene", "lie").when_feeling("tense").clearing("tense").grants("unwound", "happy", 1, "Unwound", "Much better.", 180.0),
+			]
+		"dollhouse":
+			f.display_name = "Dollhouse"
+			f.height = 1.1
+			f.add_box(Vector3(0.9, 0.7, 0.4), Vector3(0, 0.35, -0.1), Color(0.95, 0.85, 0.7))
+			var droof := f.add_box(Vector3(0.95, 0.06, 0.45), Vector3(-0.22, 0.86, -0.1), Color(0.8, 0.35, 0.35))
+			droof.rotation.z = 0.6
+			var droof2 := f.add_box(Vector3(0.95, 0.06, 0.45), Vector3(0.22, 0.86, -0.1), Color(0.8, 0.35, 0.35))
+			droof2.rotation.z = -0.6
+			for p in [Vector3(-0.22, 0.2, 0.11), Vector3(0.22, 0.2, 0.11), Vector3(-0.22, 0.5, 0.11), Vector3(0.22, 0.5, 0.11)]:
+				f.add_box(Vector3(0.18, 0.16, 0.01), p, Color(0.55, 0.75, 0.9))
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Play House", {"fun": 55.0, "social": 10.0}, 60.0, "fun", "stand", true).practices("imagination", 60.0).grants("make_believe", "playful", 1, "Make Believe", "The dolls are having a tea party.", 120.0),
+			]
+		"activity_table":
+			f.display_name = "Kids' Activity Table"
+			f.height = 0.55
+			f.add_box(Vector3(0.9, 0.05, 0.6), Vector3(0, 0.5, 0), Color(0.95, 0.75, 0.3))
+			for p in [Vector3(-0.4, 0.25, -0.25), Vector3(0.4, 0.25, -0.25), Vector3(-0.4, 0.25, 0.25), Vector3(0.4, 0.25, 0.25)]:
+				f.add_box(Vector3(0.05, 0.5, 0.05), p, Color(0.3, 0.55, 0.85))
+			f.add_box(Vector3(0.3, 0.01, 0.22), Vector3(-0.15, 0.53, 0.05), WHITE)
+			for k in 3:
+				f.add_box(Vector3(0.1, 0.1, 0.1), Vector3(0.18 + k * 0.08, 0.58 + k * 0.1, -0.1), [Color(0.9, 0.3, 0.3), Color(0.3, 0.7, 0.4), Color(0.3, 0.5, 0.9)][k])
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Draw a Picture", {"fun": 40.0}, 60.0, "fun", "stand", true).practices("painting", 35.0).grants("doodled", "inspired", 1, "Little Artist", "Look what I made!", 120.0),
+				Interaction.new("Build with Blocks", {"fun": 45.0}, 45.0, "fun", "stand", true).practices("thinking", 60.0).grants("tower", "playful", 1, "Tall Tower", "It's SO tall!", 90.0),
+			]
+		"rug":
+			f.display_name = "Area Rug"
+			f.footprint = Vector2i(2, 2)
+			f.blocks = false
+			f.height = 0.02
+			f.add_box(Vector3(1.9, 0.015, 1.9), Vector3(0, 0.008, 0), Color(0.7, 0.35, 0.3))
+			f.add_box(Vector3(1.5, 0.017, 1.5), Vector3(0, 0.009, 0), Color(0.92, 0.82, 0.65))
+			f.add_box(Vector3(0.9, 0.019, 0.9), Vector3(0, 0.01, 0), Color(0.3, 0.45, 0.6))
+			f.decor = 2
+		"sculpture":
+			f.display_name = "Modern Sculpture"
+			f.height = 1.4
+			f.add_box(Vector3(0.45, 0.6, 0.45), Vector3(0, 0.3, 0), WHITE)
+			var s1 := f.add_box(Vector3(0.12, 0.7, 0.12), Vector3(0, 0.95, 0), Color(0.85, 0.6, 0.25))
+			s1.rotation.z = 0.5
+			var s2 := f.add_box(Vector3(0.3, 0.3, 0.3), Vector3(0.1, 1.15, 0), Color(0.2, 0.45, 0.75))
+			s2.rotation = Vector3(0.6, 0.6, 0)
+			f.spots = [Vector3(0, 0, 0.9)]
+			f.decor = 3
+			f.interactions = [
+				Interaction.new("View", {"fun": 15.0}, 15.0, "", "stand").grants("art_moved", "inspired", 1, "Moved by Art", "What does it mean?", 120.0),
+			]
 		"piano":
 			f.display_name = "Upright Piano"
 			f.footprint = Vector2i(2, 1)
@@ -667,9 +807,11 @@ static func create(kind: String) -> Furniture:
 			push_error("Unknown furniture kind: %s" % kind)
 	f.price = INFO[kind][1]
 	_use_model(f, kind)
-	if kind == "bed":
+	if kind == "bed" or kind == "single_bed":
 		# A duvet that covers whoever is sleeping (hidden while the bed is empty).
-		var covers := f.add_box(Vector3(1.88, 0.26, 1.4), Vector3(0, 0.84, 0.28), Color(0.32, 0.48, 0.78))
+		var width := 1.88 if kind == "bed" else 0.94
+		var col := Color(0.32, 0.48, 0.78) if kind == "bed" else Color(0.85, 0.55, 0.3)
+		var covers := f.add_box(Vector3(width, 0.26, 1.4), Vector3(0, 0.84, 0.28), col)
 		covers.name = "Covers"
 		covers.visible = false
 	if kind != "pool":
@@ -728,6 +870,7 @@ static func make_painting(item: Dictionary) -> Furniture:
 	var seed: int = item.get("seed", 1)
 	var q: int = item.get("quality", 0)
 	f.price = item.get("value", 20)
+	f.decor = 1 + q
 	f.display_name = "%s Painting" % PAINTING_QUALITY[q]
 	f.set_meta("item", item.duplicate())
 	var rng := RandomNumberGenerator.new()

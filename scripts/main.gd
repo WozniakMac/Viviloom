@@ -897,6 +897,17 @@ func _update_mess() -> void:
 	if Clock.total_minutes < _mess_check:
 		return
 	_mess_check = Clock.total_minutes + 2.0
+	# Environment: a well-decorated room lifts spirits, like the reference game.
+	for s in lot.sims:
+		var sm := s as Sim
+		if not lot.is_indoors(lot.world_to_cell(sm.global_position)):
+			continue
+		var score := 0
+		for f in lot.furniture:
+			if f.decor > 0 and f.global_position.distance_to(sm.global_position) < 4.5:
+				score += f.decor
+		if score >= 4:
+			sm.emotions.add("decorated", "happy", 1 if score < 8 else 2, "Nicely Decorated" if score < 8 else "Beautiful Room", "This room looks great.", 10.0)
 	# Lot traits keep their moodlets topped up for everyone on the lot.
 	var hour := fmod(Clock.total_minutes / 60.0, 24.0)
 	for m in LotTraits.moodlets(lot.lot_traits, hour):
@@ -1796,6 +1807,20 @@ func _run_scenario(scenario: String, path: String) -> void:
 			lot.wall_view = Lot.WallView.CUTAWAY
 			rig.frame(pn.global_position, deg_to_rad(25.0), deg_to_rad(-35.0), 8.0)
 			await get_tree().create_timer(4.0).timeout
+		"showroom":
+			lot.add_floor(Rect2i(2, 14, 20, 5), 2)
+			_place("rug", Vector2i(4, 15))
+			_place("armchair", Vector2i(4, 14))
+			_place("coffee_table", Vector2i(4, 16), 2)
+			_place("end_table", Vector2i(6, 14))
+			_place("sculpture", Vector2i(8, 15))
+			_place("bathtub", Vector2i(10, 15))
+			_place("single_bed", Vector2i(13, 14))
+			_place("dollhouse", Vector2i(15, 15))
+			_place("activity_table", Vector2i(17, 15))
+			sim.global_position = lot.cell_to_world(Vector2i(12, 17))
+			rig.frame(lot.cell_to_world(Vector2i(10, 15)), deg_to_rad(190.0), deg_to_rad(-45.0), 12.0)
+			await get_tree().create_timer(1.0).timeout
 		"toddlermenu":
 			sim.pregnant_days = 0
 			life._give_birth(sim)
