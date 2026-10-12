@@ -14,6 +14,9 @@ const WALL_LOW := 0.3
 const WALL_THICKNESS := 0.12
 const DOOR_WIDTH := 0.9
 const DOOR_HEIGHT := 2.1
+const WINDOW_WIDTH := 0.8
+const WINDOW_SILL := 0.85
+const WINDOW_TOP := 2.1
 
 enum WallView { UP, CUTAWAY, DOWN }
 
@@ -26,6 +29,13 @@ var sims: Array = []
 var walls := {}
 ## Vector3i edge -> true for walls that have a door.
 var doors := {}
+## Vector3i edge -> true for walls with a window.
+var windows := {}
+## Vector3i edge -> Finishes.WALLS index (missing = the default paint).
+var wall_styles := {}
+## Vector2i tile -> Finishes.FLOORS index.
+var floor_tiles := {}
+var _floor_mesh: MeshInstance3D
 var wall_view := WallView.CUTAWAY
 
 var _blocked := {}
@@ -34,7 +44,8 @@ var _astar := AStar2D.new()
 var _dirty := true
 var _interior := {}
 var _rooms_dirty := true
-var _wall_mat: StandardMaterial3D
+var _frame_mat: StandardMaterial3D
+var _glass_mat: StandardMaterial3D
 ## Floors and decorative blocks added by a house layout, removed by clear_build().
 var _built: Array[Node3D] = []
 var _door_mat: StandardMaterial3D
@@ -192,6 +203,8 @@ func remove_wall(e: Vector3i) -> bool:
 	(walls[e] as Node3D).queue_free()
 	walls.erase(e)
 	doors.erase(e)
+	windows.erase(e)
+	wall_styles.erase(e)
 	_dirty = true
 	_rooms_dirty = true
 	return true
@@ -200,11 +213,76 @@ func remove_wall(e: Vector3i) -> bool:
 func add_door(e: Vector3i) -> bool:
 	if not walls.has(e) or doors.has(e):
 		return false
-	(walls[e] as Node3D).queue_free()
+	windows.erase(e)
 	doors[e] = true
-	walls[e] = _make_wall_visual(e, true)
+	_refresh_wall(e)
 	_dirty = true
 	return true
+
+
+## Puts a window in a wall (walls with doors can't have one).
+func add_window(e: Vector3i) -> bool:
+	if not walls.has(e) or doors.has(e) or windows.has(e):
+		return false
+	windows[e] = true
+	_refresh_wall(e)
+	return true
+
+
+func paint_wall(e: Vector3i, style: int) -> bool:
+	if not walls.has(e) or wall_styles.get(e, 0) == style:
+		return false
+	wall_styles[e] = style
+	_refresh_wall(e)
+	return true
+
+
+## Rebuilds a wall's visual after a door, window or paint change, keeping its
+## current cutaway height.
+func _refresh_wall(e: Vector3i) -> void:
+	var old := walls[e] as Node3D
+	var h := old.scale.y
+	old.queue_free()
+	walls[e] = _make_wall_visual(e, doors.has(e))
+	(walls[e] as Node3D).scale.y = h
+
+
+# --- Floors -----------------------------------------------------------------
+
+func set_floor(c: Vector2i, style: int) -> void:
+	if in_bounds(c):
+		floor_tiles[c] = style
+	_rebuild_floor()
+
+
+## Builds one mesh for all floor tiles; the colour carries the finish and pattern.
+func _rebuild_floor() -> void:
+	if _floor_mesh == null:
+		_floor_mesh = MeshInstance3D.new()
+		_floor_mesh.name = "Floors"
+		_floor_mesh.material_override = Finishes.floor_material()
+		add_child(_floor_mesh)
+	if floor_tiles.is_empty():
+		_floor_mesh.mesh = null
+		return
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_normal(Vector3.UP)
+	for c in floor_tiles:
+		var f: Array = Finishes.FLOORS[clampi(floor_tiles[c], 0, Finishes.FLOORS.size() - 1)]
+		var col: Color = f[1]
+		col.a = float(f[2]) / 8.0
+		st.set_color(col)
+		var x0: float = c.x * CELL
+		var z0: float = c.y * CELL
+		var y := 0.021
+		var a := Vector3(x0, y, z0)
+		var b := Vector3(x0 + CELL, y, z0)
+		var d := Vector3(x0, y, z0 + CELL)
+		var e := Vector3(x0 + CELL, y, z0 + CELL)
+		for v in [a, b, e, a, e, d]:
+			st.add_vertex(v)
+	_floor_mesh.mesh = st.commit()
 
 
 ## The edges of a straight wall run from grid vertex a towards vertex b, along
@@ -227,27 +305,49 @@ func _edge_inside_furniture(e: Vector3i) -> bool:
 
 
 func _make_wall_visual(e: Vector3i, with_door: bool) -> Node3D:
-	if _wall_mat == null:
-		_wall_mat = StandardMaterial3D.new()
-		_wall_mat.albedo_color = Color(0.9, 0.87, 0.8)
-		_wall_mat.roughness = 0.9
+	if _door_mat == null:
 		_door_mat = StandardMaterial3D.new()
 		_door_mat.albedo_color = Color(0.48, 0.32, 0.2)
+		_frame_mat = StandardMaterial3D.new()
+		_frame_mat.albedo_color = Color(0.96, 0.96, 0.94)
+		_glass_mat = StandardMaterial3D.new()
+		_glass_mat.albedo_color = Color(0.7, 0.85, 0.95, 0.3)
+		_glass_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_glass_mat.roughness = 0.05
+		_glass_mat.metallic_specular = 1.0
+	var wall_mat: Material = Finishes.wall_material(wall_styles.get(e, 0))
 	var n := Node3D.new()
 	n.name = "Wall"
 	n.position = edge_center(e)
 	if e.z == 1:
 		n.rotation.y = PI * 0.5
 	var full := CELL + WALL_THICKNESS
-	if not with_door:
-		_wall_box(n, Vector3(full, WALL_HEIGHT, WALL_THICKNESS), Vector3(0, WALL_HEIGHT * 0.5, 0), _wall_mat)
+	if windows.has(e) and not with_door:
+		# Sill, header and side posts around a framed pane.
+		var w := WINDOW_WIDTH
+		var side := (full - w) * 0.5
+		var side_x := (w + side) * 0.5
+		_wall_box(n, Vector3(full, WINDOW_SILL, WALL_THICKNESS), Vector3(0, WINDOW_SILL * 0.5, 0), wall_mat)
+		var top := WALL_HEIGHT - WINDOW_TOP
+		_wall_box(n, Vector3(full, top, WALL_THICKNESS), Vector3(0, WINDOW_TOP + top * 0.5, 0), wall_mat)
+		var mid_h := WINDOW_TOP - WINDOW_SILL
+		var mid_y := WINDOW_SILL + mid_h * 0.5
+		_wall_box(n, Vector3(side, mid_h, WALL_THICKNESS), Vector3(-side_x, mid_y, 0), wall_mat)
+		_wall_box(n, Vector3(side, mid_h, WALL_THICKNESS), Vector3(side_x, mid_y, 0), wall_mat)
+		_wall_box(n, Vector3(w, mid_h, 0.02), Vector3(0, mid_y, 0), _glass_mat)
+		for fx in [-w * 0.5, 0.0, w * 0.5]:
+			_wall_box(n, Vector3(0.04, mid_h, WALL_THICKNESS + 0.03), Vector3(fx, mid_y, 0), _frame_mat)
+		for fy in [WINDOW_SILL, WINDOW_TOP]:
+			_wall_box(n, Vector3(w + 0.04, 0.04, WALL_THICKNESS + 0.06), Vector3(0, fy, 0), _frame_mat)
+	elif not with_door:
+		_wall_box(n, Vector3(full, WALL_HEIGHT, WALL_THICKNESS), Vector3(0, WALL_HEIGHT * 0.5, 0), wall_mat)
 	else:
 		var side := (full - DOOR_WIDTH) * 0.5
 		var side_x := (DOOR_WIDTH + side) * 0.5
-		_wall_box(n, Vector3(side, WALL_HEIGHT, WALL_THICKNESS), Vector3(-side_x, WALL_HEIGHT * 0.5, 0), _wall_mat)
-		_wall_box(n, Vector3(side, WALL_HEIGHT, WALL_THICKNESS), Vector3(side_x, WALL_HEIGHT * 0.5, 0), _wall_mat)
+		_wall_box(n, Vector3(side, WALL_HEIGHT, WALL_THICKNESS), Vector3(-side_x, WALL_HEIGHT * 0.5, 0), wall_mat)
+		_wall_box(n, Vector3(side, WALL_HEIGHT, WALL_THICKNESS), Vector3(side_x, WALL_HEIGHT * 0.5, 0), wall_mat)
 		var lintel := WALL_HEIGHT - DOOR_HEIGHT
-		_wall_box(n, Vector3(DOOR_WIDTH, lintel, WALL_THICKNESS), Vector3(0, DOOR_HEIGHT + lintel * 0.5, 0), _wall_mat)
+		_wall_box(n, Vector3(DOOR_WIDTH, lintel, WALL_THICKNESS), Vector3(0, DOOR_HEIGHT + lintel * 0.5, 0), wall_mat)
 		var hinge := Node3D.new()
 		hinge.name = "DoorHinge"
 		hinge.position = Vector3(-DOOR_WIDTH * 0.5, 0, 0)
@@ -492,6 +592,8 @@ func clear_build() -> void:
 		f.queue_free()
 	for e in walls.keys():
 		remove_wall(e)
+	floor_tiles.clear()
+	_rebuild_floor()
 	for n in _built:
 		if n.has_meta("blocks"):
 			set_rect_blocked(n.get_meta("blocks"), false)
@@ -577,17 +679,10 @@ func add_block(rect: Rect2i, height: float, color: Color, block_name := "Block")
 	return m
 
 
-## A flat floor finish (does not block walking).
-func add_floor(rect: Rect2i, color: Color) -> void:
-	var m := MeshInstance3D.new()
-	m.name = "Floor"
-	var box := BoxMesh.new()
-	box.size = Vector3(rect.size.x * CELL, 0.04, rect.size.y * CELL)
-	m.mesh = box
-	m.position = Vector3((rect.position.x + rect.size.x * 0.5) * CELL, 0.0, (rect.position.y + rect.size.y * 0.5) * CELL)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.roughness = 0.6
-	m.material_override = mat
-	add_child(m)
-	_built.append(m)
+## Covers a rectangle of tiles with a floor finish (Finishes.FLOORS index).
+func add_floor(rect: Rect2i, style: int) -> void:
+	for x in range(rect.position.x, rect.end.x):
+		for y in range(rect.position.y, rect.end.y):
+			if in_bounds(Vector2i(x, y)):
+				floor_tiles[Vector2i(x, y)] = style
+	_rebuild_floor()

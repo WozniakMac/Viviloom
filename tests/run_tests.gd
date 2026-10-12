@@ -24,6 +24,7 @@ func _ready() -> void:
 	_test_daylight()
 	_test_sim_round_trip()
 	_test_new_objects()
+	_test_finishes()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -329,4 +330,24 @@ func _test_new_objects() -> void:
 	_check(lot.can_place(sofa, Vector2i(2, 2), 0) and not lot.can_place(sofa, Vector2i(14, 2), 0), "a 3-wide sofa must fit inside the lot")
 	sofa.free()
 	_check(Bills.amount_for(5000) > Bills.amount_for(1000), "pricier homes get bigger bills")
+	lot.free()
+
+
+func _test_finishes() -> void:
+	var lot := _make_lot()
+	for e in Lot.wall_run(Vector2i(0, 8), Vector2i(16, 8)):
+		lot.add_wall(e)
+	var e := Vector3i(4, 8, 0)
+	_check(lot.add_window(e) and lot.windows.has(e), "windows go on walls")
+	_check(not lot.add_window(Vector3i(4, 3, 0)), "no window without a wall")
+	lot.add_door(e)
+	_check(lot.doors.has(e) and not lot.windows.has(e), "a door replaces a window")
+	_check(lot.find_path(lot.cell_to_world(Vector2i(4, 2)), lot.cell_to_world(Vector2i(4, 12))).size() > 0, "the door still lets Sims through")
+	lot.add_window(Vector3i(6, 8, 0))
+	_check(lot.find_path(lot.cell_to_world(Vector2i(6, 7)), lot.cell_to_world(Vector2i(6, 9))).size() > 2, "windows don't let Sims through")
+	_check(lot.paint_wall(Vector3i(6, 8, 0), 3) and lot.wall_styles[Vector3i(6, 8, 0)] == 3, "walls take paint")
+	lot.add_floor(Rect2i(1, 1, 3, 2), 2)
+	_check(lot.floor_tiles.size() == 6 and lot.floor_tiles[Vector2i(2, 2)] == 2, "floors cover their rectangle")
+	lot.clear_build()
+	_check(lot.floor_tiles.is_empty() and lot.windows.is_empty() and lot.wall_styles.is_empty(), "clearing removes finishes")
 	lot.free()

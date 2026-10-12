@@ -6,7 +6,7 @@ extends Node
 signal funds_changed(funds: int)
 signal notice(text: String)
 
-enum Tool { MOVE, WALL, DOOR, DELETE, PLACE }
+enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR }
 
 var lot: Lot
 var sim: Sim
@@ -38,6 +38,12 @@ var _tiles := {}
 var _tiles_box: HFlowContainer
 var _funds_label: Label
 var _thumbs: Thumbnails
+## Selected wall and floor finishes (Finishes indices).
+var wall_style := 1
+var floor_style := 0
+var _swatch_box: HFlowContainer
+var _floor_start: Variant = null
+var _floor_end := Vector2i.ZERO
 
 
 func _ready() -> void:
@@ -79,6 +85,8 @@ func set_tool(t: Tool) -> void:
 	for k in _tool_buttons:
 		(_tool_buttons[k] as Button).button_pressed = (k == t)
 		(_tool_buttons[k] as Button).queue_redraw()
+	_floor_start = null
+	_show_swatches()
 	_refresh_overlays(null)
 
 
@@ -105,6 +113,8 @@ func handle_input(event: InputEvent) -> void:
 				_on_press(p, mb.position)
 			elif tool == Tool.WALL and _wall_start != null:
 				_finish_wall()
+			elif tool == Tool.FLOOR and _floor_start != null:
+				_finish_floor()
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			if _held != null:
 				_cancel_held()
@@ -148,6 +158,28 @@ func _on_press(p: Variant, screen_pos: Vector2) -> void:
 				pass
 			elif _spend(Catalog.DOOR_PRICE):
 				lot.add_door(e)
+		Tool.WINDOW:
+			var e := lot.edge_near(pt)
+			if not lot.walls.has(e):
+				notice.emit("Windows go on walls.")
+			elif lot.doors.has(e):
+				notice.emit("That wall already has a door.")
+			elif not lot.windows.has(e) and _spend(Finishes.WINDOW_PRICE):
+				lot.add_window(e)
+		Tool.PAINT:
+			var e := lot.edge_near(pt)
+			if lot.walls.has(e):
+				# Shift paints every wall on the lot.
+				var targets: Array = lot.walls.keys() if Input.is_key_pressed(KEY_SHIFT) else [e]
+				var price: int = Finishes.WALLS[wall_style][3]
+				for t in targets:
+					if lot.wall_styles.get(t, 0) != wall_style:
+						if not _spend(price):
+							break
+						lot.paint_wall(t, wall_style)
+		Tool.FLOOR:
+			_floor_start = lot.world_to_cell(pt)
+			_floor_end = _floor_start
 		Tool.DELETE:
 			var f := _furniture_under(screen_pos)
 			if f != null:
@@ -156,7 +188,7 @@ func _on_press(p: Variant, screen_pos: Vector2) -> void:
 			else:
 				var e := lot.edge_near(pt)
 				if lot.walls.has(e):
-					earn(Catalog.WALL_PRICE + (Catalog.DOOR_PRICE if lot.doors.has(e) else 0))
+					earn(Catalog.WALL_PRICE + (Catalog.DOOR_PRICE if lot.doors.has(e) else 0) + (Finishes.WINDOW_PRICE if lot.windows.has(e) else 0))
 					lot.remove_wall(e)
 	_refresh_overlays(p)
 
@@ -173,6 +205,31 @@ func _finish_wall() -> void:
 			_spend(Catalog.WALL_PRICE)
 			built += 1
 	_wall_start = null
+	_wall_preview.visible = false
+
+
+func _floor_rect() -> Rect2i:
+	var a: Vector2i = _floor_start
+	var lo := Vector2i(mini(a.x, _floor_end.x), mini(a.y, _floor_end.y))
+	var hi := Vector2i(maxi(a.x, _floor_end.x), maxi(a.y, _floor_end.y))
+	return Rect2i(lo, hi - lo + Vector2i.ONE)
+
+
+func _finish_floor() -> void:
+	var r := _floor_rect()
+	var price: int = Finishes.FLOORS[floor_style][3]
+	var tiles: Array[Vector2i] = []
+	for x in range(r.position.x, r.end.x):
+		for y in range(r.position.y, r.end.y):
+			var c := Vector2i(x, y)
+			if lot.in_bounds(c) and lot.floor_tiles.get(c, -1) != floor_style:
+				tiles.append(c)
+	for c in tiles:
+		if not _spend(price):
+			break
+		lot.floor_tiles[c] = floor_style
+	lot.add_floor(Rect2i(), floor_style)
+	_floor_start = null
 	_wall_preview.visible = false
 
 
@@ -265,7 +322,19 @@ func _refresh_overlays(p: Variant) -> void:
 					_wall_preview.visible = true
 			else:
 				_show_vertex(_vertex(at))
-		Tool.DOOR, Tool.DELETE:
+		Tool.FLOOR:
+			if _floor_start != null:
+				_floor_end = lot.world_to_cell(at)
+				var r := _floor_rect()
+				_wall_preview.position = Vector3(r.position.x + r.size.x * 0.5, 0.03, r.position.y + r.size.y * 0.5)
+				_wall_preview.scale = Vector3(r.size.x, 0.04, r.size.y)
+				_wall_preview.visible = true
+			else:
+				var c := lot.world_to_cell(at)
+				_edge_marker.position = Vector3(c.x + 0.5, 0.03, c.y + 0.5)
+				_edge_marker.scale = Vector3(0.95, 0.04, 0.95)
+				_edge_marker.visible = true
+		Tool.DOOR, Tool.DELETE, Tool.WINDOW, Tool.PAINT:
 			var e := lot.edge_near(at)
 			if lot.walls.has(e):
 				var c := lot.edge_center(e)
@@ -356,7 +425,7 @@ func _build_ui() -> void:
 	tools_pill.add_theme_stylebox_override("panel", UiTheme.panel_style(28, 6))
 	tools_pill.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	tools_pill.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	tools_pill.position = Vector2(-120, 14)
+	tools_pill.position = Vector2(-190, 14)
 	root.add_child(tools_pill)
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 6)
@@ -365,6 +434,9 @@ func _build_ui() -> void:
 		[Tool.MOVE, "move", "Move objects: click to pick up, click to put down. R rotates, Delete sells."],
 		[Tool.WALL, "wall", "Wall tool: drag along the grid (§%d per segment)" % Catalog.WALL_PRICE],
 		[Tool.DOOR, "door", "Door tool: click a wall to add a door (§%d)" % Catalog.DOOR_PRICE],
+		[Tool.WINDOW, "window", "Window tool: click a wall to add a window (§%d)" % Finishes.WINDOW_PRICE],
+		[Tool.PAINT, "paint", "Wall paint: pick a finish below, click a wall (Shift: every wall)"],
+		[Tool.FLOOR, "floor", "Floor tool: pick a finish below, drag over tiles"],
 		[Tool.DELETE, "sell", "Sledgehammer: click an object or wall to sell it"],
 	]
 	for d in tool_defs:
@@ -427,6 +499,11 @@ func _build_ui() -> void:
 	for kind in Catalog.KINDS:
 		_tiles[kind] = _make_tile(kind)
 		_tiles_box.add_child(_tiles[kind])
+	_swatch_box = HFlowContainer.new()
+	_swatch_box.add_theme_constant_override("h_separation", 8)
+	_swatch_box.add_theme_constant_override("v_separation", 8)
+	_swatch_box.visible = false
+	right.add_child(_swatch_box)
 	var help := Label.new()
 	help.text = "Click an item to place it.  Right-click / Esc: cancel   R or , .: rotate   Delete: sell held object   F1: back to Live"
 	help.add_theme_font_size_override("font_size", 13)
@@ -491,3 +568,57 @@ func _show_category(cat: String) -> void:
 		(_category_buttons[c] as Button).button_pressed = c == cat
 	for kind in _tiles:
 		(_tiles[kind] as Control).visible = cat == "all" or Catalog.CATEGORY_OF[kind] == cat
+
+## With the paint or floor tool, the catalogue shows finishes instead of objects.
+func _show_swatches() -> void:
+	if _swatch_box == null:
+		return
+	var painting := tool == Tool.PAINT or tool == Tool.FLOOR
+	_tiles_box.visible = not painting
+	_swatch_box.visible = painting
+	for c in _swatch_box.get_children():
+		c.queue_free()
+	if not painting:
+		return
+	var list: Array = Finishes.WALLS if tool == Tool.PAINT else Finishes.FLOORS
+	var current := wall_style if tool == Tool.PAINT else floor_style
+	for i in list.size():
+		var f: Array = list[i]
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(112, 96)
+		b.tooltip_text = "%s\n§ %d per %s" % [f[0], f[3], "wall" if tool == Tool.PAINT else "tile"]
+		var st := UiTheme.pill(Color.WHITE, UiTheme.GREEN if i == current else UiTheme.PANEL_EDGE, 10)
+		st.set_border_width_all(3 if i == current else 1)
+		b.add_theme_stylebox_override("normal", st)
+		b.add_theme_stylebox_override("hover", UiTheme.pill(UiTheme.HOVER, UiTheme.ACCENT, 10))
+		var v := VBoxContainer.new()
+		v.set_anchors_preset(Control.PRESET_FULL_RECT)
+		v.offset_left = 8
+		v.offset_right = -8
+		v.offset_top = 8
+		v.offset_bottom = -6
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(v)
+		var chip := Panel.new()
+		var cs := StyleBoxFlat.new()
+		cs.bg_color = f[1]
+		cs.set_corner_radius_all(6)
+		chip.add_theme_stylebox_override("panel", cs)
+		chip.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(chip)
+		var l := Label.new()
+		l.text = f[0]
+		l.add_theme_font_size_override("font_size", 11)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.clip_text = true
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(l)
+		b.pressed.connect(func():
+			if tool == Tool.PAINT:
+				wall_style = i
+			else:
+				floor_style = i
+			_show_swatches())
+		_swatch_box.add_child(b)

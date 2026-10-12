@@ -135,6 +135,21 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 		"add":
 			ci.draw_line(c + Vector2(-s, 0), c + Vector2(s, 0), col, maxf(2.0, s * 0.3))
 			ci.draw_line(c + Vector2(0, -s), c + Vector2(0, s), col, maxf(2.0, s * 0.3))
+		"window":
+			ci.draw_rect(Rect2(c - Vector2(s * 0.85, s), Vector2(s * 1.7, s * 2)), col, false, 2.0)
+			ci.draw_line(c + Vector2(0, -s), c + Vector2(0, s), col, 2.0)
+			ci.draw_line(c + Vector2(-s * 0.85, 0), c + Vector2(s * 0.85, 0), col, 2.0)
+		"paint":
+			# A paint roller.
+			ci.draw_rect(Rect2(c + Vector2(-s, -s), Vector2(s * 1.6, s * 0.6)), col)
+			ci.draw_polyline(PackedVector2Array([c + Vector2(s * 0.6, -s * 0.7), c + Vector2(s * 0.95, -s * 0.7), c + Vector2(s * 0.95, -s * 0.1), c + Vector2(-s * 0.2, -s * 0.1), c + Vector2(-s * 0.2, s * 0.3)]), col, 2.0)
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.32, s * 0.3), Vector2(s * 0.24, s * 0.75)), col)
+		"floor":
+			for i in 3:
+				for j in 3:
+					if (i + j) % 2 == 0:
+						ci.draw_rect(Rect2(c + Vector2(-s + i * s * 0.67, -s + j * s * 0.67), Vector2(s * 0.62, s * 0.62)), col)
+			ci.draw_rect(Rect2(c - Vector2(s, s), Vector2(s * 2, s * 2)), col, false, 1.5)
 		"menu":
 			for x in [-0.6, 0.0, 0.6]:
 				ci.draw_circle(c + Vector2(x * s, 0), s * 0.2, col)

@@ -379,9 +379,11 @@ func _place_grounds(layout: String) -> void:
 	lot.add_block(Rect2i(15, 16, 7, 1), 0.9, hedge, "HedgeFrontEast")
 	match layout:
 		"cottage":
-			lot.add_floor(Rect2i(3, 2, 15, 10), Color(0.62, 0.48, 0.34))
+			lot.add_floor(Rect2i(3, 2, 15, 10), 0)
+			lot.add_floor(Rect2i(3, 8, 5, 4), 3)
 		"studio":
-			lot.add_floor(Rect2i(6, 4, 10, 7), Color(0.7, 0.6, 0.48))
+			lot.add_floor(Rect2i(6, 4, 10, 7), 1)
+			lot.add_floor(Rect2i(6, 8, 3, 3), 4)
 
 
 ## A compact one-room home with a bathroom corner.
@@ -399,6 +401,10 @@ func _place_studio() -> void:
 			lot.add_wall(e)
 	lot.add_door(Vector3i(12, 11, 0))
 	lot.add_door(Vector3i(7, 8, 0))
+	for e in [Vector3i(8, 4, 0), Vector3i(13, 4, 0), Vector3i(16, 6, 1), Vector3i(14, 11, 0)]:
+		lot.add_window(e)
+	for e in lot.walls.keys():
+		lot.paint_wall(e, 1)
 	_place("bed", Vector2i(7, 5))
 	_place("tv", Vector2i(11, 5))
 	_place("fridge", Vector2i(15, 5))
@@ -426,6 +432,13 @@ func _place_walls() -> void:
 			lot.add_wall(e)
 	lot.add_door(Vector3i(10, 12, 0))
 	lot.add_door(Vector3i(7, 8, 0))
+	for e in [Vector3i(5, 2, 0), Vector3i(10, 2, 0), Vector3i(14, 2, 0), Vector3i(18, 4, 1), Vector3i(18, 9, 1),
+			Vector3i(13, 12, 0), Vector3i(15, 12, 0), Vector3i(3, 4, 1), Vector3i(5, 12, 0)]:
+		lot.add_window(e)
+	# Striped wallpaper in the bathroom.
+	for r in [[Vector2i(3, 8), Vector2i(8, 8)], [Vector2i(8, 8), Vector2i(8, 12)]]:
+		for e in Lot.wall_run(r[0], r[1]):
+			lot.paint_wall(e, 5)
 
 
 func _place(kind: String, at: Vector2i, rot := 0) -> Furniture:
@@ -538,7 +551,10 @@ func open_game_menu() -> void:
 func save_game() -> void:
 	var walls: Array = []
 	for e in lot.walls:
-		walls.append([e.x, e.y, e.z, lot.doors.has(e)])
+		walls.append([e.x, e.y, e.z, lot.doors.has(e), lot.windows.has(e), lot.wall_styles.get(e, 0)])
+	var floors: Array = []
+	for c in lot.floor_tiles:
+		floors.append([c.x, c.y, lot.floor_tiles[c]])
 	var objects: Array = []
 	for f in lot.furniture:
 		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps])
@@ -548,6 +564,7 @@ func save_game() -> void:
 		"funds": build.funds,
 		"home": home_id,
 		"walls": walls,
+		"floors": floors,
 		"objects": objects,
 		"household": household.map(func(m: Sim): return {
 			"sim": m.to_dict(),
@@ -582,6 +599,15 @@ func load_game() -> void:
 		lot.add_wall(e)
 		if w[3]:
 			lot.add_door(e)
+		if w.size() > 5:
+			if w[4]:
+				lot.add_window(e)
+			lot.paint_wall(e, int(w[5]))
+	if d.has("floors"):
+		lot.floor_tiles.clear()
+		for f in d["floors"]:
+			lot.floor_tiles[Vector2i(int(f[0]), int(f[1]))] = int(f[2])
+		lot.add_floor(Rect2i(), 0)
 	for o in d.get("objects", []):
 		if Catalog.INFO.has(o[0]):
 			_place(o[0], Vector2i(int(o[1]), int(o[2])), int(o[3]))
@@ -832,6 +858,10 @@ func _run_scenario(scenario: String, path: String) -> void:
 		"cas":
 			open_create_a_sim()
 			_cas.randomize_sim()
+			await get_tree().create_timer(1.0).timeout
+		"paint":
+			build.enter()
+			build.set_tool(BuildMode.Tool.PAINT)
 			await get_tree().create_timer(1.0).timeout
 		"build":
 			build.enter()
