@@ -62,6 +62,8 @@ func setup(has_save: bool, in_game := true) -> void:
 		["Save As...", false, Callable()],
 		["Game Options", true, _open_options],
 		["Help", true, _open_help],
+		["Lessons", true, _open_lessons],
+		["Patch Notes", true, _open_patch_notes],
 		["Credits", true, _open_credits],
 		["Achievements", in_game, _open_achievements],
 		["Manage Households", in_game and has_save, func(): _then(manage_pressed)],
@@ -136,6 +138,46 @@ func _open_achievements() -> void:
 			got += 1
 		lines.append("%s  %s: %s" % ["★" if a[2] else "☆", a[0], a[1]])
 	EventDialog.ask(self, null, "Achievements (%d of %d)" % [got, list.size()], "
+".join(lines), ["Close"] as Array[String])
+
+
+## Short guides to each part of the game, like the reference's Lessons.
+const LESSONS := [
+	["Needs and Moods", "Keep the six needs (Hunger, Bladder, Energy, Fun, Social, Hygiene) up by using objects and socializing. Moodlets from what happens add up to an emotion, shown under the portrait; emotions open special interactions and speed up matching skills."],
+	["Building a Home", "Press F3 for Build Mode. Draw walls or whole rooms, add doors and windows, paint walls and floors, add a foundation, roof, fences and terrain paint. F2 opens the catalogue of objects. Time stops while you build."],
+	["Skills and Careers", "Practise skills on objects (books, easel, chess, guitar...). Join a career from the phone or computer; go to work in a good mood, do the daily task and pick wisely when choices come up to earn promotions."],
+	["Relationships", "Click a Sim to socialize. Friendly, Funny, Romance, Mischief and Mean socials change friendship and romance; ask someone to be your partner, propose, move in and start a family."],
+	["Family Life", "Teach toddlers to talk, walk and use the potty; children learn Creativity, Mental, Motor and Social, go to school and bring home homework. Sims age through life stages (see Game Options > Gameplay)."],
+]
+const PATCH_NOTES := [
+	"Menus and Game Options laid out like the reference game, with working options.",
+	"The reference's keyboard shortcuts for live mode, the camera and build tools.",
+	"Gardening with planters, produce quality and fertilizer.",
+	"Terrain paint, foundations, half walls, railings, hedges and columns.",
+	"Lot traits, career daily tasks and work events, walk styles and jogging.",
+	"Toddler and child skills, parenting socials, townies who age and marry.",
+]
+
+
+func _open_lessons() -> void:
+	var names: Array[String] = []
+	for l in LESSONS:
+		names.append(l[0])
+	names.append("Close")
+	var d := EventDialog.ask(self, null, "Lessons", "Pick a lesson to read.", names)
+	d.answered.connect(func(i: int, _t: String):
+		if i < LESSONS.size():
+			var r := EventDialog.ask(self, null, LESSONS[i][0], LESSONS[i][1], ["Back to Lessons", "Close"] as Array[String])
+			r.answered.connect(func(j: int, _t2: String):
+				if j == 0:
+					_open_lessons()))
+
+
+func _open_patch_notes() -> void:
+	var lines: Array[String] = []
+	for n in PATCH_NOTES:
+		lines.append("• " + n)
+	EventDialog.ask(self, null, "Patch Notes", "
 ".join(lines), ["Close"] as Array[String])
 
 

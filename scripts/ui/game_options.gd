@@ -36,6 +36,9 @@ const TABS := [
 	["Camera", [
 		["Camera", [["edge_scrolling", "Edge Scrolling", "check", []], ["sims3_camera", "The Sims 3 Camera", "check", []], ["invert_horizontal", "Invert Camera Rotation Horizontal", "check", []], ["invert_vertical", "Invert Camera Rotation Vertical", "check", []]]],
 	]],
+	["Screen Capture", [
+		["Screenshots (C)", [["capture_ui", "Include Interface", "check", []], ["capture_size", "Screenshot Size", "choice", ["Small", "Normal", "Large"]]]],
+	]],
 	["Tutorial & Tips", [
 		["Tips", [["show_tips", "Show Tips", "check", []]]],
 	]],

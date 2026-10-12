@@ -468,6 +468,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				lot.wall_view = mini(2, lot.wall_view + 1) as Lot.WallView
 				hud.refresh_walls_button(lot)
 				return
+			KEY_C:
+				if not event.is_command_or_control_pressed():
+					take_screenshot()
+					return
 			KEY_TAB:
 				# Camera mode: hide the whole interface (Tab again brings it back).
 				_ui_hidden = not _ui_hidden
@@ -1067,6 +1071,30 @@ func open_main_menu() -> void:
 
 
 # --- several households -------------------------------------------------------------
+
+## C: saves a screenshot to user://screenshots (optionally without the interface).
+func take_screenshot() -> String:
+	var hide_ui: bool = not Settings.get_value("capture_ui")
+	var hud_was := hud.visible
+	if hide_ui:
+		hud.visible = false
+		build.set_ui_hidden(true)
+		await RenderingServer.frame_post_draw
+		await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	if hide_ui:
+		hud.visible = hud_was
+		build.set_ui_hidden(_ui_hidden)
+	var k: float = Settings.CAPTURE_SCALES[Settings.get_value("capture_size")]
+	if k != 1.0:
+		img.resize(int(img.get_width() * k), int(img.get_height() * k), Image.INTERPOLATE_LANCZOS)
+	DirAccess.make_dir_recursive_absolute("user://screenshots")
+	var path := "user://screenshots/OpenSims_%s.png" % Time.get_datetime_string_from_system().replace(":", "-")
+	img.save_png(path)
+	Sfx.play("select", -6.0)
+	hud.show_notice("Screenshot saved to %s." % ProjectSettings.globalize_path(path), "Screenshot")
+	return path
+
 
 ## Achievements for the menu: [title, how to earn it, unlocked?].
 func achievements() -> Array:
@@ -1728,6 +1756,11 @@ func _input_check() -> void:
 	results["Tab_hides_ui"] = not hud.visible
 	await _key(KEY_TAB)
 	results["Tab_shows_ui"] = hud.visible
+	var shots_before := DirAccess.get_files_at("user://screenshots").size() if DirAccess.dir_exists_absolute("user://screenshots") else 0
+	await _key(KEY_C)
+	for k in 6:
+		await get_tree().process_frame
+	results["C_screenshot"] = DirAccess.dir_exists_absolute("user://screenshots") and DirAccess.get_files_at("user://screenshots").size() > shots_before
 	var ok := results.values().all(func(v): return v)
 	print("INPUT %s %s" % ["OK" if ok else "FAIL", results])
 	get_tree().quit()

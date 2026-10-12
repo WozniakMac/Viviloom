@@ -1055,7 +1055,7 @@ func _test_produce_quality() -> void:
 func _test_options_and_achievements() -> void:
 	_check(Settings.DEFAULTS.has("sims3_camera") and Settings.get_value("edge_scrolling") is bool, "options have defaults")
 	var tabs := GameOptions.TABS.map(func(t): return t[0])
-	_check(tabs == ["Graphics", "Sound", "Music", "Gameplay", "Save Settings", "Camera", "Tutorial & Tips", "Other", "Accessibility"], "options tabs follow the reference's order")
+	_check(tabs == ["Graphics", "Sound", "Music", "Gameplay", "Save Settings", "Camera", "Screen Capture", "Tutorial & Tips", "Other", "Accessibility"], "options tabs follow the reference's order")
 	Ages.lifespan_mult = 2.0
 	_check(Ages.stage_days("adult") == Ages.INFO["adult"]["days"] * 2, "a long lifespan doubles each life stage")
 	Ages.lifespan_mult = 1.0

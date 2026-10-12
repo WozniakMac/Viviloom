@@ -30,7 +30,10 @@ const DEFAULTS := {
 	"show_tips": true,
 	"clock_24h": false,
 	"ui_scale": 1,
+	"capture_ui": false,
+	"capture_size": 1,
 }
+const CAPTURE_SCALES: Array[float] = [0.5, 1.0, 2.0]
 const LIFESPAN_MULT: Array[float] = [0.5, 1.0, 2.0]
 const UI_SCALES: Array[float] = [0.9, 1.0, 1.15]
 ## Autosave interval in real minutes for each option (0 = off).
