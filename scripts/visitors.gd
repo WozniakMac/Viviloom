@@ -33,28 +33,88 @@ var _last_visit_day := 0
 var _rng := RandomNumberGenerator.new()
 
 
+## New faces who move to town when someone passes away.
+const NEWCOMER_NAMES: Array[String] = ["Rosa", "Kofi", "Mei", "Lars", "Amara", "Tomas", "Yuki", "Bram", "Nadia", "Oscar"]
+const MARRY_CHANCE := 0.06
+
+
 func setup(p_lot: Lot) -> void:
 	lot = p_lot
 	for p in PEOPLE:
-		var s := Sim.new()
-		s.name = "Townie_" + p[0]
-		s.sim_name = p[0]
-		s.is_visitor = true
+		var s := _make_townie(p[0])
 		s.shirt_color = p[1]
 		s.pants_color = p[2]
 		s.skin_color = p[3]
 		s.hair_color = p[4]
 		s.hair_style = p[5]
 		s.age_stage = p[7]
-		s.lot = lot
-		add_child(s)
-		s.set_selected(false)
 		var t: Array[String] = []
 		t.assign(p[6])
 		s.set_traits(t)
-		townies.append(s)
-		_hide(s)
 	neighbour = townies[0]
+
+
+func _make_townie(n: String) -> Sim:
+	var s := Sim.new()
+	s.name = "Townie_" + n
+	s.sim_name = n
+	s.is_visitor = true
+	s.lot = lot
+	add_child(s)
+	s.set_selected(false)
+	townies.append(s)
+	_hide(s)
+	return s
+
+
+## A day passes for the townies: birthdays, old age (and a newcomer moving in),
+## and now and then two of them tie the knot. Returns neighbourhood news.
+func new_day(rng: RandomNumberGenerator) -> Array[String]:
+	var news: Array[String] = []
+	for t in townies.duplicate():
+		if t.visible:
+			continue
+		t.age_days += 1
+		if t.age_days < Ages.INFO[t.age_stage]["days"]:
+			continue
+		t.age_days = 0
+		if t.age_stage == "elder":
+			news.append("%s, a familiar face around town, passed away." % t.sim_name)
+			if t.spouse != null and is_instance_valid(t.spouse):
+				t.spouse.spouse = null
+			remove_townie(t)
+			t.queue_free()
+			var n := newcomer(rng)
+			news.append("%s just moved to town." % n.sim_name)
+		else:
+			t.set_age(Ages.next(t.age_stage))
+	var singles := townies.filter(func(t: Sim): return t.spouse == null and Ages.is_adult(t.age_stage) and not t.visible)
+	if singles.size() >= 2 and rng.randf() < MARRY_CHANCE:
+		var a: Sim = singles[rng.randi() % singles.size()]
+		singles.erase(a)
+		var b: Sim = singles[rng.randi() % singles.size()]
+		a.spouse = b
+		b.spouse = a
+		a.change_relationship(b, 60.0, 80.0)
+		news.append("%s and %s got married!" % [a.sim_name, b.sim_name])
+	return news
+
+
+## A young adult with a fresh name and look joins the townies.
+func newcomer(rng: RandomNumberGenerator) -> Sim:
+	var taken := townies.map(func(t: Sim): return t.sim_name)
+	var free := NEWCOMER_NAMES.filter(func(n): return not taken.has(n))
+	var n: String = free[rng.randi() % free.size()] if not free.is_empty() else "Newcomer %d" % townies.size()
+	var s := _make_townie(n)
+	s.shirt_color = Color.from_hsv(rng.randf(), 0.5, 0.85)
+	s.pants_color = Color.from_hsv(rng.randf(), 0.3, 0.35)
+	s.skin_color = Color(0.95, 0.8, 0.68).lerp(Color(0.4, 0.27, 0.2), rng.randf())
+	s.hair_color = Color.from_hsv(0.08, 0.6, rng.randf_range(0.08, 0.6))
+	s.hair_style = Sim.HAIR_STYLES[rng.randi() % Sim.HAIR_STYLES.size()]
+	s.age_stage = "young_adult"
+	if neighbour == null:
+		neighbour = s
+	return s
 
 
 ## Takes a townie out of the pool (they moved in with the household); someone
@@ -155,9 +215,34 @@ func to_dict() -> Array:
 	return townies.map(func(t: Sim): return t.to_dict())
 
 
-func from_dict(data: Array, everyone: Array) -> void:
+## `full`: `data` is every townie (older saves only stored the neighbour).
+func from_dict(data: Array, everyone: Array, full := true) -> void:
+	if data.is_empty():
+		return
+	var names := data.map(func(d): return d.get("name", ""))
+	# Townies who passed away (or moved in) since the game began are gone; newcomers
+	# who arrived since are recreated.
+	if full:
+		for t in townies.duplicate():
+			if not names.has(t.sim_name):
+				remove_townie(t)
+				t.queue_free()
 	for d in data:
+		var found: Sim = null
 		for t in townies:
 			if t.sim_name == d.get("name", ""):
-				t.from_dict(d, everyone)
-				_hide(t)
+				found = t
+		if found == null:
+			found = _make_townie(d.get("name", "Newcomer"))
+		found.from_dict(d, everyone)
+		_hide(found)
+	# Couples where one of them is a newcomer.
+	for d in data:
+		var sp: String = d.get("spouse", "")
+		if sp == "":
+			continue
+		for t in townies:
+			if t.sim_name == d.get("name", "") and t.spouse == null:
+				for o in townies:
+					if o.sim_name == sp:
+						t.spouse = o

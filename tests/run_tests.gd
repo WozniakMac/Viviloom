@@ -44,6 +44,7 @@ func _ready() -> void:
 	_test_story()
 	_test_toddler_parenting()
 	_test_new_furniture()
+	_test_townie_lives()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -861,3 +862,37 @@ func _test_new_furniture() -> void:
 	var art := Catalog.make_painting({"quality": 3, "value": 300})
 	_check(art.decor == 4, "better paintings decorate more")
 	art.free()
+
+
+func _test_townie_lives() -> void:
+	var lot := _make_lot()
+	add_child(lot)
+	var v := Visitors.new()
+	add_child(v)
+	v.setup(lot)
+	var hank: Sim = v.townies.filter(func(t): return t.sim_name == "Hank")[0]
+	hank.age_days = Ages.INFO["elder"]["days"] - 1
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4
+	var count := v.townies.size()
+	var news := v.new_day(rng)
+	_check(not v.townies.has(hank) and v.townies.size() == count, "an old townie passes on and a newcomer arrives")
+	_check(news.size() >= 2, "both make the news")
+	var married := false
+	for d in 200:
+		v.new_day(rng)
+		if v.townies.any(func(t): return t.spouse != null):
+			married = true
+			break
+	_check(married, "townies pair up and marry over time")
+	var saved := v.to_dict()
+	var v2 := Visitors.new()
+	add_child(v2)
+	v2.setup(lot)
+	v2.from_dict(saved, [])
+	var names := v2.townies.map(func(t): return t.sim_name)
+	_check(not names.has("Hank") and names.size() == count, "the townie roster survives a reload")
+	_check(v2.townies.any(func(t): return t.spouse != null), "townie marriages survive a reload")
+	v.queue_free()
+	v2.queue_free()
+	lot.queue_free()

@@ -141,7 +141,9 @@ func _ready() -> void:
 	add_child(life)
 	life.notice.connect(func(t: String, title: String): hud.show_notice(t, title))
 	life.day_passed.connect(func(day: int):
-		for n in Story.advance_day(other_households, day, _story_rng):
+		var news := Story.advance_day(other_households, day, _story_rng)
+		news.append_array(visitors.new_day(_story_rng))
+		for n in news:
 			hud.show_notice(n, "Neighbourhood News"))
 	life.born.connect(_on_baby_born)
 	life.passed_away.connect(func(s: Sim): _on_died(s, "old_age"))
@@ -1244,7 +1246,7 @@ func load_game(world := {}) -> void:
 	if d.has("townies"):
 		visitors.from_dict(d["townies"], everyone)
 	elif d.has("neighbour"):
-		visitors.from_dict([d["neighbour"]], everyone)
+		visitors.from_dict([d["neighbour"]], everyone, false)
 	bills.from_dict(d.get("bills", {}))
 	other_households = d.get("others", []).duplicate(true)
 	for t in d.get("tips", []):
