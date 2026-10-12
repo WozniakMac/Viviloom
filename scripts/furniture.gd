@@ -282,6 +282,7 @@ func extra_interactions() -> Array[Interaction]:
 
 
 var _clean_interaction: Interaction
+var _grime_mat: StandardMaterial3D
 
 
 func dirt() -> float:
@@ -335,6 +336,49 @@ func _update_flies() -> void:
 		add_child(flies)
 	elif not is_dirty() and flies != null:
 		flies.queue_free()
+	# Grime on the surfaces and wavy green stink lines rising off it.
+	var dirty := is_dirty()
+	if dirty and _grime_mat == null:
+		_grime_mat = StandardMaterial3D.new()
+		_grime_mat.albedo_color = Color(0.78, 0.7, 0.5)
+		_grime_mat.blend_mode = BaseMaterial3D.BLEND_MODE_MUL
+		_grime_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	for c in find_children("*", "MeshInstance3D", true, false):
+		var mi := c as MeshInstance3D
+		if mi.name != "Covers" and not mi.get_parent() is CPUParticles3D:
+			mi.material_overlay = _grime_mat if dirty else null
+	var stink := get_node_or_null("Stink") as CPUParticles3D
+	if dirty and stink == null:
+		stink = CPUParticles3D.new()
+		stink.name = "Stink"
+		stink.amount = 4
+		stink.lifetime = 1.8
+		stink.position = Vector3(0, height * 0.8, 0)
+		stink.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		stink.emission_box_extents = Vector3(0.2, 0.05, 0.2)
+		stink.direction = Vector3.UP
+		stink.spread = 8.0
+		stink.gravity = Vector3.ZERO
+		stink.initial_velocity_min = 0.25
+		stink.initial_velocity_max = 0.35
+		var curve := Curve.new()
+		curve.add_point(Vector2(0, 0))
+		curve.add_point(Vector2(0.3, 1))
+		curve.add_point(Vector2(1, 0))
+		stink.scale_amount_curve = curve
+		var q := QuadMesh.new()
+		q.size = Vector2(0.12, 0.36)
+		stink.mesh = q
+		var sm := StandardMaterial3D.new()
+		sm.albedo_texture = _wavy_texture()
+		sm.albedo_color = Color(0.5, 0.72, 0.22, 0.85)
+		sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		sm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+		stink.material_override = sm
+		add_child(stink)
+	elif not dirty and stink != null:
+		stink.queue_free()
 
 
 func upgrades() -> Array:
@@ -560,3 +604,21 @@ static func _heart_mesh(size: float) -> ArrayMesh:
 		st.add_vertex(pts[(k + 1) % 32])
 		st.add_vertex(pts[k])
 	return st.commit()
+
+
+static var _wavy: ImageTexture
+
+## A thin wavy stroke, for stink lines.
+static func _wavy_texture() -> ImageTexture:
+	if _wavy != null:
+		return _wavy
+	var img := Image.create(32, 96, false, Image.FORMAT_RGBA8)
+	img.fill(Color(1, 1, 1, 0))
+	for y in 96:
+		var cx := 16.0 + sin(y / 96.0 * TAU * 1.5) * 9.0
+		for x in 32:
+			var d := absf(x - cx)
+			if d < 2.6:
+				img.set_pixel(x, y, Color(1, 1, 1, clampf(2.6 - d, 0.0, 1.0)))
+	_wavy = ImageTexture.create_from_image(img)
+	return _wavy
