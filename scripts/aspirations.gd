@@ -71,7 +71,7 @@ const WANT_POINTS := 100
 ## Wants: [id, text, activity name that fulfils it (prefix match), base weight].
 const WANTS := [
 	["paint", "Paint something", "Paint", 1.0],
-	["cook", "Cook a meal", "Cook a Meal", 1.0],
+	["cook", "Cook a meal", "Cook ", 1.0],
 	["chess", "Play some chess", "Practise Chess", 1.0],
 	["books", "Browse books", "Browse Books", 1.0],
 	["study", "Study", "Study", 0.7],

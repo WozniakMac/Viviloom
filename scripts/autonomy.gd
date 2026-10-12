@@ -27,17 +27,27 @@ static func urgent_needs(needs: Needs) -> Array[String]:
 	return out
 
 
+## What an interaction promises: cooking promises a meal, so it advertises Hunger.
+static func advertised(interaction: Interaction) -> Dictionary:
+	if interaction.recipe == "":
+		return interaction.rates
+	var r := interaction.rates.duplicate()
+	r["hunger"] = 70.0
+	return r
+
+
 static func restores_any(interaction: Interaction, list: Array[String]) -> bool:
 	for n in list:
-		if interaction.rates.get(n, 0.0) > 0.0:
+		if advertised(interaction).get(n, 0.0) > 0.0:
 			return true
 	return false
 
 
 static func score(needs: Needs, interaction: Interaction) -> float:
 	var total := 0.0
-	for need in interaction.rates:
-		var rate: float = interaction.rates[need]
+	var rates := advertised(interaction)
+	for need in rates:
+		var rate: float = rates[need]
 		var v := needs.get_value(need)
 		if rate <= 0.0 or v >= SATISFIED:
 			continue
@@ -60,6 +70,7 @@ static func preference(sim: Sim, f: Furniture, interaction: Interaction) -> floa
 ## interactions that restore one of them are considered, purely on need.
 static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 	var urgent := urgent_needs(sim.needs)
+	var meal_ready := sim.all_furniture().any(func(f): return is_instance_valid(f) and f.kind == "meal")
 	var options: Array = []
 	for f in sim.all_furniture():
 		if f.user != null and f.user != sim:
@@ -87,6 +98,9 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 			continue
 		for i in f.available_interactions():
 			if not Ages.allows_for(sim, i):
+				continue
+			# No cooking while there's food on the counter already.
+			if i.recipe != "" and meal_ready:
 				continue
 			if not urgent.is_empty() and not restores_any(i, urgent):
 				continue

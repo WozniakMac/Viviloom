@@ -6,6 +6,18 @@ const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk",
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
+## Recipes: [name, Cooking level needed, servings, minutes to cook, plate colour].
+const RECIPES := [
+	["Grilled Cheese", 0, 4, 30.0, Color(0.95, 0.78, 0.35)],
+	["Pancakes", 0, 4, 30.0, Color(0.9, 0.7, 0.45)],
+	["Mac and Cheese", 1, 6, 45.0, Color(0.98, 0.8, 0.3)],
+	["Garden Salad", 2, 6, 30.0, Color(0.45, 0.75, 0.35)],
+	["Spaghetti", 3, 6, 60.0, Color(0.85, 0.35, 0.25)],
+	["Roast Chicken", 5, 6, 75.0, Color(0.8, 0.55, 0.3)],
+	["Grilled Salmon", 7, 6, 60.0, Color(0.95, 0.55, 0.45)],
+	["Baked Alaska", 9, 8, 90.0, Color(0.98, 0.92, 0.85)],
+]
+const MEAL_QUALITY: Array[String] = ["Poor", "Normal", "Good", "Excellent"]
 ## Objects that wear out and sometimes break when used.
 const BREAKABLE: Array[String] = ["tv", "desk", "stove", "fridge", "shower", "toilet", "treadmill", "sink"]
 const BREAK_CHANCE := 0.04
@@ -53,6 +65,7 @@ const INFO := {
 	"pool": ["Swimming Pool", 0],
 	"tombstone": ["Tombstone", 0],
 	"painting": ["Painting", 0],
+	"meal": ["Meal", 0],
 }
 ## Build-mode catalogue sections: [id, label]; "all" lists everything.
 const CATEGORIES := [["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"], ["living", "Living"], ["outdoor", "Outdoor"]]
@@ -139,8 +152,8 @@ static func create(kind: String) -> Furniture:
 			f.spots = [Vector3(0, 0, 1.0)]
 			f.interactions = [
 				Interaction.new("Grab a Snack", {"hunger": 90.0}, 15.0, "hunger", "stand", true),
-				_dishes(Interaction.new("Cook a Meal", {"hunger": 75.0, "fun": 4.0}, 80.0, "hunger", "stand", true).practices("cooking", 70.0).grants("tasty_meal", "happy", 1, "Tasty Meal", "That really hit the spot.", 180.0)),
 			]
+			f.interactions.append_array(_recipes(3))
 		"bed":
 			f.display_name = "Double Bed"
 			f.footprint = Vector2i(2, 2)
@@ -333,9 +346,7 @@ static func create(kind: String) -> Furniture:
 			f.display_name = "Stove"
 			f.height = 0.95
 			f.spots = [Vector3(0, 0, 0.8)]
-			f.interactions = [
-				_dishes(Interaction.new("Cook Dinner", {"hunger": 65.0, "fun": 6.0}, 75.0, "hunger", "stand", true).practices("cooking", 90.0).grants("home_cooked", "happy", 1, "Home Cooked", "Made it from scratch!", 240.0)),
-			]
+			f.interactions = _recipes(10)
 		"sink":
 			f.display_name = "Kitchen Sink"
 			f.height = 1.2
@@ -476,6 +487,14 @@ static func create(kind: String) -> Furniture:
 			for x in [-0.47, 0.47]:
 				var rail := f.add_box(Vector3(0.04, 0.04, 3.4), Vector3(x, Lot.WALL_HEIGHT * 0.5 + 0.9, 0), DARK)
 				rail.rotation.x = atan2(Lot.WALL_HEIGHT, 3.0)
+		"meal":
+			# A serving platter; make_meal() sets the food, servings and quality.
+			f.display_name = "Meal"
+			f.blocks = false
+			f.height = 0.15
+			f.add_box(Vector3(0.5, 0.03, 0.36), Vector3(0, 0.015, 0), WHITE)
+			f.spots = [Vector3(0, 0, 0.9)]
+			f.interactions = [_dishes(Interaction.new("Grab a Serving", {"hunger": 160.0}, 20.0, "hunger", "stand", true))]
 		"painting":
 			# Its picture and value come from make_painting().
 			f.display_name = "Painting"
@@ -630,4 +649,50 @@ static func make_painting(item: Dictionary) -> Furniture:
 		f.add_box(Vector3(w, h, 0.004), Vector3(rng.randf_range(-0.3 + w * 0.5, 0.3 - w * 0.5), rng.randf_range(-0.2 + h * 0.5, 0.2 - h * 0.5), 0.03 + k * 0.001), col)
 	if q >= 2:
 		f.interactions[0].moodlet = ["art", "inspired", q, "Inspired by Art", "What a wonderful painting.", 180.0]
+	return f
+
+
+## "Cook..." interactions for recipes up to `max_level` Cooking (the stove has them
+## all, the fridge only the simple ones). Cooks skilled enough get each recipe.
+static func _recipes(max_level: int) -> Array[Interaction]:
+	var out: Array[Interaction] = []
+	for r in RECIPES:
+		if r[1] > max_level:
+			continue
+		var i := Interaction.new("Cook %s" % r[0], {"fun": 5.0}, r[3], "", "stand", true).practices("cooking", 80.0)
+		i.menu = "Cook..."
+		i.recipe = r[0]
+		i.min_skill = r[1]
+		out.append(i)
+	return out
+
+
+static func recipe(name: String) -> Array:
+	for r in RECIPES:
+		if r[0] == name:
+			return r
+	return RECIPES[0]
+
+
+## A platter of `recipe_name` with its servings, cooked to `quality` (0..3).
+static func make_meal(recipe_name: String, quality: int) -> Furniture:
+	var f := create("meal")
+	var r := recipe(recipe_name)
+	f.display_name = "%s (%s)" % [r[0], MEAL_QUALITY[quality]]
+	f.set_meta("servings", r[2])
+	f.set_meta("quality", quality)
+	f.set_meta("recipe", r[0])
+	var food: Color = r[4]
+	if quality == 0:
+		food = food.darkened(0.45)
+	for k in 3:
+		f.add_box(Vector3(0.12, 0.05, 0.1), Vector3(-0.13 + k * 0.13, 0.055, 0.0), food.lightened(0.08 * k))
+	var serve: Interaction = f.interactions[0]
+	match quality:
+		0:
+			serve.moodlet = ["bad_food", "uncomfortable", 1, "Ate Something Gross", "That was... not good.", 120.0]
+		2:
+			serve.moodlet = ["good_food", "happy", 1, "Tasty Meal", "That really hit the spot.", 180.0]
+		3:
+			serve.moodlet = ["great_food", "happy", 2, "Delicious Meal", "Best meal in ages!", 240.0]
 	return f

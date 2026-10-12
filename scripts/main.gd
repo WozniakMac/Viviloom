@@ -465,16 +465,35 @@ func _unhandled_input(event: InputEvent) -> void:
 func open_menu(f: Furniture, screen_pos: Vector2) -> void:
 	if f.interactions.is_empty():
 		return
-	var names: Array[String] = []
-	var allowed: Array[Interaction] = []
+	var top: Array = []
+	var groups := {}
 	for i in f.available_interactions():
-		if Ages.allows_for(sim, i) or i.fixes:
-			names.append(i.name)
-			allowed.append(i)
-	if allowed.is_empty():
-		hud.show_notice("%s is too young for the %s." % [sim.sim_name, f.display_name], sim.sim_name)
+		if not (Ages.allows_for(sim, i) or i.fixes):
+			continue
+		if i.menu == "":
+			top.append(i)
+		else:
+			if not groups.has(i.menu):
+				groups[i.menu] = []
+				top.append(i.menu)
+			groups[i.menu].append(i)
+	if top.is_empty():
+		hud.show_notice("%s can't do anything with the %s right now." % [sim.sim_name, f.display_name], sim.sim_name)
 		return
-	_on_pie_choice(func(idx: int): sim.queue_interaction(f, allowed[idx]))
+	var names: Array[String] = []
+	for t in top:
+		names.append(t if t is String else (t as Interaction).name)
+	# Groups like "Cook..." open a second ring with their choices.
+	_on_pie_choice(func(idx: int):
+		if top[idx] is String:
+			var sub: Array = groups[top[idx]]
+			var sub_names: Array[String] = []
+			for i in sub:
+				sub_names.append((i as Interaction).name)
+			_on_pie_choice(func(j: int): sim.queue_interaction(f, sub[j]))
+			hud.pie_menu.open(screen_pos, top[idx], sub_names)
+		else:
+			sim.queue_interaction(f, top[idx]))
 	hud.pie_menu.open(screen_pos, f.display_name, names)
 
 
@@ -946,7 +965,7 @@ func _lot_dict() -> Dictionary:
 		floors.append([c.x, c.y, lot.floor_tiles[c]])
 	var objects: Array = []
 	for f in lot.furniture:
-		if f.kind == "fire" or f.kind == "pool":
+		if f.kind in ["fire", "pool", "meal", "pizza"]:
 			continue
 		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps, f.broken, f.variant, f.get_meta("item", {})])
 	var pool_rects: Array = []
@@ -1715,6 +1734,27 @@ func _run_scenario(scenario: String, path: String) -> void:
 			hud._show_page(6)
 			await get_tree().create_timer(1.0).timeout
 			print("PAINT inventory=%d hung=%d" % [sim.inventory.size(), lot.furniture.filter(func(f): return f.kind == "painting").size()])
+		"cooking":
+			sim.skills.add_xp("cooking", Skills.xp_for_level(4))
+			var bea := _new_sim("Bea")
+			add_to_household(bea)
+			bea.global_position = lot.cell_to_world(Vector2i(11, 9))
+			var stove := find_furniture("stove")
+			var mac: Interaction = stove.interactions.filter(func(i): return i.recipe == "Spaghetti")[0]
+			sim.queue_interaction(stove, mac)
+			Clock.set_speed(3)
+			while lot.furniture.filter(func(f): return f.kind == "meal").is_empty() and Clock.total_minutes < 11 * 60:
+				await get_tree().process_frame
+			Clock.set_speed(1)
+			sim.needs.set_value("hunger", 20.0)
+			bea.needs.set_value("hunger", 15.0)
+			bea.clear_queue()
+			sim.clear_queue()
+			await get_tree().create_timer(9.0).timeout
+			var meals := lot.furniture.filter(func(f): return f.kind == "meal")
+			print("COOK meals=%d servings=%s sim=%s bea=%s" % [meals.size(), meals[0].get_meta("servings") if not meals.is_empty() else -1, sim.current_action().label if sim.current_action() else "-", bea.current_action().label if bea.current_action() else "-"])
+			rig.frame(stove.global_position, deg_to_rad(10.0), deg_to_rad(-35.0), 9.0)
+			await get_tree().create_timer(0.3).timeout
 		"store":
 			aspirations.satisfaction = 2300
 			hud._show_page(5)

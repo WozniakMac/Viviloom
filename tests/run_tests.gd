@@ -35,6 +35,7 @@ func _ready() -> void:
 	_test_more_traits()
 	_test_swatches()
 	_test_paintings()
+	_test_cooking()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -580,3 +581,22 @@ func _test_paintings() -> void:
 	s.free()
 	other.free()
 	lot.free()
+
+
+func _test_cooking() -> void:
+	var stove := Catalog.create("stove")
+	var names: Array = stove.interactions.map(func(i): return i.name)
+	_check(names.has("Cook Mac and Cheese") and names.has("Cook Baked Alaska"), "the stove can cook every recipe")
+	var a := Sim.new()
+	var alaska: Interaction = stove.interactions.filter(func(i): return i.recipe == "Baked Alaska")[0]
+	var grilled: Interaction = stove.interactions.filter(func(i): return i.recipe == "Grilled Cheese")[0]
+	_check(not Ages.allows_for(a, alaska) and Ages.allows_for(a, grilled), "fancy recipes need Cooking skill")
+	_check(Autonomy.advertised(grilled).get("hunger", 0.0) > 0.0, "hungry Sims will think of cooking")
+	var meal := Catalog.make_meal("Spaghetti", 3)
+	_check(meal.get_meta("servings") == 6 and meal.interactions[0].moodlet[0] == "great_food", "an excellent meal serves six and tastes great")
+	var bad := Catalog.make_meal("Spaghetti", 0)
+	_check(bad.interactions[0].moodlet[1] == "uncomfortable", "burnt food is unpleasant")
+	meal.free()
+	bad.free()
+	stove.free()
+	a.free()

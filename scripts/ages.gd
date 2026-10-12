@@ -35,6 +35,8 @@ static func is_adult(stage: String) -> bool:
 static func allows_for(sim: Sim, interaction: Interaction) -> bool:
 	if interaction.requires_mood != "" and sim.emotions.mood() != interaction.requires_mood:
 		return false
+	if interaction.min_skill > 0 and sim.skills.level(interaction.skill) < interaction.min_skill:
+		return false
 	return allows(sim.age_stage, interaction)
 
 

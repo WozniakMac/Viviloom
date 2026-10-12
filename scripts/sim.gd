@@ -534,6 +534,40 @@ func _outfits_dict() -> Dictionary:
 	return out
 
 
+var _last_cook_spot: Furniture
+
+
+## Puts the cooked meal on (or beside) the counter: better cooks make better food.
+func _serve_meal(i: Interaction, lvl: int) -> void:
+	var q := 1
+	var roll := _rng.randf() + lvl * 0.1 + (0.2 if emotions.mood() == "inspired" else 0.0)
+	if roll < 0.35:
+		q = 0
+	elif roll > 1.5:
+		q = 3
+	elif roll > 0.9:
+		q = 2
+	var meal := Catalog.make_meal(i.recipe, q)
+	# Served on the nearest worktop or table (cooking "at the fridge" still uses one).
+	var src: Furniture = null
+	var best := 6.0
+	for f in lot.furniture:
+		if f.kind in ["counter", "stove", "dining_table", "bar", "picnic_table"]:
+			var d := f.global_position.distance_to(global_position)
+			if d < best:
+				best = d
+				src = f
+	if src == null:
+		src = _last_cook_spot
+	lot.place_furniture(meal, lot.nearest_walkable(lot.world_to_cell(src.global_position + src.global_basis * Vector3(0, 0, 1.0))) if src != null else lot.world_to_cell(global_position), 0)
+	if src != null and src.height > 0.5:
+		# On top of the counter it was cooked at.
+		meal.global_position = src.global_position + Vector3(0, src.height, 0)
+		meal.rotation.y = src.rotation.y
+		meal.spots = [Vector3(0, -src.height, 1.0)]
+	announced.emit("%s cooked %s (%s). Dinner is served!" % [sim_name, i.recipe, Catalog.MEAL_QUALITY[q].to_lower()])
+
+
 ## Sells an inventory item for its value.
 func sell_item(index: int) -> void:
 	if index < 0 or index >= inventory.size():
@@ -688,6 +722,7 @@ func _process(real_delta: float) -> void:
 	if _social_with != null:
 		_listen(delta)
 		return
+	_drop_vanished()
 	_check_limits()
 	var cur := current_action()
 	if cur != null and not cur.started:
@@ -749,6 +784,21 @@ func _climb(a: SimAction, delta: float) -> bool:
 		_complete(a)
 		return false
 	return true
+
+
+## Drops queued actions whose object is gone (the last serving was eaten, a mess
+## was cleaned up, something was sold).
+func _drop_vanished() -> void:
+	for i in range(queue.size() - 1, -1, -1):
+		var a := queue[i]
+		var gone := a.furniture != null and not is_instance_valid(a.furniture)
+		gone = gone or (a.target_sim != null and not is_instance_valid(a.target_sim))
+		if gone:
+			if a.performing:
+				a.performing = false
+				_set_pose("stand")
+			queue.remove_at(i)
+			queue_changed.emit()
 
 
 ## What happens when a need runs out completely: an accident, or passing out.
@@ -998,6 +1048,8 @@ func _social_result(a: SimAction) -> void:
 
 
 func _begin_perform(a: SimAction) -> void:
+	if a.furniture != null:
+		_last_cook_spot = a.furniture
 	if a.target_sim != null:
 		change_outfit("everyday")
 		_begin_social(a)
@@ -1011,7 +1063,7 @@ func _begin_perform(a: SimAction) -> void:
 		wallet.earn(-a.interaction.cost)
 		Sfx.play("cash", -8.0)
 	# Inexperienced cooks sometimes set the kitchen on fire.
-	if a.interaction.skill == "cooking" and a.interaction.leaves_mess != "" and lot != null \
+	if a.interaction.skill == "cooking" and (a.interaction.leaves_mess != "" or a.interaction.recipe != "") and lot != null \
 			and skills.level("cooking") < Catalog.FIRE_SKILL and _rng.randf() < Catalog.FIRE_CHANCE:
 		var fire := lot.add_mess("fire", a.furniture.global_position + (a.furniture.global_basis * Vector3(0, 0, 1.2)))
 		fire.set_meta("source", a.furniture)
@@ -1067,6 +1119,8 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 	if not i.moodlet.is_empty():
 		var m := i.moodlet
 		emotions.add(m[0], m[1], m[2] + lvl / 4, m[3], m[4], m[5])
+	if finished and i.recipe != "" and lot != null:
+		_serve_meal(i, lvl)
 	if finished and i.creates == "painting":
 		var q := clampi(lvl / 3, 0, 3)
 		var value := 20 + lvl * 22 + q * 15 + _rng.randi_range(0, 20)
