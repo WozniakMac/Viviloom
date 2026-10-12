@@ -34,7 +34,7 @@ const TABS := [
 		["Saving", [["autosave", "Autosave", "choice", ["Off", "Every 10 Minutes", "Every 30 Minutes", "Every 60 Minutes"]]]],
 	]],
 	["Camera", [
-		["Camera", [["edge_scrolling", "Edge Scrolling", "check", []], ["invert_horizontal", "Invert Camera Rotation Horizontal", "check", []], ["invert_vertical", "Invert Camera Rotation Vertical", "check", []]]],
+		["Camera", [["edge_scrolling", "Edge Scrolling", "check", []], ["sims3_camera", "The Sims 3 Camera", "check", []], ["invert_horizontal", "Invert Camera Rotation Horizontal", "check", []], ["invert_vertical", "Invert Camera Rotation Vertical", "check", []]]],
 	]],
 	["Tutorial & Tips", [
 		["Tips", [["show_tips", "Show Tips", "check", []]]],

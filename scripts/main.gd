@@ -1068,6 +1068,30 @@ func open_main_menu() -> void:
 
 # --- several households -------------------------------------------------------------
 
+## Achievements for the menu: [title, how to earn it, unlocked?].
+func achievements() -> Array:
+	var any := func(f: Callable) -> bool: return household.any(f)
+	var stat := func(k: String) -> int:
+		var t := 0
+		for m in household:
+			t += int((m as Sim).stats.get(k, 0))
+		return t
+	return [
+		["Making Friends", "Become good friends with someone.", any.call(func(m: Sim): return m.relationships.values().any(func(r: Vector2): return r.x >= 60.0))],
+		["Wedding Bells", "Get married.", any.call(func(m: Sim): return m.spouse != null)],
+		["Bundle of Joy", "Have a toddler in the household.", any.call(func(m: Sim): return m.age_stage == "toddler")],
+		["Jack of All Trades", "Reach level 3 in five skills.", any.call(func(m: Sim): return Skills.ORDER.filter(func(k): return m.skills.level(k) >= 3).size() >= 5)],
+		["Master of a Craft", "Max out any skill.", any.call(func(m: Sim): return Skills.ORDER.any(func(k): return m.skills.level(k) >= Skills.MAX_LEVEL))],
+		["Top of the Ladder", "Reach the top of a career.", works.values().any(func(w: Work): return w.career != "" and not Careers.is_school(w.career) and w.level >= Careers.max_level(w.career))],
+		["Dream Come True", "Complete an aspiration.", trackers.values().any(func(t: AspirationTracker): return t.milestone >= t.milestones().size())],
+		["Green Thumb", "Harvest 10 times.", stat.call("harvests") >= 10],
+		["Gone Fishing", "Catch 10 fish.", stat.call("fish") >= 10],
+		["Art Dealer", "Sell 5 paintings.", stat.call("paintings_sold") >= 5],
+		["Social Butterfly", "Socialize 100 times.", stat.call("socials") >= 100],
+		["Big Spender", "Have §50,000 in the bank.", build.funds >= 50000],
+	]
+
+
 ## "Lived in by" line and funds for the title screen, from the last save.
 func _title_info() -> String:
 	if not SaveGame.exists():
@@ -1940,6 +1964,12 @@ func _run_scenario(scenario: String, path: String) -> void:
 			await get_tree().create_timer(4.0).timeout
 		"gamemenu":
 			open_game_menu()
+			await get_tree().create_timer(0.8).timeout
+		"achievements":
+			dialogs_enabled = true
+			open_game_menu()
+			await get_tree().process_frame
+			(_menu as GameMenu)._open_achievements()
 			await get_tree().create_timer(0.8).timeout
 		"options":
 			var o := GameOptions.new()

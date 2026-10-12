@@ -63,6 +63,7 @@ func setup(has_save: bool, in_game := true) -> void:
 		["Game Options", true, _open_options],
 		["Help", true, _open_help],
 		["Credits", true, _open_credits],
+		["Achievements", in_game, _open_achievements],
 		["Manage Households", in_game and has_save, func(): _then(manage_pressed)],
 		["Main Menu", in_game, func(): _then(main_menu_pressed)],
 	]
@@ -124,6 +125,18 @@ func _open_options() -> void:
 
 func _open_help() -> void:
 	EventDialog.ask(self, null, "Help: Controls", "Live mode: click to walk or open pie menus; P, 0 or ` pause; 1 2 3 speeds; Space next Sim; Enter centre on the Sim; O needs, L skills, Y simology, R relationships, J career, G aspiration, I inventory; Home/End walls; Page Up/Down floors; Tab hides the interface.\n\nCamera: WASD pan (Shift faster), Q/E raise and lower, comma/period rotate, right-drag rotate, middle-drag pan, wheel or Z/X zoom.\n\nBuild/Buy: F2 buy, F3 build, F1 live; H hand, B wall, K sledgehammer, E eyedropper, R design tool; comma/period rotate, Delete sells.", ["Got it"] as Array[String])
+
+
+func _open_achievements() -> void:
+	var list: Array = get_parent().achievements() if get_parent().has_method("achievements") else []
+	var lines: Array[String] = []
+	var got := 0
+	for a in list:
+		if a[2]:
+			got += 1
+		lines.append("%s  %s: %s" % ["★" if a[2] else "☆", a[0], a[1]])
+	EventDialog.ask(self, null, "Achievements (%d of %d)" % [got, list.size()], "
+".join(lines), ["Close"] as Array[String])
 
 
 func _open_credits() -> void:

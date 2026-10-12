@@ -21,6 +21,8 @@ var _rotating := false
 var _panning := false
 ## Options (Game Options > Camera).
 static var edge_scrolling := true
+## The Sims 3 camera: right-drag pans and middle-drag rotates and tilts freely.
+static var sims3_camera := false
 static var invert_horizontal := false
 static var invert_vertical := false
 ## Build mode uses Q/E/R... as tool keys, and comma/period rotate a held object.
@@ -48,13 +50,19 @@ func _unhandled_input(event: InputEvent) -> void:
 				if mb.pressed:
 					_target_distance = minf(max_distance, _target_distance * 1.12)
 			MOUSE_BUTTON_RIGHT:
-				_rotating = mb.pressed
+				if sims3_camera:
+					_panning = mb.pressed
+				else:
+					_rotating = mb.pressed
 			MOUSE_BUTTON_MIDDLE:
-				_panning = mb.pressed
+				if sims3_camera:
+					_rotating = mb.pressed
+				else:
+					_panning = mb.pressed
 	elif event is InputEventMouseMotion and _rotating:
 		var mm := event as InputEventMouseMotion
 		yaw -= mm.relative.x * 0.008 * (-1.0 if invert_horizontal else 1.0)
-		pitch = clampf(pitch - mm.relative.y * 0.006 * (-1.0 if invert_vertical else 1.0), deg_to_rad(-85.0), deg_to_rad(-15.0))
+		pitch = clampf(pitch - mm.relative.y * 0.006 * (-1.0 if invert_vertical else 1.0), deg_to_rad(-85.0), deg_to_rad(-6.0 if sims3_camera else -15.0))
 	elif event is InputEventMouseMotion and _panning:
 		var mm := event as InputEventMouseMotion
 		var fwd := Vector3(-sin(yaw), 0.0, -cos(yaw))

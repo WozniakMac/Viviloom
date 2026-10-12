@@ -24,6 +24,7 @@ const DEFAULTS := {
 	"show_wants": true,
 	"autosave": 0,
 	"edge_scrolling": true,
+	"sims3_camera": false,
 	"invert_horizontal": false,
 	"invert_vertical": false,
 	"show_tips": true,
@@ -80,6 +81,7 @@ static func apply(tree: SceneTree) -> void:
 	_set_bus("Ambience", get_value("ambience"))
 	Sfx.set_music_enabled(get_value("music_on"))
 	CameraRig.edge_scrolling = get_value("edge_scrolling")
+	CameraRig.sims3_camera = get_value("sims3_camera")
 	CameraRig.invert_horizontal = get_value("invert_horizontal")
 	CameraRig.invert_vertical = get_value("invert_vertical")
 	Ages.lifespan_mult = LIFESPAN_MULT[get_value("lifespan")]
