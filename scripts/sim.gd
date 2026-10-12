@@ -1818,7 +1818,7 @@ func _build_model() -> void:
 					if key not in ["nativehair_brows", "nativehair_lashes"]:
 						hair_material.set_shader_parameter("hair_normal", src.normal_texture)
 						hair_material.set_shader_parameter("has_normal", src.normal_texture != null)
-						if key in ["nativehair_long", "nativehair_bob"]:
+						if key == "nativehair_long":
 							hair_material.set_shader_parameter("hair_detail_texture", preload("res://assets/sim/hair-detail-ai-v1.png"))
 							hair_material.set_shader_parameter("has_detail", true)
 					_materials[key] = hair_material

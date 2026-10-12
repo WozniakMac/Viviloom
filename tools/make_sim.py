@@ -737,6 +737,8 @@ def main():
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(source_dir,'character.blend'),compress=True)
     bpy.ops.export_scene.gltf(filepath=os.path.abspath(OUT), export_format="GLB", export_animations=True,
                               export_animation_mode="NLA_TRACKS", export_apply=False, export_yup=True)
+    from gltf_textures import externalize_image
+    externalize_image(os.path.abspath(OUT),'bob01_diffuse','bob01-diffuse.png')
     print("WROTE", os.path.abspath(OUT))
 
 

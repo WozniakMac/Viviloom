@@ -5,6 +5,14 @@ sims look, feel and play. Characters combine native Anny anatomy, licensed CC0
 MakeHuman assets, original modelling and AI texture detail. Source provenance is
 retained in `assets/source/`; `tools/` rebuilds the Blender models and generated audio.
 
+## Character creator status
+
+The current checkpoint includes native male/female and age anatomy, direct sculpt
+controls, improved hands, fitted female clothing and a revised bob hairstyle. The
+full Sims 4 visual-quality target remains unfinished, and work is paused at the
+user's request. See [completed work, remaining work and validation](docs/character-creator-progress.md)
+for the current status, known limitations, source licenses and rebuild instructions.
+
 ## Running
 
 - Open `project.godot` in Godot 4.7.2 and press F5, or run `Godot_v4.7.2-stable_win64.exe --path .`

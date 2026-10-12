@@ -14,7 +14,7 @@
     "source": "../makehuman/hair01/hair/culturalibre_hair_01/diffuse_black.png",
     "source_license": "CC0",
     "prompt": "hair-detail-ai-v1.prompt.txt",
-    "use": "Supplemental RGB clump luminance for native Long and Bob hair. The original atlas alone controls alpha, UV layout, hairline and cutout. AI output did not preserve exact island placement; its color contributes only where its alpha is present.",
+    "use": "Supplemental RGB clump luminance for native Long hair only. The original atlas alone controls alpha, UV layout, hairline and cutout. AI output did not preserve exact island placement; its color contributes only where its alpha is present. The new system-pack Bob does not use this atlas.",
     "dimensions": [
       1254,
       1254
@@ -31,5 +31,15 @@
       1254
     ],
     "use": "Plain tee only; original CC0 jeans atlas retained on trousers. AI UV silhouettes approximate the source and require rendered fit verification."
+  },
+  "hair-flow-prototype-ai.png": {
+    "tool": "built-in imagegen",
+    "mode": "text-to-image",
+    "provenance": "hair-flow-prototype-ai.provenance.json",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "use": "Original solid-lock texture prototype; not used in runtime after visual review."
   }
 }

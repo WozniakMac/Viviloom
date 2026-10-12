@@ -1,76 +1,172 @@
-# Character creator quality work
+# Character creator: completed work and remaining work
 
-Worktree: character-creator. The full Sims 4 quality and interaction target is not yet achieved.
+## Current checkpoint — 12 October 2026
 
-## Current character
+The current implementation is saved in the `codex/character-creator` branch of the
+managed `character-creator` worktree. This checkpoint finishes the native bob hair
+pass. Work is paused at the user's request.
 
-- Native Anny 0.6.1 MakeHuman topology supplies separate male and female anatomy and native toddler, child, teen, adult and elder presets, including the original fingers, thumbs, feet and face. All 19,158 source indices and UVs are retained before subdivision.
-- Body weight and muscle sliders now use actual Anny heavy, fit and combined heavy/fit presets. A corrective morph keeps combined settings coherent. Fitted sweater, jeans and sneakers share those native variations.
-- Hands retain a rigid wrist-to-palm transform; smooth arm masks prevent fingers receiving leg weights. Native Anny finger weights survive subdivision and cuts. Thirty finger joints provide independent deformation and a gently curled resting pose on both frames; talking and waving relax the fingers further. All hand faces keep visible skin materials. The previous missing thumb was a clothing-mask defect.
-- A Godot skeleton modifier blends right-hand book, cup and fishing-rod grips after body animation. Objects are anchored from the native middle knuckle and rotate with the wrist. Grip changes and release blend smoothly, including after switching frames. The cup has a tapered round mesh, rim and liquid surface.
-- Exposed forearm and shin skin now uses opaque rendering; this removes the material seam around the wrist caused by visible skin using transparency.
-- Shoulder coverage and neck binding corrected. Garment membership survives sleeve/leg cuts: connected sweater and trouser pieces get their own materials, including the sweater hem.
-- CC0 MakeHuman casual outfit and shoes are fitted through their native barycentric bindings. Jeans preserve original seam/pocket/wear detail. Fabric shader preserves folds while supporting the game palette.
-- Built-in imagegen edited the sweater UV texture into a plain blue crewneck. Source and prompt are retained in assets/source/generated; original source images remain intact. The generated texture is used only on the sweater.
-- Short, tousled and bun styles use sculpted CC0 hair from the official hair01 pack; long uses sculpted culturalibre_hair_01 from hair01, bob is an original chin-length restyle of those locks, and ponytail uses a fitted system-pack asset. Short/tousled/long/bob styles include a fitted scalp underneath. The bob has narrower, shorter ends. Hair shading has restrained anisotropic highlights, softer normal detail and dark-texture tone compression to preserve strands. AI clump luminance supplements the original Long/Bob atlas without changing its alpha mask; exact UV island matching was not achieved by imagegen. Asset and exact prompt provenance are in assets/source/generated/provenance.json.
-- Female base uses its own native facial proportions and CC0 female skin, plus restrained jaw/chin/nose/lip refinement applied consistently to the base and every action. Male/Female controls switch the actual model and persist through saving.
-- Native eyes, softly blended textured eyebrows and eyelashes replace procedural overlays. Iris color preserves pupils and whites. Eyelashes follow the native blink morph.
-- Native Anny blink, smile, frown, angry brow and sad brow actions deform the face; eyes remain fixed. Blinking runs in both CAS and gameplay.
-- Direct creator gestures project anatomical face regions onto the current model. Clicking the face or scrolling up opens face view; scrolling down returns to body view. Nose/jaw/eye drags adjust widths/spacing, vertical lip drags adjust fullness, and waist/chest drags use native weight/muscle morphs. Dragging the background turns the model. Hover hints identify the target. Undo/redo stores whole drag transactions; Escape/focus loss cancels an active gesture, and UI panels cannot strand a drag.
-- Drag changes synchronize existing sliders and persist through the existing save format. Changing household member/frame/age clears stale gesture history. GUI text undo stays in the name field. Face/body framing now follows the current character scale; this does not replace the scaled-adult age anatomy.
-- Persistent nose, jaw, eye spacing and lip controls retain legacy save defaults. A neutral creator idle keeps gameplay moods from changing posture while editing.
-- Creator studio camera, softer key/fill/rim lighting, a fading floor without a hard horizon and isolated rendering layers improve close inspection. Native skin uses restrained subsurface scattering in Forward+, with normal opaque skin fallback in other renderers. Gameplay layers are restored on exit.
-- Editable compressed Blender source: tools/model_source/character.blend. Image paths are relative. Runtime asset: assets/sim/sim.glb.
+**The full Sims 4 character-creator quality target is not achieved.** Functional
+checks pass, but they do not establish visual parity. The live Sims 4 reference has
+more consistent facial styling, hair silhouettes, clothing and animation.
 
-- Native ages replace the scaled-adult placeholder. The original topology supplies age deformation fields shared by the skin, eyes, brows, hair, garments and oral cavity. Animation translation keys, bone rest origins, inverse binds and held-prop anchors follow the selected anatomy. Physical height stays separate. Full-body framing now keeps the same camera scale across ages, so shorter stages are visibly shorter; face zoom remains age-scaled. Rig data is packaged as a preloaded Godot resource for exports.
-- Toddler is now selectable in CAS. Opening an unchanged age preserves lived days; choosing a new stage resets the stage days. Elder gray hair is a display tint and no longer overwrites the saved chosen hair color. Returning to a younger age restores that color.
-- Female shoulder and arm fitting is narrower, with softer native cheek/jaw/chin/nose/lip refinements. The fitted CC0 female tee replaces the bulky male sweater; optional fitted long sleeves still work. Exposed arm skin stays opaque. First Female selection chooses Bob, and later frame switches remember customized hairstyles.
-- Built-in ImageGen removed the female tee logo/piping and supplied plain blue fabric detail. Only the tee uses that output; jeans retain the original CC0 atlas. Exact prompt and provenance are retained. An original dark inner mouth surface removes the visible background gap through parted lips.
-- Body weight/muscle also updates restrained original cheek/jaw volume and the hair envelope, keeping eyes, eyelids and neck joins fixed.
+## Done
 
-## Verification
+- [x] Separate native male and female Anny anatomy, using MakeHuman's original
+  19,158 source vertex indices and UV layout before subdivision. The creator's
+  body-frame buttons are labelled **Male** and **Female** and persist in saves.
+- [x] Native toddler, child, teen, adult and elder deformations, with Young Adult
+  as the base. Age changes the face and body geometry, bone rest positions,
+  inverse binds, animation translation keys, fitted accessories and prop anchors.
+  Physical height is separate from anatomical deformation.
+- [x] All six ages are selectable. Full-body camera scale stays constant across
+  ages so children visibly become shorter; face framing follows the age anatomy.
+  Keeping the same age preserves lived days. Changing stage resets stage days.
+  Elder gray hair is reversible display shading and preserves the saved color.
+- [x] Female shoulder/arm fitting is narrower. Original restrained jaw, chin,
+  cheek, nose and lip refinements accompany the native female head and skin.
+  A fitted female tee replaces the bulky male sweater, with optional long sleeves.
+  Initial Female selection uses Bob; subsequent frame switches remember customized
+  hairstyles. These changes are a starting point for further feminine styling.
+- [x] Native weight, muscle and combined weight/muscle body morphs. Clothing follows
+  the same changes. Original cheek/jaw and hair responses accompany body settings
+  while preserving the native eyes and the cut neck boundary.
+- [x] Native fingers and thumbs, with thirty finger joints and preserved Anny skin
+  weights. Palm/wrist fitting and skin material masks correct the missing thumb
+  and wrist seam. Resting fingers have bounded, gently curled poses.
+- [x] Runtime book, cup and fishing-rod grip profiles blend after body animation.
+  Props attach relative to the native knuckle/wrist and follow frame and age changes.
+  The cup has a rim, tapered body and liquid surface. Contacts are still authored
+  profiles rather than a contact-solving system.
+- [x] Fitted CC0 MakeHuman garments, jeans and shoes. Garment region separation
+  preserves the correct texture on sweater hems and trousers. AI-generated plain
+  blue fabric detail is used on the male sweater and female tee; denim retains its
+  original CC0 atlas. Forearm and shin skin is opaque.
+- [x] Seven selectable hairstyles. Short/tousled/bun/long use selected CC0 hair01
+  assets, and ponytail uses the system pack. The current Bob uses the system
+  pack's `bob01`, with an original smooth side sweep and restrained width. It
+  replaces the compressed long-hair bob, exposes both eyes and reduces visible
+  gaps and blunt card ends. A fitted scalp remains underneath.
+- [x] Hair shading supports palette colors, strand detail and restrained anisotropic
+  highlights. The earlier AI atlas supplement is used only on Long, whose UVs it
+  was prototyped against; it is not applied to the new Bob.
+- [x] Native eyes, textured eyebrows and eyelashes. Iris colors preserve pupils
+  and whites. Native blink, smile, frown, angry-brow and sad-brow actions deform
+  the face. An original inner-mouth surface closes the visible background gap.
+- [x] Direct creator edits for nose width, jaw width, eye spacing, lip fullness,
+  body weight and muscle. Face click/wheel zoom, background rotation, anatomical
+  hover targets, gesture undo/redo, Escape cancellation and release over GUI work.
+  Sliders and saves synchronize with drag edits; text-field undo remains separate.
+- [x] Isolated creator lighting, a fading floor and a neutral editing idle.
+  Forward+ skin uses restrained subsurface scattering; an opaque skin fallback
+  exists for other renderers. Gameplay rendering layers are restored on exit.
+- [x] Editable compressed Blender source and reproducible model generation.
+  `sim.glb` is 104,400,504 bytes, below 100 MiB. The Bob's texture is exported as
+  `assets/sim/bob01-diffuse.png` without recompression; its bytes match the original
+  CC0 image. `tools/gltf_textures.py` updates buffer references when externalizing it.
+- [x] AI visual concepts and texture prototypes are retained with their exact
+  prompts/provenance. The latest strand-flow image and procedural solid-hair
+  experiments were reviewed but not adopted into runtime hair: their silhouettes
+  were worse than the fitted native asset. The generated image is retained as
+  `assets/source/generated/hair-flow-prototype-ai.png`; local experimental code
+  and renders are under ignored `output/hair-experiments/` and `output/`.
 
-- Focused hand binding and visible-material check: output/shoulder-hand-binding.log, 37,410 vertices, zero errors.
-- Imported body/clothing native morph checks: output/garment-region-morphs.log, six meshes, zero failures.
-- Native facial displacement, fixed eyeballs, save roundtrip and legacy defaults: output/anatomy-final-faces.log, zero failures.
-- Game regression suite: output/anatomy-final-tests.log, TESTS PASSED (0 failures). Existing test cleanup/resource warnings still occur.
-- Actual game renders inspect idle, walk, sitting, using, talking and lying poses; tools/preview_runtime.tscn uses Sim materials instead of raw GLB previews.
-- Both-frame frame switching/identity, props, studio layers and save checks: output/female-final-frame-check.log, zero failures. Native face and clothing checks: output/female-final-face-check.log and output/female-final-morph-check.log, zero failures. Hand binding: output/female-final-binding.log, 37,344 female and 37,410 male vertices, zero errors. Game suite: output/female-final-tests.log, TESTS PASSED (0 failures), with existing out-of-tree transform and resource-cleanup diagnostics.
-- Female AI concept and exact prompt: assets/references/female-character-concept.png and female-character-concept.prompt.txt, generated with built-in imagegen; design reference, not an in-game render.
-- Current female game views: output/female-final-face.png, output/female-final-body.png; body extremes: output/female-final-heavy.png and output/female-final-fit.png; animation poses and hairstyles: output/female-final-poses.png and output/female-final-hair.png.
-- Native finger deformation across both frames and base/heavy/fit/combined extremes: output/hands-extremes-deformation.log, 80 independent digit checks, zero failures. No unrelated anatomy moves. Native hand binding: output/fingers-binding-check.log, zero errors.
-- Real Godot AnimationMixer/modifier ordering, grip changes, wrist-relative props, release and rebuilt skeletons: output/hands-runtime-check.log, zero failures. Frame identity/save, face and body/clothing morph checks: output/hands-frame-check.log, output/hands-face-check.log and output/hands-morph-check.log, zero failures. Game suite: output/hands-game-tests.log, TESTS PASSED (0 failures); existing transform/cleanup diagnostics remain.
-- Latest game hand renders: output/hands-final.png, output/hands-female-heavy-fit.png and output/hands-final-cas-palm.png. Female creator after the hand pass: output/hands-final-female-body.png. Visual inspection confirms the wrist seam is removed and the finger bends remain bounded; authored prop contact still needs refinement.
-- Latest torso/creator: output/garment-region-torso.png and output/character-current.png. Hand closeup: output/final-palm.png. Soft face detail: output/soft-face-detail.png. Tests alone do not establish the visual quality target.
+## Still to do
 
-- Female hair/studio checkpoint: output/beauty-studio-final-face.png and output/beauty-studio-final-body.png show the actual game creator. Brown/blonde material comparison: output/beauty-hair-comparison-v2.png, built by tools/preview_portraits.tscn. Both native hand bindings, frame/save/prop switches, face morphs, body/clothing morphs and hand modifier checks all pass in output/beauty-hair-*-check.log. Game suite: output/beauty-hair-game-tests.log, TESTS PASSED (0 failures), with existing transform/resource cleanup diagnostics.
-- Live Sims 4 comparison inspected the existing female household in CAS at full body and face zoom. Reference hair uses broad coherent locks, controlled strand highlights and soft silhouette ends; face lighting gives more cheek/nose depth. Current OpenSims card edges and silhouette remain below that target. The compatibility renderer loads successfully but still differs visibly in brightness/material response; Forward+ is the current visual target.
+The following items remain part of the original goal, in suggested priority order.
 
-- Direct-edit integration: output/sculpt-final-check.log reports 138 real viewport input checks, zero failures. Coverage includes both frames, all four facial targets, native mesh values, body edits, undo/redo, Escape, release over GUI, GUI slider routing, saved values and palette swatch selection, household-member isolation, text-field undo, wheel zoom and existing age-scale framing. Actual in-game gesture render: output/sculpt-final-interaction.png. A live computer-use check also confirmed head-click zoom, nose dragging and Ctrl+Z in the running OpenSims creator. Game suite: output/sculpt-final-game-tests.log, TESTS PASSED (0 failures), with existing transform/resource cleanup diagnostics.
+1. **Female face and overall human styling.** Improve cheek/chin/eye/lid proportions,
+   skin response and facial diversity against the live reference. The native female
+   base now differs from the male, but it still needs a more coherent, appealing
+   stylized appearance. Verify neutral and animated expressions as well as the
+   smiling creator render; a flattering single image is insufficient.
+2. **Age quality beyond the base anatomy.** Add age-specific skin detail and styling.
+   Refine younger faces, lips and clothing, and interactions between age, expressions,
+   weight, muscle and sculpt controls. Current editing deltas and skin atlases still
+   start from adult data even though age anatomy and the skeleton change natively.
+3. **Hair quality and choices.** Refine Bob's hairline, remaining fine cutout edges,
+   side asymmetry and ends. Improve the other card-based styles, especially Short
+   and Tousled. Add more original styles and verify all palette colors and ages.
+4. **Torso and garments.** Further refine shoulder/armpit and sleeve joins, joint
+   silhouettes, skirt fitting and clothing intersections through animation and
+   body extremes. Add clothing variety and proportion controls for individual
+   torso/limb regions rather than only global weight/muscle.
+5. **Hand contact.** Improve thumb opposition, finger placement around each object,
+   reading/reaching transitions and prop detail. Test visible palms and both hands
+   in close view at every age and at body extremes. Current grips do not enforce
+   physical contact constraints.
+6. **Creator interaction depth.** Add nose profile, chin/cheek, eye/lid and individual
+   limb controls, catalog thumbnails and broader undo history. Slider/catalog
+   changes currently clear direct-gesture history. Improve small-window layouts
+   where panels and editing controls crowd the model.
+7. **Facial animation.** Add teeth, speech and fuller expression blending; verify
+   eyelash/brow fitting and mouth interiors through combined expressions.
+8. **Quality verification and cleanup.** Compare live Sims 4 and OpenSims through
+   body extremes, age/frame changes, poses and lighting. Validate compatibility
+   rendering as well as Forward+, and packaged exports. Investigate the existing
+   test resource-cleanup/out-of-tree transform diagnostics. Model hot reload is
+   not proven stable: a previous preview crashed during external asset reload.
 
-- Native age checkpoint: output/native-age-ready-check.log verifies 3,566 anatomy, skeleton rest, inverse-bind, posed-mesh, hair-color and save checks with zero failures in the actual renderer. Creator input checks include every exposed age, lived-day preservation, face editing and undo: output/native-age-ready-sculpt.log. Frame/identity, body/clothing morphs and gameplay pass in output/native-age-ready-frames.log, output/native-age-ready-morphs.log and output/native-age-ready-game-tests.log. Game tests still emit existing transform/resource-cleanup diagnostics.
-- Rendered age comparisons: output/native-ages-final-body.png and output/native-ages-final-faces.png. Actual creator: output/native-age-ready-creator-face.png. The original sleeve gaps were found in renders and corrected before the checkpoint. Native facial imports/actions, independent hand weights and animated grip profiles pass in output/native-age-face-final-check.log, output/native-age-binding-check.log and output/native-age-hand-check.log.
-- A previous live preview exited with a Godot renderer indexing error during external asset reload. Stop owned verification previews before importing/replacing models, and open a fresh preview afterward. The fresh-model checks pass; this is not evidence that live model hot reload is stable.
+## Latest verification
 
-## Remaining goal work
+The final checks used the rebuilt model and its external Bob texture.
 
-- Further age-specific skin detail, clothing, expressions and weight/muscle interaction; age now changes native anatomy as well as physical height. The body and facial editing deltas still start from the adult base and need more refinement for younger stages. Further face diversity is also needed.
-- More clothing and hairstyle choices, skin variants and original styling; refine card-hair styles, the skirt and remaining joint silhouettes.
-- Further hand contact refinement: thumb opposition, object-specific finger placement, grip transitions during reaching and reading, and prop detail. Current grips use authored profiles rather than contact constraints.
-- Further regional sculpting (nose profile, chin/cheeks, eye/lid shape, individual torso/limb proportions), catalog thumbnails and broader edit history. Current direct manipulation exposes four face proportions and global weight/muscle; slider/catalog changes still clear drag history.
-- More complete facial animation, teeth, speech and expression blending.
-- Live quality comparison with the Sims 4 reference across body extremes, animation, lighting and customizations.
+| Check | Result | Local log |
+| --- | --- | --- |
+| Native age anatomy, skeleton, inverse binds, poses, hair colors and saves | 3,566 checks, 0 failures | `output/native-bob-final-ages.log` |
+| Real creator gestures, GUI routing, undo/cancel and saves | 146 checks, 0 failures | `output/native-bob-final-sculpt.log` |
+| Frame identity, morphs, props, studio layers and saves | 0 failures | `output/native-bob-final-frames.log` |
+| Head/hair body response, fixed eyes and neck joins | 0 failures | `output/native-bob-final-head-body.log` |
+| Existing gameplay regression suite | TESTS PASSED, 0 failures | `output/native-bob-final-game-tests.log` |
 
-## Sources and licenses
+The gameplay suite still emits existing transform/dependency/resource-cleanup
+warnings and errors at shutdown. Its passing assertions do not mean the entire
+log is clean. The focused age, frame, head/body and creator checks above pass.
 
-Anny: https://github.com/naver/anny. Code Apache-2.0, generated graphical data CC0. License and preset metadata are retained in assets/source/anny.
+Actual rendered evidence (local, ignored output files):
 
-MakeHuman base and system pack: https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html. Full 280,737,770-byte archive was CRC checked (517 entries); SHA256 b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107. Pack provenance is in assets/source/makehuman/pack-provenance.json. Only selected source assets are tracked; large archives and unused assets are ignored.
+- Creator face and body: `output/native-bob-final-creator-face.png` and
+  `output/native-bob-final-creator-body.png`.
+- Both frames in front, three-quarter, side and back views:
+  `output/native-bob-final-views.png` (`tools/preview_hair_views.tscn`).
+- All six age faces: `output/native-bob-final-age-faces.png`
+  (`tools/preview_ages.tscn`). Earlier full-body age comparison:
+  `output/native-ages-final-body.png`.
+- Hand/extreme/animation checks and renders from the previous completed hand pass:
+  `output/hands-extremes-deformation.log`, `output/hands-runtime-check.log`,
+  `output/hands-final.png` and `output/hands-female-heavy-fit.png`.
 
-Official hair01 CC0 pack: https://static.makehumancommunity.org/assets/assetpacks/hair01.html. Selected entries retrieved by validated HTTP Range and ZIP CRC. Authors and provenance: assets/source/makehuman/hair01/provenance.json; original declarations remain in each .mhclo/.mhmat.
+## Source files, licenses and rebuild
 
-Graphical source assets are CC0. MakeHuman program source is not incorporated. Original AI concept and its prompt are in assets/references.
+- Model source: `tools/model_source/character.blend`.
+- Runtime model: `assets/sim/sim.glb`; external Bob texture:
+  `assets/sim/bob01-diffuse.png`. Keep both runtime files together.
+- Age rig: `assets/sim/age_rig.tres`, with readable `age-rig.json` source data.
+- Anny: https://github.com/naver/anny — code Apache-2.0; generated graphical data
+  CC0. Presets, metadata and licenses are under `assets/source/anny/`.
+- MakeHuman system pack:
+  https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html.
+  Selected assets and declarations are under `assets/source/makehuman/system-assets/`.
+  The full 280,737,770-byte archive was CRC checked (517 entries); provenance and
+  SHA256 are in `assets/source/makehuman/pack-provenance.json`.
+- Hair01 CC0 pack:
+  https://static.makehumancommunity.org/assets/assetpacks/hair01.html. Selected
+  entries were checked by ZIP CRC. Authors and provenance are retained in
+  `assets/source/makehuman/hair01/provenance.json` and original asset declarations.
+- AI concepts: `assets/references/`. Generated fabric/hair texture records:
+  `assets/source/generated/`. Reference concepts are not in-game renders.
 
-## Rebuild
+Only licensed graphical source assets and original work are incorporated. Sims 4
+is a live visual/interaction reference; its meshes and textures are not used.
 
-Use an isolated .anny-venv with CPU torch and tools/requirements-anny.txt; run tools/export_anny.py, then Blender --background --python tools/make_sim.py from the worktree. Anny caches stay in .anny-cache. Run Godot --headless --path . --editor --import before the checks. Source/cache directories have .gdignore files.
+From the worktree, export presets using the isolated `.anny-venv` and
+`tools/requirements-anny.txt`: `python tools/export_anny.py`. Then run
+`blender --background --python tools/make_sim.py`. The model builder also regenerates
+its external Bob texture. Import with `Godot --headless --path . --editor --import`.
+Stop owned game previews before replacing/importing the model, then launch a fresh
+preview. Anny caches and experimental outputs are intentionally not tracked.
+
+Run renderer-dependent checks with a visible renderer, for example
+`Godot --path . res://tools/check_ages.tscn` and
+`Godot --path . res://tools/check_character_sculpt.tscn -- --scenario=skip_cas`.
+Run gameplay tests with `Godot --headless --path . res://tests/run_tests.tscn`.

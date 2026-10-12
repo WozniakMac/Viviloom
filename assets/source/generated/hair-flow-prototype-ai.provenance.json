@@ -1,0 +1,6 @@
+{
+  "generator": "OpenAI built-in ImageGen",
+  "date": "2026-10-12",
+  "purpose": "Texture prototype for original solid hair locks; not used in the runtime after visual review.",
+  "prompt": "Create a square seamless tileable grayscale strand-flow texture for a high-quality stylized 3D human hairstyle. This is a flat technical surface texture, not a photograph, not a head, not a hair clump silhouette, no empty space, no border, no text. Fill the entire square edge to edge with dense fine smooth vertical flowing parallel hair strands, running from the top edge to the bottom edge. Group the strands into about twelve broad subtly irregular vertical locks. Moderate gentle undulation, controlled low contrast, medium gray base around 50 percent luminance, subtle darker strand grooves and soft light gray ridges. Avoid black and white extremes. No strong shadows or baked specular highlights, no illumination gradient. All strands should remain predominantly vertical, and both horizontal and vertical edges must join seamlessly when repeated. Uniform texture scale throughout. Intended as UV-flow albedo/height detail on solid tapered hair locks in a stylized life simulation game."
+}
