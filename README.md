@@ -52,7 +52,7 @@ for the current status, known limitations, source licenses and rebuild instructi
   cooking recipes and group meals, gardening (plant, water, weed, fertilize, harvest produce of five qualities), sticky outfits (dresser and self-click Change Outfit), held props, inventory with paintings and fish, a phone with Social, Travel, Services (pizza, maid, repairs), Career and Household tabs, social events (House Party, Dinner Party, Date) with goals and medals,
   townies, visitors at the door, day and night, music and ambience.
 - **Build/Buy**: ready-made furnished rooms, undo/redo, walls and a one-drag room tool, foundations with steps, terrain paint, roofs (gable, hip, flat or none, six colours), doors, windows, fences (picket, iron railing, hedge) with gates, half walls, columns, paint, floors, pools, a second storey with stairs,
-  ~65 objects with colour swatches (bathtub, armchair, kids' furniture, rugs, art,
+  ~70 objects with colour swatches and counter-top decor (lamps, vases, books, candles...) (bathtub, armchair, kids' furniture, rugs, art,
   pines, flowering shrubs and flower beds...),
   a scrolling catalogue, and room decor that lifts Sims' moods.
 - **Lot traits**: up to three per home (Homey, Chef's Kitchen, Gremlins, Natural Light...).

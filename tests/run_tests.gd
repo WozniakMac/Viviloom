@@ -64,6 +64,7 @@ func _ready() -> void:
 	_test_dirty_fixtures()
 	_test_everyday_objects()
 	_test_counter_tops()
+	_test_surface_decor()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1268,4 +1269,19 @@ func _test_counter_tops() -> void:
 	_check(mw.get_parent() == counter and not lot.furniture.has(mw), "picking up the counter takes the microwave along")
 	lot.place_furniture(counter, Vector2i(8, 8))
 	_check(lot.furniture.has(mw) and mw.cell == Vector2i(8, 8), "and it comes back down on the counter")
+	lot.queue_free()
+
+
+func _test_surface_decor() -> void:
+	var lot := _make_lot()
+	add_child(lot)
+	var table := Catalog.create("dining_table")
+	lot.place_furniture(table, Vector2i(4, 4))
+	for kind in ["table_lamp", "vase_flowers", "book_stack", "desk_clock", "candles", "fruit_bowl"]:
+		var f := Catalog.create(kind)
+		_check(f.small and Catalog.KINDS.has(kind) and f.decor > 0, "%s is a surface decoration" % kind)
+		f.free()
+	var vase := Catalog.create("vase_flowers")
+	_check(lot.can_place(vase, Vector2i(5, 4), 0), "decor goes on a dining table")
+	vase.free()
 	lot.queue_free()

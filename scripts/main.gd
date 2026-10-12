@@ -2284,6 +2284,25 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"decor":
+			var desk := find_furniture("desk")
+			var dc := desk.cell
+			for pair in [["table_lamp", dc], ["book_stack", dc + Vector2i(1, 0)]]:
+				var d := Catalog.create(pair[0])
+				if lot.can_place(d, pair[1], desk.rot_steps):
+					lot.place_furniture(d, pair[1], desk.rot_steps)
+				else:
+					d.free()
+			var mw := find_furniture("microwave")
+			for pair in [["fruit_bowl", mw.cell + Vector2i(0, 0)], ["vase_flowers", mw.cell + Vector2i(-1, 0)]]:
+				var d2 := Catalog.create(pair[0])
+				if lot.can_place(d2, pair[1], 0):
+					lot.place_furniture(d2, pair[1], 0)
+				else:
+					d2.free()
+			Clock.total_minutes = 21 * 60.0
+			rig.frame(desk.global_position, deg_to_rad(15.0), deg_to_rad(-40.0), 7.0)
+			await get_tree().create_timer(1.0).timeout
 		"countertop":
 			var mw := find_furniture("microwave")
 			rig.frame(mw.global_position, deg_to_rad(15.0), deg_to_rad(-35.0), 5.0)
