@@ -48,6 +48,7 @@ func _ready() -> void:
 	_test_child_skills()
 	_test_foundation()
 	_test_terrain()
+	_test_townie_babies()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -961,4 +962,30 @@ func _test_terrain() -> void:
 	_check(lot.terrain_tiles.is_empty(), "painting lawn erases")
 	build._wall_preview.free()
 	build.free()
+	lot.queue_free()
+
+
+func _test_townie_babies() -> void:
+	var lot := _make_lot()
+	add_child(lot)
+	var v := Visitors.new()
+	add_child(v)
+	v.setup(lot)
+	var a: Sim = v.townies[1]
+	var b: Sim = v.townies[2]
+	a.spouse = b
+	b.spouse = a
+	a.age_stage = "adult"
+	b.age_stage = "adult"
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9
+	var born := false
+	for d in 120:
+		for n in v.new_day(rng):
+			if "baby" in n:
+				born = true
+		if born:
+			break
+	_check(born and v.townies.any(func(t): return t.age_stage == "toddler"), "townie couples have children")
+	v.queue_free()
 	lot.queue_free()

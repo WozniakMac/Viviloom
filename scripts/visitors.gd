@@ -36,6 +36,8 @@ var _rng := RandomNumberGenerator.new()
 ## New faces who move to town when someone passes away.
 const NEWCOMER_NAMES: Array[String] = ["Rosa", "Kofi", "Mei", "Lars", "Amara", "Tomas", "Yuki", "Bram", "Nadia", "Oscar"]
 const MARRY_CHANCE := 0.06
+const BABY_CHANCE := 0.05
+const MAX_TOWNIES := 14
 
 
 func setup(p_lot: Lot) -> void:
@@ -97,6 +99,22 @@ func new_day(rng: RandomNumberGenerator) -> Array[String]:
 		b.spouse = a
 		a.change_relationship(b, 60.0, 80.0)
 		news.append("%s and %s got married!" % [a.sim_name, b.sim_name])
+	# Married couples sometimes start a family.
+	for t in townies.duplicate():
+		var sp: Sim = t.spouse
+		if sp == null or not is_instance_valid(sp) or t.sim_name > sp.sim_name:
+			continue
+		if not t.age_stage in ["young_adult", "adult"] or not sp.age_stage in ["young_adult", "adult"]:
+			continue
+		if townies.size() >= MAX_TOWNIES or rng.randf() > BABY_CHANCE:
+			continue
+		var baby := newcomer(rng)
+		baby.set_age("toddler")
+		baby.skin_color = t.skin_color.lerp(sp.skin_color, rng.randf())
+		baby.hair_color = t.hair_color if rng.randf() < 0.5 else sp.hair_color
+		for p in [t, sp]:
+			p.change_relationship(baby, 60.0, 0.0)
+		news.append("%s and %s had a baby, %s!" % [t.sim_name, sp.sim_name, baby.sim_name])
 	return news
 
 
