@@ -56,6 +56,14 @@ func birthday(s: Sim) -> void:
 	if next == "":
 		return
 	s.age_days = 0
+	# Toddlers who learned a lot grow into bright, confident children.
+	if s.age_stage == "toddler":
+		var total := 0
+		for sk in Skills.TODDLER_SKILLS:
+			total += s.skills.level(sk)
+		if total >= 8 and not s.perks.has("top_notch_toddler"):
+			s.perks.append("top_notch_toddler")
+			notice.emit("%s was a Top-Notch Toddler! They'll learn faster as a child." % s.sim_name, "Growing Up")
 	s.set_age(next)
 	s.emotions.add("birthday", "happy", 2, "Happy Birthday!", "Another year older, and wiser.", 480.0)
 	Sfx.play("level_up", -4.0)

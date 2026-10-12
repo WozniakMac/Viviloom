@@ -25,9 +25,17 @@ const INFO := {
 	"programming": ["Programming", "focused"],
 	"piano": ["Piano", "inspired"],
 	"fishing": ["Fishing", "focused"],
+	"communication": ["Communication", "happy"],
+	"movement": ["Movement", "playful"],
+	"potty": ["Potty", "fine"],
+	"thinking": ["Thinking", "focused"],
+	"imagination": ["Imagination", "playful"],
 }
+## Skills only toddlers learn (from grown-ups' teaching and play).
+const TODDLER_SKILLS: Array[String] = ["communication", "movement", "potty", "thinking", "imagination"]
 const ORDER: Array[String] = ["cooking", "logic", "painting", "gaming", "fitness", "charisma", "guitar", "gardening", "writing", "handiness",
-	"comedy", "mischief", "mixology", "programming", "piano", "fishing"]
+	"comedy", "mischief", "mixology", "programming", "piano", "fishing",
+	"communication", "movement", "potty", "thinking", "imagination"]
 const EMOTION_BONUS := 1.5
 
 var xp := {}

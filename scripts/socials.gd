@@ -66,6 +66,19 @@ static func all() -> Array[Interaction]:
 	out.append(_make("Break Up", 15.0, {"social": 20.0}, {"category": "Mean", "friendship": -20.0, "romance": -60.0, "break_up": true,
 		"actor_moodlet": ["broke_up", "sad", 1, "Broke Up", "It was for the best... right?", 360.0],
 		"target_moodlet": ["heartbroken", "sad", 3, "Heartbroken", "How could they?", 720.0]}))
+	# Parenting: grown-ups (and older kids) teach toddlers their skills.
+	out.append(_make("Teach to Talk", 30.0, {"social": 70.0, "fun": 5.0}, {"category": "Parenting", "friendship": 5.0, "for_toddler": true,
+		"target_skill": "communication", "target_moodlet": ["first_words", "happy", 1, "Learning Words", "Ba... ball!", 120.0]}))
+	out.append(_make("Teach to Walk", 30.0, {"social": 60.0, "fun": 10.0}, {"category": "Parenting", "friendship": 5.0, "for_toddler": true,
+		"target_skill": "movement", "target_moodlet": ["toddling", "playful", 1, "Wobbly Steps", "Look, no hands!", 120.0]}))
+	out.append(_make("Potty Train", 30.0, {"social": 50.0}, {"category": "Parenting", "friendship": 3.0, "for_toddler": true,
+		"target_skill": "potty", "target_moodlet": ["big_kid", "confident", 1, "Big Kid", "Using the potty like a pro.", 120.0]}))
+	out.append(_make("Play Peekaboo", 15.0, {"social": 70.0, "fun": 40.0}, {"category": "Parenting", "friendship": 6.0, "for_toddler": true,
+		"target_skill": "thinking", "target_moodlet": ["giggles", "playful", 1, "Giggles", "Where did they go? There they are!", 120.0]}))
+	out.append(_make("Tell a Story", 30.0, {"social": 75.0, "fun": 20.0}, {"category": "Parenting", "friendship": 6.0, "for_toddler": true, "for_child": true,
+		"target_skill": "imagination", "target_moodlet": ["storytime", "happy", 1, "Story Time", "And then the dragon...", 180.0]}))
+	out.append(_make("Tickle", 10.0, {"social": 70.0, "fun": 35.0}, {"category": "Parenting", "friendship": 5.0, "for_toddler": true, "for_child": true,
+		"target_moodlet": ["tickled", "playful", 1, "Tickled", "Hee hee hee!", 90.0]}))
 	out.append(_make("Insult", 10.0, {"social": 30.0}, {"category": "Mean", "friendship": -15.0,
 		"actor_moodlet": ["mean", "confident", 1, "Got That Off My Chest", "They had it coming.", 90.0],
 		"target_moodlet": ["insulted", "angry", 2, "Insulted", "How rude!", 180.0]}))
@@ -130,7 +143,16 @@ static func available(friendship: float, romance: float, actor_stage := "young_a
 			continue
 		if i.name == "Ask to Move In" and (friendship < 40.0 or not Ages.is_adult(actor_stage)):
 			continue
-		if i.name == "Hug" and friendship < 20.0:
+		if i.name == "Hug" and friendship < 20.0 and target_stage != "toddler":
+			continue
+		# Parenting socials are for little ones, by older Sims; toddlers only get
+		# those plus a chat and a hug.
+		var for_little: bool = i.social.get("for_toddler", false) or i.social.get("for_child", false)
+		if for_little:
+			var fits: bool = (target_stage == "toddler" and i.social.get("for_toddler", false)) or (target_stage == "child" and i.social.get("for_child", false))
+			if not fits or actor_stage in ["toddler", "child"]:
+				continue
+		elif target_stage == "toddler" and not i.name in ["Chat", "Hug"]:
 			continue
 		out.append(i)
 	return out

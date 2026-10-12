@@ -980,6 +980,10 @@ func _check_limits() -> void:
 	if _burning >= BURN_MINUTES:
 		died.emit("fire")
 		return
+	# Toddlers who aren't potty trained have little accidents before it gets urgent.
+	if age_stage == "toddler" and skills.level("potty") < 2 and needs.get_value("bladder") < 12.0:
+		needs.set_value("bladder", 0.0)
+		emotions.add("accident", "embarrassed", 1, "Little Accident", "Oops. Needs potty training!", 90.0)
 	if needs.get_value("bladder") <= 0.0:
 		clear_queue()
 		lot.add_mess("puddle", global_position)
@@ -1198,6 +1202,11 @@ func _social_result(a: SimAction) -> void:
 	activity_done.emit(a.interaction.name)
 	if a.interaction.skill != "":
 		skills.add_xp(a.interaction.skill, skill_gain(a.interaction, a.interaction.max_minutes) * (1.0 if a.outcome else 0.5))
+	if a.outcome and s.has("target_skill"):
+		var before := t.skills.level(s["target_skill"])
+		t.skills.add_xp(s["target_skill"], 70.0 * a.interaction.max_minutes / 30.0)
+		if t.skills.level(s["target_skill"]) > before:
+			announced.emit("%s's %s skill went up thanks to %s!" % [t.sim_name, Skills.label(s["target_skill"]), sim_name])
 	if a.outcome:
 		if s.get("cheer", false):
 			t.emotions.clear_emotion("sad")
@@ -1281,6 +1290,8 @@ func skill_gain(interaction: Interaction, minutes: float) -> float:
 	var gain := interaction.skill_rate * minutes / 60.0 * Traits.skill_mult(traits, interaction.skill)
 	if perks.has("fast_learner"):
 		gain *= 1.25
+	if perks.has("top_notch_toddler") and age_stage == "child":
+		gain *= 1.2
 	if lot != null:
 		gain *= LotTraits.skill_mult(lot.lot_traits, interaction.skill)
 	if emotions.mood() == Skills.boosting_emotion(interaction.skill):

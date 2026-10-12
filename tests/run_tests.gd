@@ -42,6 +42,7 @@ func _ready() -> void:
 	_test_career_tasks()
 	_test_walk_styles()
 	_test_story()
+	_test_toddler_parenting()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -654,7 +655,7 @@ func _test_romance() -> void:
 	var cats := {}
 	for i in Socials.all():
 		cats[i.social["category"]] = true
-	_check(cats.size() == 5, "socials come in Friendly, Funny, Romance, Mischief and Mean")
+	_check(cats.size() == 6, "socials come in Friendly, Funny, Romance, Mischief, Mean and Parenting")
 	var single := _names(Socials.available(50.0, 55.0, "adult", "adult"))
 	_check(single.has("Ask to Be Partner") and not single.has("Propose") and not single.has("Break Up"), "ask to go steady before proposing")
 	var steady := _names(Socials.available(50.0, 80.0, "adult", "adult", "fine", "fine", "partner"))
@@ -816,3 +817,29 @@ func _test_story() -> void:
 	var w2 := [lone]
 	Story.advance_day(w2, 1, rng)
 	_check(w2.is_empty(), "a household with no one left is removed")
+
+
+func _test_toddler_parenting() -> void:
+	var to_toddler := _names(Socials.available(20.0, 0.0, "adult", "toddler"))
+	_check(to_toddler.has("Teach to Talk") and to_toddler.has("Potty Train") and not to_toddler.has("Insult") and not to_toddler.has("Flirt"), "grown-ups get parenting socials for toddlers")
+	var to_adult := _names(Socials.available(20.0, 0.0, "adult", "adult"))
+	_check(not to_adult.has("Teach to Talk"), "no toddler teaching between adults")
+	_check(_names(Socials.available(20.0, 0.0, "adult", "child")).has("Tell a Story"), "children love stories too")
+	var mum := Sim.new()
+	var kid := Sim.new()
+	kid.age_stage = "toddler"
+	var act := Sim.SimAction.new()
+	act.target_sim = kid
+	act.interaction = Socials.find("Teach to Talk")
+	act.outcome = true
+	act.elapsed = 999.0
+	mum._social_result(act)
+	_check(kid.skills.xp["communication"] > 0.0, "teaching builds the toddler's skill")
+	var life := LifeCycle.new()
+	for sk in Skills.TODDLER_SKILLS:
+		kid.skills.add_xp(sk, Skills.xp_for_level(2))
+	life.birthday(kid)
+	_check(kid.perks.has("top_notch_toddler") and kid.age_stage == "child", "well-taught toddlers grow up top-notch")
+	life.free()
+	mum.free()
+	kid.free()

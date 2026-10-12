@@ -1796,6 +1796,18 @@ func _run_scenario(scenario: String, path: String) -> void:
 			lot.wall_view = Lot.WallView.CUTAWAY
 			rig.frame(pn.global_position, deg_to_rad(25.0), deg_to_rad(-35.0), 8.0)
 			await get_tree().create_timer(4.0).timeout
+		"toddlermenu":
+			sim.pregnant_days = 0
+			life._give_birth(sim)
+			await get_tree().create_timer(0.5).timeout
+			var kid: Sim = household[household.size() - 1]
+			kid.global_position = sim.global_position + Vector3(1.2, 0, 0)
+			rig.frame(kid.global_position, deg_to_rad(20.0), deg_to_rad(-35.0), 6.0)
+			await get_tree().create_timer(0.6).timeout
+			open_sim_menu(kid, rig.camera.unproject_position(kid.global_position + Vector3(0, 0.6, 0)))
+			await get_tree().create_timer(0.4).timeout
+			hud.pie_menu.chosen.emit(1)
+			await get_tree().create_timer(0.6).timeout
 		"jog":
 			sim.walk_style = "bouncy"
 			sim.global_position = lot.cell_to_world(Vector2i(2, 17))
