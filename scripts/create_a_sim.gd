@@ -29,6 +29,7 @@ var _trait_info: Label
 var _done: IconButton
 var _swatches := {}
 var _aspiration_pick: OptionButton
+var _walk_pick: OptionButton
 var _hair_buttons := {}
 var _age_buttons := {}
 var _outfit_buttons := {}
@@ -90,6 +91,17 @@ func _build() -> void:
 	_aspiration_pick.item_selected.connect(func(idx: int): _pick_aspiration(Aspirations.ORDER[idx]))
 	left.add_child(_aspiration_pick)
 	_pick_aspiration(sim.aspiration)
+	_walk_pick = OptionButton.new()
+	_walk_pick.focus_mode = Control.FOCUS_NONE
+	_walk_pick.custom_minimum_size = Vector2(380, 34)
+	_walk_pick.add_theme_font_size_override("font_size", 14)
+	for w in Sim.WALK_STYLE_ORDER:
+		_walk_pick.add_item("Walk Style: %s" % Sim.WALK_STYLES[w][0])
+	_walk_pick.item_selected.connect(func(idx: int):
+		sim.walk_style = Sim.WALK_STYLE_ORDER[idx]
+		sim.preview_walk())
+	left.add_child(_walk_pick)
+	_walk_pick.select(Sim.WALK_STYLE_ORDER.find(sim.walk_style))
 
 	var slots_row := HBoxContainer.new()
 	slots_row.add_theme_constant_override("separation", 4)
@@ -318,6 +330,7 @@ func edit(s: Sim) -> void:
 	_picked = s.traits.duplicate()
 	_name_edit.text = s.sim_name
 	_pick_hair(s.hair_style)
+	_sync_walk()
 	_pick_age(s.age_stage)
 	_pick_aspiration(s.aspiration)
 	_pick_outfit(s.outfit)
@@ -437,6 +450,11 @@ func _pick_hair(style: String) -> void:
 		(_hair_buttons[k] as Button).button_pressed = k == style
 
 
+func _sync_walk() -> void:
+	if _walk_pick != null:
+		_walk_pick.select(Sim.WALK_STYLE_ORDER.find(sim.walk_style))
+
+
 func _pick_aspiration(a: String) -> void:
 	sim.aspiration = a
 	_aspiration_pick.select(Aspirations.ORDER.find(a))
@@ -496,6 +514,8 @@ func randomize_sim() -> void:
 	sim.set_traits(_picked)
 	_pick_aspiration(Aspirations.ORDER[_rng.randi() % Aspirations.ORDER.size()])
 	_pick_hair(Sim.HAIR_STYLES[_rng.randi() % Sim.HAIR_STYLES.size()])
+	sim.walk_style = Sim.WALK_STYLE_ORDER[_rng.randi() % Sim.WALK_STYLE_ORDER.size()]
+	_sync_walk()
 	sim.set_body(_rng.randf() * 0.7, _rng.randf() * 0.7)
 	sim.set_outfit(_rng.randf() < 0.4, false)
 	sim.set_legs(["trousers", "trousers", "shorts", "skirt"][_rng.randi() % 4])

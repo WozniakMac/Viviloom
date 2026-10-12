@@ -63,6 +63,26 @@ class SimAction:
 @export var eye_color := Color(0.25, 0.17, 0.1)
 ## "short", "long" or "bun".
 @export var hair_style := "short"
+## How this Sim walks (chosen in Create a Sim): see WALK_STYLES.
+var walk_style := "default"
+## id -> [label, speed multiplier, bounce height, hip sway, forward lean]
+const WALK_STYLES := {
+	"default": ["Default", 1.0, 0.0, 0.0, 0.0],
+	"swagger": ["Swagger", 0.9, 0.015, 0.11, -0.06],
+	"bouncy": ["Bouncy", 1.05, 0.06, 0.0, 0.03],
+	"energetic": ["Energetic", 1.2, 0.03, 0.03, 0.09],
+	"lazy": ["Lazy", 0.8, 0.0, 0.05, 0.12],
+	"snooty": ["Snooty", 0.95, 0.0, 0.02, -0.1],
+	"graceful": ["Graceful", 1.0, 0.015, 0.09, 0.0],
+}
+const WALK_STYLE_ORDER: Array[String] = ["default", "swagger", "bouncy", "energetic", "lazy", "snooty", "graceful"]
+## Long trips are jogged, like the reference game.
+const JOG_DISTANCE := 9.0
+const JOG_MULT := 1.7
+var _jogging := false
+var _walk_phase := 0.0
+## Seconds left of a walk-on-the-spot preview (Create a Sim).
+var _preview_walk := 0.0
 ## Body shape sliders (0..1) and outfit cut.
 @export var body_heavy := 0.0
 @export var body_fit := 0.0
@@ -511,6 +531,7 @@ func to_dict() -> Dictionary:
 		"name": sim_name,
 		"colors": {"shirt": shirt_color.to_html(), "pants": pants_color.to_html(), "skin": skin_color.to_html(), "hair": hair_color.to_html(), "eyes": eye_color.to_html()},
 		"hair_style": hair_style,
+		"walk_style": walk_style,
 		"body": [body_heavy, body_fit, long_sleeves, shorts, skirt],
 		"outfit": outfit,
 		"outfits": _outfits_dict(),
@@ -535,6 +556,7 @@ func from_dict(d: Dictionary, others: Array) -> void:
 	for part in d.get("colors", {}):
 		set_part_color(part, Color.html(d["colors"][part]))
 	set_hair_style(d.get("hair_style", hair_style))
+	walk_style = d.get("walk_style", "default")
 	var bd: Array = d.get("body", [0.0, 0.0, false, false])
 	set_body(bd[0], bd[1])
 	set_outfit(bd[2], bd[3])
@@ -1371,7 +1393,9 @@ func _follow_path(delta: float) -> bool:
 	var target := path[_path_index]
 	var to := target - global_position
 	to.y = 0.0
-	var step := walk_speed * delta
+	if _path_index == 0 or Engine.get_process_frames() % 15 == 0:
+		_jogging = _remaining_path() > JOG_DISTANCE
+	var step := move_speed() * delta
 	if to.length() <= step:
 		global_position = target
 		_path_index += 1
@@ -1383,6 +1407,41 @@ func _follow_path(delta: float) -> bool:
 	global_position += dir * step
 	_face(dir, delta)
 	return true
+
+
+## Walking speed with the walk style and jogging taken into account.
+func move_speed() -> float:
+	return walk_speed * WALK_STYLES.get(walk_style, WALK_STYLES["default"])[1] * (JOG_MULT if _jogging else 1.0)
+
+
+func _remaining_path() -> float:
+	var total := 0.0
+	var prev := global_position
+	for k in range(_path_index, path.size()):
+		total += prev.distance_to(path[k])
+		prev = path[k]
+	return total
+
+
+## Bounce, sway and lean on top of the walk cycle; jogging leans forward more.
+func _apply_walk_style(walking: bool, delta: float) -> void:
+	if _pose != "stand":
+		return
+	var st: Array = WALK_STYLES.get(walk_style, WALK_STYLES["default"])
+	if not walking:
+		_body.rotation.z = lerpf(_body.rotation.z, 0.0, 0.2)
+		return
+	var real := get_process_delta_time()
+	var rate := 1.0 if _preview_walk > 0.0 else minf(Clock.SPEED_FACTORS[Clock.speed], 3.0)
+	_walk_phase += real * rate * move_speed() * 2.2
+	_body.position.y = absf(sin(_walk_phase * PI)) * st[2]
+	_body.rotation.z = sin(_walk_phase * PI) * st[3] * 0.5
+	_body.rotation.x = -(st[4] + (0.12 if _jogging else 0.0))
+
+
+## Shows off the walk style on the spot for a couple of seconds.
+func preview_walk() -> void:
+	_preview_walk = 2.5
 
 
 func _face(dir: Vector3, delta: float) -> void:
@@ -1434,6 +1493,10 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 				anim = "talk"
 			elif busy:
 				anim = "use"
+	if _preview_walk > 0.0 and _pose == "stand":
+		_preview_walk -= get_process_delta_time()
+		anim = "walk"
+	_apply_walk_style(anim == "walk", delta)
 	_update_expression()
 	var want_prop := ""
 	if cur != null and cur.performing and cur.interaction != null:
@@ -1465,8 +1528,10 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 		# Animations follow game speed (capped so ultra speed isn't frantic), and the
 		# walk cycle matches the walking speed (about 1.4 m per stride).
 		var rate := minf(Clock.SPEED_FACTORS[Clock.speed], 3.0)
+		if _preview_walk > 0.0:
+			rate = 1.0
 		if anim.begins_with("walk"):
-			rate *= walk_speed / 1.4
+			rate *= move_speed() / 1.4
 		_anim.speed_scale = rate
 	# The plumbob floats over the head, spinning and bobbing even while paused.
 	_plumbob.rotation.y += get_process_delta_time() * 1.8

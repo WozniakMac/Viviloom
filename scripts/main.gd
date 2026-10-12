@@ -1792,6 +1792,14 @@ func _run_scenario(scenario: String, path: String) -> void:
 			lot.wall_view = Lot.WallView.CUTAWAY
 			rig.frame(pn.global_position, deg_to_rad(25.0), deg_to_rad(-35.0), 8.0)
 			await get_tree().create_timer(4.0).timeout
+		"jog":
+			sim.walk_style = "bouncy"
+			sim.global_position = lot.cell_to_world(Vector2i(2, 17))
+			sim.queue_go(lot.cell_to_world(Vector2i(22, 17)))
+			Clock.set_speed(1)
+			rig.frame(lot.cell_to_world(Vector2i(6, 17)), deg_to_rad(80.0), deg_to_rad(-15.0), 6.0)
+			await get_tree().create_timer(1.3).timeout
+			print("JOG jogging=%s speed=%.2f" % [sim._jogging, sim.move_speed()])
 		"workevent":
 			dialogs_enabled = true
 			var w: Work = works[sim]

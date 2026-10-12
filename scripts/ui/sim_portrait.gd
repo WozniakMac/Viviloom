@@ -20,6 +20,9 @@ static var _shader: Shader
 
 
 func _init() -> void:
+	# Update after the Sims have moved and animated this frame, or a walking Sim
+	# slides out of frame.
+	process_priority = 1000
 	expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	var vp := SubViewport.new()
 	vp.size = Vector2i(256, 256)
@@ -77,8 +80,17 @@ func _update_camera() -> void:
 	var body := sim.get_node_or_null("Body") as Node3D
 	if body == null:
 		return
-	var basis := body.global_basis.orthonormalized()
+	# Follow the body when lying or swimming, but not the small leans and sways of
+	# walk styles, so the face stays centred.
+	var upright := absf(body.rotation.x) < 0.5
+	var basis := (sim.global_basis if upright else body.global_basis).orthonormalized()
 	var head := body.to_global(Vector3(0, 1.62, 0))
+	var skel := sim.find_child("Skeleton3D", true, false) as Skeleton3D
+	if skel != null and upright:
+		var bi := skel.find_bone("head")
+		if bi >= 0:
+			# The real head (walk cycles bob and sway it), a little above the neck joint.
+			head = skel.global_transform * skel.get_bone_global_pose(bi).origin + Vector3.UP * 0.1 * sim.size_scale()
 	var face := basis * Vector3.FORWARD
 	var up := basis * Vector3.UP
 	var side := face.cross(up).normalized()

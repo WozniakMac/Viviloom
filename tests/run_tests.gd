@@ -40,6 +40,7 @@ func _ready() -> void:
 	_test_new_skills()
 	_test_lot_traits()
 	_test_career_tasks()
+	_test_walk_styles()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -777,3 +778,17 @@ func _test_career_tasks() -> void:
 	_check(w.performance == 45.0, "fixing the printer without Handiness backfires")
 	w.free()
 	sim.free()
+
+
+func _test_walk_styles() -> void:
+	var s := Sim.new()
+	var base := s.move_speed()
+	s.walk_style = "energetic"
+	_check(s.move_speed() > base, "energetic Sims walk faster")
+	s.walk_style = "lazy"
+	_check(s.move_speed() < base, "lazy Sims dawdle")
+	s.path = PackedVector3Array([Vector3(20, 0, 0)])
+	s._path_index = 0
+	_check(s._remaining_path() > Sim.JOG_DISTANCE, "long trips are measured for jogging")
+	_check(s.to_dict().get("walk_style") == "lazy", "walk style is saved")
+	s.free()
