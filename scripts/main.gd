@@ -815,10 +815,19 @@ func _update_mess() -> void:
 	for s in household:
 		if s.away:
 			continue
-		if count >= 2:
-			s.emotions.add("messy", "tense", mini(3, count / 2), "Messy Surroundings", "There are dirty dishes and worse lying around.", 30.0)
+		var limit := 1 if s.traits.has("neat") else 2
+		if count >= limit and not s.traits.has("slob"):
+			var w := mini(3, count / 2 + (1 if s.traits.has("neat") else 0))
+			s.emotions.add("messy", "tense", maxi(w, 1), "Messy Surroundings", "There are dirty dishes and worse lying around.", 30.0)
 		elif s.emotions.has("messy"):
 			s.emotions.remove("messy")
+		if s.traits.has("loner"):
+			var near := 0
+			for o in lot.sims:
+				if o != s and o.visible and o.global_position.distance_to(s.global_position) < 5.0:
+					near += 1
+			if near >= 3:
+				s.emotions.add("crowded", "tense", 1, "Too Many People", "Could use some alone time.", 30.0)
 
 
 ## Music follows the mode (title / Create a Sim, live, build); ambience follows

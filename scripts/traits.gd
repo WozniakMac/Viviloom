@@ -49,9 +49,54 @@ const INFO := {
 		"likes": {"bookshelf": 2.5},
 		"skill_mult": {"logic": 1.2},
 	},
+	"neat": {
+		"label": "Neat",
+		"description": "Loves a tidy home: cleans up eagerly and hates mess.",
+		"likes": {"dishes": 2.5, "puddle": 2.5},
+	},
+	"slob": {
+		"label": "Slob",
+		"description": "Leaves a trail of mess and doesn't mind it one bit.",
+	},
+	"active": {
+		"label": "Active",
+		"description": "Full of energy and loves working out. Learns Fitness faster.",
+		"periodic": ["energized", 1, "Restless Energy", "Needs to move!", 480.0, 180.0],
+		"skill_mult": {"fitness": 1.5},
+		"likes": {"fitness": 2.5, "pool": 2.0},
+	},
+	"romantic": {
+		"label": "Romantic",
+		"description": "Dreams of love; flirts often and loves romantic moments.",
+		"periodic": ["flirty", 1, "Love Is in the Air", "Thinking about romance...", 600.0, 180.0],
+		"likes": {"romance": 2.5},
+	},
+	"loner": {
+		"label": "Loner",
+		"description": "Needs less company and gets tense in crowds.",
+		"decay_mult": {"social": 0.5},
+		"likes": {"social": 0.5},
+	},
+	"hot_headed": {
+		"label": "Hot-Headed",
+		"description": "Quick to anger, slow to cool down.",
+		"periodic": ["angry", 1, "Easily Annoyed", "Everything is irritating today.", 420.0, 150.0],
+	},
+	"foodie": {
+		"label": "Foodie",
+		"description": "Lives for good food. Learns Cooking faster.",
+		"skill_mult": {"cooking": 1.5},
+		"likes": {"cooking": 2.5},
+	},
+	"music_lover": {
+		"label": "Music Lover",
+		"description": "Happiest with music playing. Learns Guitar faster.",
+		"skill_mult": {"guitar": 1.5},
+		"likes": {"guitar": 2.5, "stereo": 2.5},
+	},
 }
-const ORDER: Array[String] = ["cheerful", "gloomy", "creative", "genius", "lazy", "bookworm"]
-const CONFLICTS := [["cheerful", "gloomy"]]
+const ORDER: Array[String] = ["cheerful", "gloomy", "creative", "genius", "lazy", "bookworm", "neat", "slob", "active", "romantic", "loner", "hot_headed", "foodie", "music_lover"]
+const CONFLICTS := [["cheerful", "gloomy"], ["neat", "slob"], ["active", "lazy"], ["loner", "romantic"], ["cheerful", "hot_headed"]]
 
 
 static func label(t: String) -> String:
@@ -103,4 +148,8 @@ static func liking(traits: Array[String], kind: String, interaction: Interaction
 		m *= likes.get(kind, 1.0)
 		if interaction.skill != "":
 			m *= likes.get(interaction.skill, 1.0)
+		if interaction.is_social():
+			m *= likes.get("social", 1.0)
+			if interaction.social.get("category", "") == "Romance":
+				m *= likes.get("romance", 1.0)
 	return m

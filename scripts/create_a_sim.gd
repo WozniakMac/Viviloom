@@ -112,7 +112,7 @@ func _build() -> void:
 	pt.text = "Choose Traits"
 	pv.add_child(pt)
 	var grid := GridContainer.new()
-	grid.columns = 3
+	grid.columns = 5
 	grid.add_theme_constant_override("h_separation", 14)
 	grid.add_theme_constant_override("v_separation", 8)
 	pv.add_child(grid)
@@ -120,7 +120,7 @@ func _build() -> void:
 		var h := TraitHex.new()
 		h.trait_id = t
 		h.clickable = true
-		h.custom_minimum_size = Vector2(108, 92)
+		h.custom_minimum_size = Vector2(68, 74)
 		h.toggled.connect(_on_trait_clicked)
 		h.mouse_entered.connect(func(): _trait_info.text = "%s: %s" % [Traits.label(t), Traits.description(t)])
 		grid.add_child(h)

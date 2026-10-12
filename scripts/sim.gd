@@ -1040,6 +1040,9 @@ func _end_perform(a: SimAction, finished := false) -> void:
 	a.furniture.user = null
 	if finished and a.interaction.leaves_mess != "" and lot != null:
 		lot.add_mess(a.interaction.leaves_mess, a.spot if a.spot != Vector3.ZERO else global_position)
+	elif finished and traits.has("slob") and lot != null and a.furniture.blocks and _rng.randf() < 0.25:
+		# Slobs leave a little mess wherever they go.
+		lot.add_mess("dishes", a.spot if a.spot != Vector3.ZERO else global_position)
 	if finished and a.interaction.effect != "":
 		a.furniture.apply_effect(a.interaction.effect)
 	if finished and a.interaction.clears_emotion != "":

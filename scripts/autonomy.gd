@@ -80,7 +80,10 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 		# Tidy Sims clean up messes when nothing more pressing needs doing.
 		if Catalog.MESSES.has(f.kind):
 			if urgent.is_empty() and not sim.is_visitor and Ages.allows(sim.age_stage, f.interactions[0]):
-				options.append([MESS_SCORE / (1.0 + dist / 20.0), f, f.interactions[0]])
+				var like := Traits.liking(sim.traits, f.kind, f.interactions[0])
+				if sim.traits.has("slob"):
+					like *= 0.2
+				options.append([MESS_SCORE * like / (1.0 + dist / 20.0), f, f.interactions[0]])
 			continue
 		for i in f.available_interactions():
 			if not Ages.allows_for(sim, i):
@@ -97,10 +100,18 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 		if other == sim or not (other as Sim).can_socialize():
 			continue
 		var dist := sim.global_position.distance_to(other.global_position)
-		for i in [Socials.find("Chat"), Socials.find("Tell a Joke")]:
+		var o := other as Sim
+		var picks: Array = [Socials.find("Chat"), Socials.find("Tell a Joke")]
+		# Romantics flirt with Sims they already like (grown-ups only).
+		if sim.traits.has("romantic") and sim.friendship_with(o) >= 20.0 and Ages.romance_ok(sim.age_stage, o.age_stage):
+			picks.append(Socials.find("Flirt"))
+		# Hot-heads in a bad mood pick fights.
+		if sim.traits.has("hot_headed") and sim.emotions.mood() == "angry":
+			picks.append(Socials.find("Argue"))
+		for i in picks:
 			if not urgent.is_empty() and not restores_any(i, urgent):
 				continue
-			var s := score(sim.needs, i) / (1.0 + dist / 20.0)
+			var s := score(sim.needs, i) * Traits.liking(sim.traits, "", i) / (1.0 + dist / 20.0)
 			if s >= MIN_SCORE:
 				options.append([s, other, i])
 	if options.is_empty():

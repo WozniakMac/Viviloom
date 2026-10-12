@@ -32,6 +32,7 @@ func _ready() -> void:
 	_test_pools()
 	_test_upper_floor()
 	_test_outfits()
+	_test_more_traits()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -527,3 +528,16 @@ func _test_outfits() -> void:
 	tm.free()
 	s.queue_free()
 	t.queue_free()
+
+
+func _test_more_traits() -> void:
+	var neat: Array[String] = ["neat"]
+	_check(not Traits.can_add(neat, "slob"), "neat and slob conflict")
+	var romantic: Array[String] = ["romantic"]
+	_check(Traits.liking(romantic, "", Socials.find("Flirt")) > Traits.liking(romantic, "", Socials.find("Chat")), "romantics prefer flirting")
+	var loner: Array[String] = ["loner"]
+	_check(Traits.liking(loner, "", Socials.find("Chat")) < 1.0 and Traits.decay_mult(loner)["social"] < 1.0, "loners need less company")
+	var foodie: Array[String] = ["foodie"]
+	_check(Traits.skill_mult(foodie, "cooking") > 1.0, "foodies learn cooking faster")
+	for t in Traits.ORDER:
+		_check(TraitHex.TRAIT_COLORS.has(t), "trait %s has a colour" % t)

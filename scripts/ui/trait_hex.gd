@@ -12,6 +12,14 @@ const TRAIT_COLORS := {
 	"genius": Color(0.55, 0.42, 0.85),
 	"lazy": Color(0.6, 0.55, 0.45),
 	"bookworm": Color(0.85, 0.45, 0.3),
+	"neat": Color(0.3, 0.75, 0.85),
+	"slob": Color(0.55, 0.5, 0.3),
+	"active": Color(0.95, 0.5, 0.2),
+	"romantic": Color(0.95, 0.45, 0.65),
+	"loner": Color(0.45, 0.5, 0.6),
+	"hot_headed": Color(0.85, 0.25, 0.2),
+	"foodie": Color(0.8, 0.6, 0.25),
+	"music_lover": Color(0.5, 0.35, 0.8),
 }
 
 var trait_id := ""
@@ -72,5 +80,9 @@ func _draw() -> void:
 	draw_string(font, c + Vector2(-ts.x * 0.5, fs * 0.35), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
 	if show_label:
 		var name := Traits.label(trait_id)
-		var ns := font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13)
-		draw_string(font, Vector2(size.x * 0.5 - ns.x * 0.5, size.y - 4.0), name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, UiTheme.TEXT_SOFT if blocked else UiTheme.TEXT)
+		var nfs := 12
+		var ns := font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, nfs)
+		while ns.x > size.x + 6.0 and nfs > 8:
+			nfs -= 1
+			ns = font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, nfs)
+		draw_string(font, Vector2(size.x * 0.5 - ns.x * 0.5, size.y - 4.0), name, HORIZONTAL_ALIGNMENT_LEFT, -1, nfs, UiTheme.TEXT_SOFT if blocked else UiTheme.TEXT)
