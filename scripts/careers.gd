@@ -25,6 +25,41 @@ const INFO := {
 		"levels": [["Canvas Stretcher", 12], ["Gallery Assistant", 18], ["Artist", 28], ["Acclaimed Artist", 42], ["Master Painter", 60]],
 		"description": "Make a name in the art world. Painting helps you rise.",
 	},
+	"business": {
+		"label": "Business",
+		"skill": "charisma",
+		"start": 9, "end": 17,
+		"levels": [["Mailroom Clerk", 15], ["Office Assistant", 22], ["Account Manager", 34], ["Regional Director", 52], ["CEO", 85]],
+		"description": "Climb the corporate ladder. Charisma helps you rise.",
+	},
+	"athlete": {
+		"label": "Athlete",
+		"skill": "fitness",
+		"start": 7, "end": 13,
+		"levels": [["Waterboy", 13], ["Minor Leaguer", 20], ["Rookie", 32], ["Pro Athlete", 50], ["Hall of Famer", 75]],
+		"description": "Train hard, play harder. Fitness helps you rise.",
+	},
+	"entertainer": {
+		"label": "Entertainer",
+		"skill": "guitar",
+		"start": 14, "end": 22,
+		"levels": [["Street Performer", 11], ["Opening Act", 19], ["Headliner", 30], ["Star", 48], ["Legend", 72]],
+		"description": "From busking to sold-out shows. Guitar helps you rise.",
+	},
+	"writer": {
+		"label": "Writer",
+		"skill": "writing",
+		"start": 10, "end": 16,
+		"levels": [["Copy Editor", 14], ["Blogger", 21], ["Author", 31], ["Bestselling Author", 47], ["Literary Legend", 68]],
+		"description": "Words on paper, money in the bank. Writing helps you rise.",
+	},
+	"astronaut": {
+		"label": "Astronaut",
+		"skill": "logic",
+		"start": 8, "end": 16,
+		"levels": [["Space Cadet", 16], ["Flight Engineer", 25], ["Mission Specialist", 38], ["Commander", 58], ["Space Ranger", 90]],
+		"description": "Reach for the stars. Logic helps you rise.",
+	},
 	"school": {
 		"label": "Grade School", "skill": "logic", "start": 8, "end": 15,
 		"levels": [["Student", 0]], "description": "Reading, writing and recess.",
@@ -34,7 +69,13 @@ const INFO := {
 		"levels": [["Student", 0]], "description": "Homework, friends and a lot of growing up.",
 	},
 }
-const ORDER: Array[String] = ["culinary", "tech", "painter"]
+const ORDER: Array[String] = ["culinary", "tech", "painter", "business", "athlete", "entertainer", "writer", "astronaut"]
+## How hard the Sim works: [label, performance multiplier, moodlet on return].
+const WORK_STYLES := {
+	"hard": ["Work Hard", 1.6, ["work_hard", "tense", 1, "Worked Hard", "Tiring, but it'll pay off.", 240.0]],
+	"normal": ["Normal", 1.0, []],
+	"easy": ["Take It Easy", 0.4, ["work_easy", "happy", 1, "Easy Day", "Barely broke a sweat today.", 180.0]],
+}
 ## School counts as a "career" for children and teens: no pay, a grade instead.
 const SCHOOLS: Array[String] = ["school", "high_school"]
 const WORK_DAYS := 5

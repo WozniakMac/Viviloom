@@ -13,6 +13,10 @@ enum State { HOME, LEAVING, WAITING, AT_WORK, RETURNING }
 var sim: Sim
 var lot: Lot
 var career := ""
+## "hard", "normal" or "easy" (see Careers.WORK_STYLES).
+var work_style := "normal"
+## Day the Sim is taking off, if any.
+var day_off := 0
 var level := 0
 var performance := 0.0
 var state := State.HOME
@@ -45,7 +49,7 @@ func quit() -> void:
 
 
 func to_dict() -> Dictionary:
-	return {"career": career, "level": level, "performance": performance, "last_shift_day": _last_shift_day}
+	return {"career": career, "level": level, "performance": performance, "last_shift_day": _last_shift_day, "style": work_style}
 
 
 ## Loading always puts the Sim at home; a shift in progress is simply skipped.
@@ -54,7 +58,18 @@ func from_dict(d: Dictionary) -> void:
 	level = int(d.get("level", 0))
 	performance = d.get("performance", 0.0)
 	_last_shift_day = int(d.get("last_shift_day", 0))
+	work_style = d.get("style", "normal")
 	state = State.HOME
+	changed.emit()
+
+
+## Skips today's shift (a small hit to performance).
+func take_day_off() -> void:
+	if career == "" or Careers.is_school(career):
+		return
+	day_off = Clock.day()
+	performance = maxf(0.0, performance - 8.0)
+	notice.emit("%s is taking the day off." % sim.sim_name, "Career")
 	changed.emit()
 
 
@@ -69,7 +84,7 @@ func _process(_delta: float) -> void:
 	var h := Clock.hour()
 	match state:
 		State.HOME:
-			if Careers.is_work_day(Clock.day()) and h >= info["start"] and h < info["end"] and Clock.day() != _last_shift_day:
+			if Careers.is_work_day(Clock.day()) and h >= info["start"] and h < info["end"] and Clock.day() != _last_shift_day and Clock.day() != day_off:
 				_leave_for_work()
 		State.LEAVING:
 			# The walk to the curb is done (or was cancelled): the carpool comes.
@@ -136,8 +151,14 @@ func _finish_shift() -> void:
 	n.set_value("bladder", maxf(n.get_value("bladder"), 60.0))
 	n.set_value("social", maxf(n.get_value("social"), 65.0))
 	var skill: String = Careers.INFO[career]["skill"]
-	var gain := Careers.shift_performance(_mood_at_start, sim.skills.level(skill))
+	var style: Array = Careers.WORK_STYLES[work_style]
+	var gain: float = Careers.shift_performance(_mood_at_start, sim.skills.level(skill)) * style[1]
 	performance = minf(100.0, performance + gain)
+	var m: Array = style[2]
+	if not m.is_empty():
+		sim.emotions.add(m[0], m[1], m[2], m[3], m[4], m[5])
+		if work_style == "hard":
+			sim.needs.add("energy", -15.0)
 	if gain >= 25.0:
 		sim.emotions.add("work_day", "confident", 1, "Productive Day", "Got a lot done at work today.", 240.0)
 	elif gain < 12.0:

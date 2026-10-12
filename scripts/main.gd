@@ -1592,6 +1592,14 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(13, 17)), deg_to_rad(10.0), deg_to_rad(-30.0), 22.0)
 			await get_tree().create_timer(6.5).timeout
 			print("CARPOOL state=%d away=%s" % [work.state, sim.away])
+		"careers":
+			hud._show_page(4)
+			await get_tree().create_timer(0.6).timeout
+		"careerjob":
+			work.join("business")
+			work.work_style = "hard"
+			hud._show_page(4)
+			await get_tree().create_timer(0.6).timeout
 		"store":
 			aspirations.satisfaction = 2300
 			hud._show_page(5)

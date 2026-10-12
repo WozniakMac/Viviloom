@@ -1045,6 +1045,14 @@ func _refresh_career() -> void:
 		intro.add_theme_font_size_override("font_size", 14)
 		intro.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
 		_career_box.add_child(intro)
+		var scroll := ScrollContainer.new()
+		scroll.custom_minimum_size = Vector2(350, 300)
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		_career_box.add_child(scroll)
+		var list := VBoxContainer.new()
+		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		list.add_theme_constant_override("separation", 6)
+		scroll.add_child(list)
 		for c in Careers.ORDER:
 			var card := PanelContainer.new()
 			card.add_theme_stylebox_override("panel", UiTheme.pill(Color.WHITE, UiTheme.PANEL_EDGE, 10))
@@ -1072,7 +1080,7 @@ func _refresh_career() -> void:
 			join.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			join.pressed.connect(work.join.bind(c))
 			row.add_child(join)
-			_career_box.add_child(card)
+			list.add_child(card)
 		return
 	var c2 := work.career
 	var head := UiTheme.title(Label.new(), 17)
@@ -1101,6 +1109,33 @@ func _refresh_career() -> void:
 		next.add_theme_font_size_override("font_size", 12)
 		next.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
 		_career_box.add_child(next)
+	if not Careers.is_school(c2):
+		var style_label := Label.new()
+		style_label.text = "Work style"
+		style_label.add_theme_font_size_override("font_size", 13)
+		_career_box.add_child(style_label)
+		var styles := HBoxContainer.new()
+		styles.add_theme_constant_override("separation", 4)
+		_career_box.add_child(styles)
+		for k in ["hard", "normal", "easy"]:
+			var sb := Button.new()
+			sb.text = Careers.WORK_STYLES[k][0]
+			sb.toggle_mode = true
+			sb.button_pressed = work.work_style == k
+			sb.focus_mode = Control.FOCUS_NONE
+			sb.add_theme_font_size_override("font_size", 12)
+			sb.add_theme_stylebox_override("pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+			sb.add_theme_stylebox_override("hover_pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+			sb.pressed.connect(func():
+				work.work_style = k
+				_refresh_career())
+			styles.add_child(sb)
+		var off := Button.new()
+		off.text = "Take Day Off"
+		off.focus_mode = Control.FOCUS_NONE
+		off.disabled = work.state != Work.State.HOME or work.day_off == Clock.day()
+		off.pressed.connect(work.take_day_off)
+		_career_box.add_child(off)
 	var quit := Button.new()
 	quit.text = "Quit Job"
 	quit.focus_mode = Control.FOCUS_NONE
