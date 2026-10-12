@@ -488,6 +488,38 @@ func _build_time_controls() -> void:
 
 
 var _pause_label: Label
+var _event_panel: PanelContainer
+var _event_label: RichTextLabel
+
+
+## The social event's goal list at the top of the screen, like the reference's.
+func show_event(ev: SocialEvent) -> void:
+	if _event_panel == null:
+		_event_panel = PanelContainer.new()
+		_event_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_event_panel.position = Vector2(-420, 76)
+		_event_panel.custom_minimum_size = Vector2(340, 0)
+		_root.add_child(_event_panel)
+		_live_ui.append(_event_panel)
+		_event_label = RichTextLabel.new()
+		_event_label.bbcode_enabled = true
+		_event_label.fit_content = true
+		_event_label.scroll_active = false
+		_event_label.custom_minimum_size = Vector2(320, 0)
+		_event_label.add_theme_font_size_override("normal_font_size", 13)
+		_event_label.add_theme_color_override("default_color", UiTheme.TEXT)
+		_event_panel.add_child(_event_label)
+	_event_panel.visible = ev.active
+	if not ev.active:
+		return
+	var mins := int(ev.minutes_left())
+	var medal_text := "no medal yet" if ev.medal() == 0 else SocialEvent.MEDALS[ev.medal()] + " medal"
+	var lines: Array[String] = ["[b]%s[/b]   %d:%02d left   ·   %s" % [ev.title, mins / 60, mins % 60, medal_text]]
+	for g in ev.goals:
+		var done: bool = g["done"] >= g["need"]
+		lines.append("%s %s  (%d/%d)" % ["[color=#2e9e3e]✔[/color]" if done else "○", g["text"], mini(g["done"], g["need"]), g["need"]])
+	_event_label.text = "
+".join(lines)
 var _moon_icon: Control
 var _pause_frame: Panel
 
@@ -890,6 +922,8 @@ func _fill_phone() -> void:
 			_phone_button("Take Day Off", func(): phone_service.emit("day_off"))
 		4:
 			_phone_button("Pay Bills", func(): phone_service.emit("pay_bills"))
+			_phone_button("Plan a House Party", func(): phone_service.emit("event:house_party"))
+			_phone_button("Plan a Dinner Party", func(): phone_service.emit("event:dinner_party"))
 	# Grow upwards from the button.
 	_phone_panel.reset_size()
 	await get_tree().process_frame

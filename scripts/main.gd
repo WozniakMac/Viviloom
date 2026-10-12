@@ -37,6 +37,8 @@ var _home_snapshot := {}
 ## household), and keys of the save that belong to the whole world.
 var other_households: Array = []
 var _ui_hidden := false
+var social_event: SocialEvent
+var _event_tick := 0.0
 static var _open_manage_next := false
 var _autosave_timer := 0.0
 var _story_rng := RandomNumberGenerator.new()
@@ -197,6 +199,13 @@ func _ready() -> void:
 					sim.emotions.add("phone_chat", "happy", 1, "Nice Chat", "Good to catch up on the phone.", 120.0)
 					hud.show_notice("%s had a nice chat with %s on the phone." % [sim.sim_name, t.sim_name], "Phone")
 			return
+		if service.begins_with("event:"):
+			if location != "home" or social_event.active:
+				hud.show_notice("You can only throw one event at a time, at home.", "Phone")
+			else:
+				social_event.start(service.trim_prefix("event:"), household, visitors)
+				hud.show_notice("%s has started! Complete the goals before time runs out." % social_event.title, "Social Event")
+			return
 		match service:
 			"maid":
 				var cleanable := lot.messes().filter(func(m): return m.kind in ["dishes", "puddle"])
@@ -235,6 +244,25 @@ func _ready() -> void:
 				_pizza_due = Clock.total_minutes + 45.0
 				hud.show_notice("Pizza is on its way! It'll arrive in about 45 minutes.", "Phone"))
 	hud.set_phone(visitors, COMMUNITY_LOTS)
+	social_event = SocialEvent.new()
+	social_event.name = "SocialEvent"
+	add_child(social_event)
+	social_event.changed.connect(func(): hud.show_event(social_event))
+	social_event.finished.connect(func(medal: int, title: String):
+		var reward: int = SocialEvent.REWARD[medal]
+		if reward > 0:
+			build.earn(reward)
+		for m in household:
+			if medal >= 2:
+				(m as Sim).emotions.add("great_party", "happy", 2, "Great Party!", "That was a night to remember.", 480.0)
+			elif medal == 0:
+				(m as Sim).emotions.add("flop_party", "embarrassed", 1, "Party Flop", "Well, that was awkward.", 240.0)
+		for g in social_event.guests:
+			visitors.send_home(g)
+		var msg := "%s is over: %s medal!" % [title, SocialEvent.MEDALS[medal]]
+		if reward > 0:
+			msg += " The household earned %s." % Hud.money(reward)
+		hud.show_notice(msg, "Social Event"))
 	hud.set_others(lot)
 
 	hud.menu_requested.connect(func():
@@ -721,6 +749,10 @@ func _furniture_at(screen_pos: Vector2) -> Furniture:
 
 func _process(delta: float) -> void:
 	_autosave(delta)
+	_event_tick += delta
+	if social_event != null and social_event.active and _event_tick > 0.5:
+		_event_tick = 0.0
+		hud.show_event(social_event)
 	_update_window_glow()
 	rig.height_keys_enabled = not build.active
 	rig.rotate_keys_enabled = not (build.active and build.is_holding())
@@ -2185,6 +2217,14 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"party":
+			hud.phone_service.emit("event:house_party")
+			for k in 5:
+				sim.activity_done.emit("Chat")
+			sim.activity_done.emit("Dance")
+			Clock.set_speed(1)
+			rig.frame(lot.cell_to_world(Vector2i(11, 12)), deg_to_rad(20.0), deg_to_rad(-40.0), 17.0)
+			await get_tree().create_timer(2.0).timeout
 		"phonecheck":
 			lot.add_mess("dishes", lot.cell_to_world(Vector2i(10, 8)))
 			var tv := find_furniture("tv")
