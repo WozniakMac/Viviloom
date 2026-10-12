@@ -444,6 +444,9 @@ func _start(a: SimAction) -> void:
 	if f.user != null and f.user != self:
 		_fail(a, "The %s is in use." % f.display_name)
 		return
+	if Daylight.power_off and Bills.ELECTRIC.has(f.kind):
+		_fail(a, "The %s doesn't work: the power is off. Pay the bills!" % f.display_name)
+		return
 	var best := PackedVector3Array()
 	var best_len := INF
 	for s in f.world_spots():

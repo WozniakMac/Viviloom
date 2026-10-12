@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox"]
 
 ## Display name and price for the build-mode catalogue.
 const INFO := {
@@ -16,12 +16,22 @@ const INFO := {
 	"easel": ["Easel", 350],
 	"chess": ["Chess Table", 400],
 	"lamp": ["Floor Lamp", 120],
+	"sofa": ["Three-Seat Sofa", 750],
+	"dining_table": ["Dining Table", 380],
+	"chair": ["Dining Chair", 90],
+	"counter": ["Kitchen Counter", 210],
+	"stove": ["Stove", 600],
+	"sink": ["Kitchen Sink", 260],
+	"plant": ["Potted Plant", 60],
+	"mailbox": ["Mailbox", 50],
 }
 ## Build-mode catalogue sections: [id, label]; "all" lists everything.
-const CATEGORIES := [["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"]]
+const CATEGORIES := [["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"], ["living", "Living"], ["outdoor", "Outdoor"]]
 const CATEGORY_OF := {
 	"bed": "bedroom", "fridge": "kitchen", "toilet": "bathroom", "shower": "bathroom",
 	"tv": "fun", "desk": "fun", "chess": "hobby", "easel": "hobby", "bookshelf": "hobby", "lamp": "bedroom",
+	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
+	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -34,6 +44,14 @@ const DESCRIPTIONS := {
 	"easel": "Paint, improve, sell. Repeat.",
 	"chess": "Practise chess and sharpen your logic.",
 	"lamp": "A warm glow for the evenings. Switches on by itself at dusk.",
+	"sofa": "Room for three, or one very relaxed Sim.",
+	"dining_table": "Proper meals taste better at a proper table.",
+	"chair": "A simple chair. Sit, think, eat.",
+	"counter": "Prep space for salads and sandwiches.",
+	"stove": "Where real cooking happens. Mind the smoke alarm.",
+	"sink": "Wash up, freshen up.",
+	"plant": "A bit of green. Needs the occasional drink.",
+	"mailbox": "Bills arrive here. Pay them before the power goes out.",
 }
 const WALL_PRICE := 14
 const DOOR_PRICE := 150
@@ -228,6 +246,69 @@ static func create(kind: String) -> Furniture:
 			glow.visible = false
 			f.add_child(glow)
 			f.add_to_group("lamps")
+		"sofa":
+			f.display_name = "Sofa"
+			f.footprint = Vector2i(3, 1)
+			f.height = 0.9
+			f.spots = [Vector3(0, 0, 1.0), Vector3(-1.0, 0, 1.0), Vector3(1.0, 0, 1.0)]
+			f.use_position = Vector3(0, 0.05, 0.05)
+			f.use_facing = Vector3(0, 0, 1)
+			f.interactions = [
+				Interaction.new("Sit", {"fun": 6.0, "energy": 3.0}, 60.0, "", "sit"),
+				Interaction.new("Nap", {"energy": 9.0, "hunger": -3.0, "bladder": -4.0}, 90.0, "energy", "lie"),
+			]
+		"dining_table":
+			f.display_name = "Dining Table"
+			f.footprint = Vector2i(2, 1)
+			f.height = 0.8
+			f.spots = [Vector3(0, 0, 1.0), Vector3(0, 0, -1.0)]
+			f.use_position = Vector3(0, 0, 0.55)
+			f.use_facing = Vector3(0, 0, -1)
+			f.interactions = [
+				Interaction.new("Have a Proper Meal", {"hunger": 80.0, "social": 4.0}, 45.0, "hunger", "sit", true).grants("good_meal", "happy", 1, "Nice Dinner", "Eating at the table makes all the difference.", 180.0),
+			]
+		"chair":
+			f.display_name = "Dining Chair"
+			f.height = 1.0
+			f.spots = [Vector3(0, 0, 0.9)]
+			f.use_position = Vector3(0, 0, 0.05)
+			f.use_facing = Vector3(0, 0, 1)
+			f.interactions = [Interaction.new("Sit", {"fun": 3.0}, 30.0, "", "sit")]
+		"counter":
+			f.display_name = "Kitchen Counter"
+			f.height = 0.95
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Make a Salad", {"hunger": 70.0}, 30.0, "hunger", "stand", true).practices("cooking", 50.0),
+			]
+		"stove":
+			f.display_name = "Stove"
+			f.height = 0.95
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Cook Dinner", {"hunger": 65.0, "fun": 6.0}, 75.0, "hunger", "stand", true).practices("cooking", 90.0).grants("home_cooked", "happy", 1, "Home Cooked", "Made it from scratch!", 240.0),
+			]
+		"sink":
+			f.display_name = "Kitchen Sink"
+			f.height = 1.2
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Wash Up", {"hygiene": 120.0}, 15.0, "hygiene", "stand", true),
+			]
+		"plant":
+			f.display_name = "Potted Plant"
+			f.height = 0.8
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Water", {"fun": 15.0}, 10.0, "", "stand", true).grants("green_thumb", "happy", 1, "Green Thumb", "The plant looks grateful.", 90.0),
+			]
+		"mailbox":
+			f.display_name = "Mailbox"
+			f.height = 1.4
+			f.spots = [Vector3(0, 0, 0.8), Vector3(0, 0, -0.8)]
+			var pay := Interaction.new("Pay Bills", {}, 10.0, "", "stand", true)
+			pay.opens_panel = "pay_bills"
+			f.interactions = [pay]
 		_:
 			push_error("Unknown furniture kind: %s" % kind)
 	f.price = INFO[kind][1]

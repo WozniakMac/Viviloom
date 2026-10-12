@@ -25,7 +25,7 @@ var user: Node3D = null
 
 func _ready() -> void:
 	if is_in_group("lamps"):
-		set_lit(Daylight.lit_now)
+		set_lit(Daylight.lit_now and not Daylight.power_off)
 
 
 ## For lamps: turns the light and the glowing shade on or off.

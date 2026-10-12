@@ -20,6 +20,7 @@ var _home_position := Vector3.ZERO
 var visitors: Visitors
 var work: Work
 var daylight: Daylight
+var bills: Bills
 var aspirations: AspirationTracker
 ## Everyone in the player's household; `sim`, `work` and `aspirations` are the
 ## active member's.
@@ -58,6 +59,12 @@ func _ready() -> void:
 	add_child(build)
 	hud.set_build(build, lot)
 	hud.sim_selected.connect(select_sim)
+	bills = Bills.new()
+	bills.name = "Bills"
+	bills.lot = lot
+	bills.build = build
+	add_child(bills)
+	bills.notice.connect(func(t: String, title: String): hud.show_notice(t, title))
 
 	var first := _new_sim("Alex")
 	var start_needs := {"hunger": 70.0, "energy": 85.0, "bladder": 55.0, "hygiene": 80.0, "fun": 45.0, "social": 60.0}
@@ -101,6 +108,9 @@ func add_to_household(s: Sim) -> void:
 	if not lot.sims.has(s):
 		lot.sims.append(s)
 	s.earned.connect(build.earn)
+	s.panel_requested.connect(func(p: String):
+		if p == "pay_bills":
+			bills.pay())
 	hud.watch_sim(s)
 	var w := Work.new()
 	w.name = "Work_" + s.name
@@ -334,6 +344,7 @@ func _build_marker() -> void:
 func _place_house(layout := "cottage") -> void:
 	home_id = layout
 	_place_grounds(layout)
+	_place("mailbox", Vector2i(8, 16))
 	match layout:
 		"studio":
 			_place_studio()
@@ -354,6 +365,10 @@ func _place_house(layout := "cottage") -> void:
 	_place("lamp", Vector2i(7, 3))
 	_place("lamp", Vector2i(14, 7))
 	_place("lamp", Vector2i(5, 9))
+	_place("counter", Vector2i(14, 3))
+	_place("stove", Vector2i(15, 3))
+	_place("sofa", Vector2i(11, 5), 2)
+	_place("plant", Vector2i(17, 11))
 
 
 ## Hedges and the floor finish of a home; walls and objects come separately so a
@@ -392,6 +407,8 @@ func _place_studio() -> void:
 	_place("shower", Vector2i(8, 10), 2)
 	_place("lamp", Vector2i(10, 5))
 	_place("lamp", Vector2i(15, 9))
+	_place("counter", Vector2i(13, 5))
+	_place("stove", Vector2i(14, 5))
 
 
 func _place_walls() -> void:
@@ -539,6 +556,7 @@ func save_game() -> void:
 		}),
 		"active": household.find(sim),
 		"neighbour": visitors.neighbour.to_dict(),
+		"bills": bills.to_dict(),
 	}
 	if SaveGame.write(data):
 		hud.show_notice("Game saved.", "OpenSims")
@@ -583,6 +601,7 @@ func load_game() -> void:
 		(works[household[i]] as Work).from_dict(m.get("work", {}))
 		(trackers[household[i]] as AspirationTracker).from_dict(m.get("aspiration", {}))
 	visitors.neighbour.from_dict(d.get("neighbour", {}), everyone)
+	bills.from_dict(d.get("bills", {}))
 	select_sim(household[clampi(int(d.get("active", 0)), 0, household.size() - 1)])
 	_enter_live(false)
 	hud.show_notice("Welcome back! Your game was loaded.", "OpenSims")
@@ -742,6 +761,13 @@ func _run_scenario(scenario: String, path: String) -> void:
 			open_create_a_sim()
 			_cas.add_requested.emit()
 			await get_tree().create_timer(1.0).timeout
+		"bills":
+			Clock.total_minutes = 3.0 * 1440.0 + 9.5 * 60.0
+			await get_tree().create_timer(0.5).timeout
+			var mb := find_furniture("mailbox")
+			sim.queue_interaction(mb, mb.interactions[0])
+			Clock.set_speed(2)
+			await get_tree().create_timer(3.0).timeout
 		"title":
 			open_main_menu()
 			await get_tree().create_timer(1.5).timeout

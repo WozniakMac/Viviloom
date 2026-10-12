@@ -61,6 +61,8 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 	for f in lot.furniture:
 		if f.user != null and f.user != sim:
 			continue
+		if Daylight.power_off and Bills.ELECTRIC.has(f.kind):
+			continue
 		var dist := sim.global_position.distance_to(f.global_position)
 		for i in f.interactions:
 			if not urgent.is_empty() and not restores_any(i, urgent):

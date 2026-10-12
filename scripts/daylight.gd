@@ -20,6 +20,8 @@ var sun: DirectionalLight3D
 var lamps_on := false
 ## Whether lamps should be on right now (read by lamps placed later).
 static var lit_now := false
+## Set by Bills when the power is cut for unpaid bills.
+static var power_off := false
 
 
 const SUNRISE := 6.0
@@ -70,4 +72,4 @@ func apply(hour: float) -> void:
 	if dark != lamps_on:
 		lamps_on = dark
 		lit_now = dark
-		get_tree().call_group("lamps", "set_lit", dark)
+		get_tree().call_group("lamps", "set_lit", dark and not power_off)

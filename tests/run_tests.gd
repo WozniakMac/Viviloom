@@ -23,6 +23,7 @@ func _ready() -> void:
 	_test_clear_build()
 	_test_daylight()
 	_test_sim_round_trip()
+	_test_new_objects()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -316,3 +317,16 @@ func _test_sim_round_trip() -> void:
 	a.free()
 	b.free()
 	c.free()
+
+
+func _test_new_objects() -> void:
+	var lot := _make_lot()
+	for kind in Catalog.KINDS:
+		var f := Catalog.create(kind)
+		_check(f.display_name != "" and f.price > 0, "%s has a name and price" % kind)
+		f.free()
+	var sofa := Catalog.create("sofa")
+	_check(lot.can_place(sofa, Vector2i(2, 2), 0) and not lot.can_place(sofa, Vector2i(14, 2), 0), "a 3-wide sofa must fit inside the lot")
+	sofa.free()
+	_check(Bills.amount_for(5000) > Bills.amount_for(1000), "pricier homes get bigger bills")
+	lot.free()
