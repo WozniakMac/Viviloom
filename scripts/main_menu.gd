@@ -5,6 +5,7 @@ extends CanvasLayer
 
 signal play_pressed
 signal new_game_pressed
+signal manage_pressed
 
 var can_continue := false
 
@@ -57,6 +58,9 @@ func setup(has_save: bool) -> void:
 			new_game_pressed.emit())
 	col.add_child(play)
 	if has_save:
+		var manage := _big_button("Manage Households", false)
+		manage.pressed.connect(func(): manage_pressed.emit())
+		col.add_child(manage)
 		var fresh := _big_button("New Game", false)
 		fresh.pressed.connect(func(): new_game_pressed.emit())
 		col.add_child(fresh)

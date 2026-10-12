@@ -32,6 +32,10 @@ var life: LifeCycle
 ## _home_snapshot while the household is out.
 var location := "home"
 var _home_snapshot := {}
+## The other households in this world (snapshots, same shape as a saved
+## household), and keys of the save that belong to the whole world.
+var other_households: Array = []
+const WORLD_KEYS: Array[String] = ["version", "minutes", "townies", "tips", "others"]
 ## Modal event cards (doorbell, new baby, farewells, first-time tips). Scripted
 ## dev runs turn them off so nothing waits for an answer.
 var dialogs_enabled := true
@@ -810,7 +814,7 @@ func _check_dev_args() -> void:
 			shot = arg.trim_prefix("--screenshot=")
 		elif arg.begins_with("--scenario="):
 			scenario = arg.trim_prefix("--scenario=")
-	if shot != "" or scenario in ["trace", "saveload", "audiocheck", "travelcheck", "inputcheck"]:
+	if shot != "" or scenario in ["trace", "saveload", "audiocheck", "travelcheck", "inputcheck", "householdscheck"]:
 		dialogs_enabled = false
 	if shot != "":
 		_run_scenario(scenario, shot)
@@ -846,6 +850,8 @@ func _check_dev_args() -> void:
 		get_tree().quit()
 	elif scenario == "inputcheck":
 		_input_check()
+	elif scenario == "householdscheck":
+		_households_check()
 	elif scenario == "new":
 		open_create_a_sim()
 	elif scenario != "skip_cas":
@@ -939,6 +945,78 @@ func open_main_menu() -> void:
 	menu.new_game_pressed.connect(func():
 		_close_main_menu(menu)
 		open_create_a_sim())
+	menu.manage_pressed.connect(func():
+		menu.visible = false
+		_open_manage_households(menu))
+
+
+# --- several households -------------------------------------------------------------
+
+## A saved household's summary line for the Manage Households screen.
+static func _summary(h: Dictionary, last: bool) -> Dictionary:
+	var names: Array = []
+	for m in h.get("household", []):
+		names.append(m.get("sim", {}).get("name", "?"))
+	var home: String = Neighbourhood.LOTS.get(h.get("home", ""), {}).get("name", "A home")
+	return {"name": "The %s Household" % (names[0] if not names.is_empty() else "New"), "members": names,
+		"home": home, "funds": int(h.get("funds", 0)), "last": last}
+
+
+## The household part of a saved world (without the world-wide keys).
+static func _household_part(world: Dictionary) -> Dictionary:
+	var h := world.duplicate(true)
+	for k in WORLD_KEYS:
+		h.erase(k)
+	return h
+
+
+func _open_manage_households(menu: MainMenu) -> void:
+	var world := SaveGame.read()
+	var all: Array = [_household_part(world)]
+	all.append_array(world.get("others", []))
+	var summaries: Array = []
+	for i in all.size():
+		summaries.append(_summary(all[i], i == 0))
+	var screen := ManageHouseholds.new()
+	add_child(screen)
+	screen.setup(summaries)
+	screen.back.connect(func():
+		screen.queue_free()
+		menu.visible = true)
+	screen.play.connect(func(i: int):
+		screen.queue_free()
+		_close_main_menu(menu)
+		# The chosen household becomes the active one; the rest wait in the world.
+		var others: Array = []
+		for k in all.size():
+			if k != i:
+				others.append(all[k])
+		var next: Dictionary = all[i].duplicate(true)
+		for k in WORLD_KEYS:
+			if world.has(k):
+				next[k] = world[k]
+		next["others"] = others
+		load_game(next))
+	screen.new_household.connect(func():
+		screen.queue_free()
+		_close_main_menu(menu)
+		# Everyone already in the world keeps their home; make a new family.
+		other_households = all.duplicate(true)
+		Clock.total_minutes = world.get("minutes", Clock.total_minutes)
+		var everyone: Array = []
+		if world.has("townies"):
+			visitors.from_dict(world["townies"], everyone)
+		for t in world.get("tips", []):
+			_tips_seen[t] = true
+		open_create_a_sim())
+
+
+## Homes that other households live in: id -> household name.
+func _occupied_homes() -> Dictionary:
+	var out := {}
+	for h in other_households:
+		out[h.get("home", "")] = _summary(h, false)["name"]
+	return out
 
 
 func _close_main_menu(menu: MainMenu) -> void:
@@ -1062,6 +1140,7 @@ func save_game() -> void:
 		"townies": visitors.to_dict(),
 		"bills": bills.to_dict(),
 		"tips": _tips_seen.keys(),
+		"others": other_households,
 	}, true)
 	if SaveGame.write(data):
 		hud.show_notice("Game saved.", "OpenSims")
@@ -1069,8 +1148,8 @@ func save_game() -> void:
 		hud.show_notice("Couldn't save the game.", "OpenSims")
 
 
-func load_game() -> void:
-	var d := SaveGame.read()
+func load_game(world := {}) -> void:
+	var d := world if not world.is_empty() else SaveGame.read()
 	if d.is_empty():
 		hud.show_notice("No saved game found.", "OpenSims")
 		_enter_live()
@@ -1112,6 +1191,7 @@ func load_game() -> void:
 	elif d.has("neighbour"):
 		visitors.from_dict([d["neighbour"]], everyone)
 	bills.from_dict(d.get("bills", {}))
+	other_households = d.get("others", []).duplicate(true)
 	for t in d.get("tips", []):
 		_tips_seen[t] = true
 	select_sim(household[clampi(int(d.get("active", 0)), 0, household.size() - 1)])
@@ -1336,7 +1416,7 @@ func open_neighbourhood() -> void:
 	var map := Neighbourhood.new()
 	map.name = "Neighbourhood"
 	add_child(map)
-	map.setup(build.funds)
+	map.setup(build.funds, _occupied_homes())
 	map.chosen.connect(_on_home_chosen)
 
 
@@ -1471,6 +1551,38 @@ func _key(code: Key) -> void:
 		Input.parse_input_event(e)
 		await get_tree().process_frame
 	await get_tree().process_frame
+
+
+## Two families in one world: save the first, start a second in another home,
+## then switch back and check each kept their own life.
+func _households_check() -> void:
+	await get_tree().process_frame
+	_enter_live()
+	build.funds = 11111
+	save_game()
+	# Start a new household the way Manage Households does.
+	var world := SaveGame.read()
+	other_households = [_household_part(world)]
+	household[0].sim_name = "Bea"
+	lot.clear_build()
+	_place_house("studio")
+	build.funds = 22222
+	var occupied := _occupied_homes().keys()
+	save_game()
+	# Now play the first household again.
+	world = SaveGame.read()
+	var all: Array = [_household_part(world)]
+	all.append_array(world.get("others", []))
+	var first: Dictionary = all[1].duplicate(true)
+	for k in WORLD_KEYS:
+		if world.has(k):
+			first[k] = world[k]
+	first["others"] = [all[0]]
+	load_game(first)
+	await get_tree().process_frame
+	var ok: bool = sim.sim_name == "Alex" and build.funds == 11111 and home_id == "cottage" and occupied == ["cottage"] 		and other_households.size() == 1 and _summary(other_households[0], false)["members"] == ["Bea"] and int(other_households[0]["funds"]) == 22222
+	print("HOUSEHOLDS %s sim=%s funds=%d home=%s others=%s occupied=%s" % ["OK" if ok else "FAIL", sim.sim_name, build.funds, home_id, other_households.map(func(h): return _summary(h, false)["name"]), occupied])
+	get_tree().quit()
 
 
 ## Headless smoke run: queue a few actions and log what the Sim does.
@@ -1759,6 +1871,23 @@ func _run_scenario(scenario: String, path: String) -> void:
 			print("COOK meals=%d servings=%s sim=%s bea=%s" % [meals.size(), meals[0].get_meta("servings") if not meals.is_empty() else -1, sim.current_action().label if sim.current_action() else "-", bea.current_action().label if bea.current_action() else "-"])
 			rig.frame(stove.global_position, deg_to_rad(10.0), deg_to_rad(-35.0), 9.0)
 			await get_tree().create_timer(0.3).timeout
+		"manage":
+			var bea := _new_sim("Bea")
+			add_to_household(bea)
+			other_households = [{"home": "studio", "funds": 9300, "household": [{"sim": {"name": "Marco"}}, {"sim": {"name": "Priya"}}, {"sim": {"name": "Leo"}}]}]
+			save_game()
+			open_main_menu()
+			var menu: MainMenu = _menu
+			menu.visible = false
+			_open_manage_households(menu)
+			await get_tree().create_timer(1.0).timeout
+		"mapoccupied":
+			hud.visible = false
+			other_households = [{"home": "studio", "funds": 9300, "household": [{"sim": {"name": "Marco"}}]}]
+			open_neighbourhood()
+			var map := get_node("Neighbourhood") as Neighbourhood
+			map.show_card("studio")
+			await get_tree().create_timer(1.0).timeout
 		"store":
 			aspirations.satisfaction = 2300
 			hud._show_page(5)

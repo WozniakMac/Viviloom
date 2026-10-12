@@ -25,6 +25,8 @@ class MapView:
 	var hovered := ""
 	var selected := ""
 	var funds := 0
+	## Lot id -> name of the household living there (not for sale).
+	var occupied := {}
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
@@ -51,7 +53,7 @@ class MapView:
 				queue_redraw()
 		elif e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			var h := _lot_at((e as InputEventMouseButton).position)
-			if h != "":
+			if h != "" and not occupied.has(h):
 				selected = h
 				owner_map.select(h)
 				queue_redraw()
@@ -104,6 +106,10 @@ class MapView:
 			var loop := poly.duplicate()
 			loop.append(poly[0])
 			var sel: bool = id == selected
+			if occupied.has(id):
+				# Somebody lives here: white outline, no price tag.
+				draw_polyline(loop, Color(1, 1, 1, 0.85), 2.5, true)
+				continue
 			draw_polyline(loop, UiTheme.GREEN if not sel else Color.WHITE, 6.0 if sel else 3.5, true)
 			# Price tag marker.
 			var pin: Vector2 = info["at"] * size + Vector2(0, -size.y * 0.075 - 18)
@@ -128,7 +134,7 @@ var _truck: IconButton
 var _funds := 0
 
 
-func setup(funds: int) -> void:
+func setup(funds: int, occupied := {}) -> void:
 	_funds = funds
 	var root := Control.new()
 	root.theme = UiTheme.get_theme()
@@ -137,6 +143,7 @@ func setup(funds: int) -> void:
 	_view = MapView.new()
 	_view.owner_map = self
 	_view.funds = funds
+	_view.occupied = occupied
 	_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.add_child(_view)
 
@@ -204,6 +211,9 @@ func show_card(id: String) -> void:
 		return
 	var info: Dictionary = LOTS[id]
 	_card_title.text = info["name"]
+	if _view.occupied.has(id):
+		_card_body.text = "%s lives here." % _view.occupied[id]
+		return
 	var rooms := "Empty lot" if info["beds"] == 0 else "%d bed · %d bath" % [info["beds"], info["baths"]]
 	_card_body.text = "%s  ·  %s\n%s\nPrice: %s%s" % [info["size"], rooms, info["description"], Hud.money(info["price"]),
 		"" if info["price"] <= _funds else "  (not enough funds)"]
