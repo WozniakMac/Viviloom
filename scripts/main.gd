@@ -530,6 +530,11 @@ func _setup_environment() -> void:
 	sun.directional_shadow_max_distance = 80.0
 	add_child(sun)
 
+	var around := Surroundings.new()
+	around.name = "Surroundings"
+	add_child(around)
+	around.build(Vector2i(24, 20))
+
 	daylight = Daylight.new()
 	daylight.name = "Daylight"
 	daylight.env = env
@@ -1040,6 +1045,17 @@ func _run_scenario(scenario: String, path: String) -> void:
 			hud._show_page(4)
 			Clock.set_speed(3)
 			await get_tree().create_timer(3.0).timeout
+		"street":
+			lot.wall_view = Lot.WallView.UP
+			hud.refresh_walls_button(lot)
+			rig.frame(lot.center() + Vector3(0, 0, 4), deg_to_rad(25.0), deg_to_rad(-28.0), 42.0)
+			await get_tree().create_timer(1.0).timeout
+		"streetnight":
+			lot.wall_view = Lot.WallView.UP
+			Clock.total_minutes = 22.0 * 60.0
+			Clock.set_speed(0)
+			rig.frame(lot.center() + Vector3(0, 0, 4), deg_to_rad(25.0), deg_to_rad(-28.0), 42.0)
+			await get_tree().create_timer(1.0).timeout
 		"park":
 			Clock.total_minutes = 11.0 * 60.0
 			await travel("park")

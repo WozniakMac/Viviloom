@@ -36,6 +36,8 @@ var wall_styles := {}
 ## Vector2i tile -> Finishes.FLOORS index.
 var floor_tiles := {}
 var _floor_mesh: MeshInstance3D
+## A gable roof over the indoor area, shown with walls up.
+var _roof: MeshInstance3D
 var wall_view := WallView.CUTAWAY
 
 var _blocked := {}
@@ -374,6 +376,8 @@ func _wall_box(parent: Node3D, box_size: Vector3, pos: Vector3, mat: Material) -
 func update_walls(camera_pos: Vector3, focus: Vector3, delta: float) -> void:
 	if _rooms_dirty:
 		_compute_interior()
+	if _roof != null:
+		_roof.visible = wall_view == WallView.UP
 	var to_cam := camera_pos - focus
 	var k := 1.0 - exp(-12.0 * delta)
 	for e in walls:
@@ -422,6 +426,96 @@ func _compute_interior() -> void:
 			if not outside.has(Vector2i(x, y)):
 				_interior[Vector2i(x, y)] = true
 	_rooms_dirty = false
+	_rebuild_roof()
+
+
+## Covers the bounding box of the indoor tiles with a gable roof whose ridge runs
+## along the longer side, with a small overhang.
+func _rebuild_roof() -> void:
+	if _roof == null:
+		_roof = MeshInstance3D.new()
+		_roof.name = "Roof"
+		var m := ShaderMaterial.new()
+		m.shader = Shader.new()
+		m.shader.code = """
+shader_type spatial;
+render_mode cull_disabled;
+varying vec3 wp;
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec3 c = vec3(0.36, 0.27, 0.27);
+	if (COLOR.r > 0.5) {
+		c = vec3(0.92, 0.89, 0.82);
+	} else {
+		float row = fract(wp.y * 5.0);
+		float x = fract((wp.x + wp.z) * 2.5 + floor(wp.y * 5.0) * 0.5);
+		c *= 0.9 + 0.12 * step(0.5, x);
+		c *= 1.0 - smoothstep(0.85, 1.0, row) * 0.35;
+	}
+	ALBEDO = pow(c, vec3(2.2));
+	ROUGHNESS = 0.8;
+}
+"""
+		_roof.material_override = m
+		add_child(_roof)
+	if _interior.is_empty():
+		_roof.mesh = null
+		return
+	var lo := Vector2i(size.x, size.y)
+	var hi := Vector2i(-1, -1)
+	for c in _interior:
+		lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
+		hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
+	var oh := 0.4
+	var x0 := lo.x * CELL - oh
+	var x1 := (hi.x + 1) * CELL + oh
+	var z0 := lo.y * CELL - oh
+	var z1 := (hi.y + 1) * CELL + oh
+	var along_x := (x1 - x0) >= (z1 - z0)
+	var span := (z1 - z0) if along_x else (x1 - x0)
+	var h := WALL_HEIGHT
+	var rise := span * 0.4
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var shingle := Color.BLACK
+	var gable := Color.WHITE
+	if along_x:
+		var zm := (z0 + z1) * 0.5
+		var a := Vector3(x0, h, z0)
+		var b := Vector3(x1, h, z0)
+		var c := Vector3(x1, h + rise, zm)
+		var d := Vector3(x0, h + rise, zm)
+		var e := Vector3(x0, h, z1)
+		var f := Vector3(x1, h, z1)
+		_quad(st, a, b, c, d, shingle)
+		_quad(st, f, e, d, c, shingle)
+		_tri(st, Vector3(x0 + oh, h, z0 + oh), Vector3(x0 + oh, h, z1 - oh), Vector3(x0 + oh, h + rise, zm), gable)
+		_tri(st, Vector3(x1 - oh, h, z1 - oh), Vector3(x1 - oh, h, z0 + oh), Vector3(x1 - oh, h + rise, zm), gable)
+	else:
+		var xm := (x0 + x1) * 0.5
+		var a := Vector3(x0, h, z1)
+		var b := Vector3(x0, h, z0)
+		var c := Vector3(xm, h + rise, z0)
+		var d := Vector3(xm, h + rise, z1)
+		var e := Vector3(x1, h, z1)
+		var f := Vector3(x1, h, z0)
+		_quad(st, a, b, c, d, shingle)
+		_quad(st, f, e, d, c, shingle)
+		_tri(st, Vector3(x0 + oh, h, z0 + oh), Vector3(x1 - oh, h, z0 + oh), Vector3(xm, h + rise, z0 + oh), gable)
+		_tri(st, Vector3(x1 - oh, h, z1 - oh), Vector3(x0 + oh, h, z1 - oh), Vector3(xm, h + rise, z1 - oh), gable)
+	st.generate_normals()
+	_roof.mesh = st.commit()
+
+
+func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, col: Color) -> void:
+	_tri(st, a, b, c, col)
+	_tri(st, a, c, d, col)
+
+
+func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, col: Color) -> void:
+	for v in [a, b, c]:
+		st.set_color(col)
+		st.add_vertex(v)
 
 
 ## Swings doors open while someone is close to them.
