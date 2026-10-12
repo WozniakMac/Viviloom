@@ -5,6 +5,7 @@ extends Node
 
 signal funds_changed(funds: int)
 signal notice(text: String)
+signal entered
 
 enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR }
 
@@ -70,6 +71,7 @@ func enter() -> void:
 		m.clear_queue()
 	set_tool(Tool.MOVE)
 	_set_visible(true)
+	entered.emit()
 
 
 func exit() -> void:

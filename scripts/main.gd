@@ -26,6 +26,10 @@ var life: LifeCycle
 ## _home_snapshot while the household is out.
 var location := "home"
 var _home_snapshot := {}
+## Modal event cards (doorbell, new baby, farewells, first-time tips). Scripted
+## dev runs turn them off so nothing waits for an answer.
+var dialogs_enabled := true
+var _tips_seen := {}
 const COMMUNITY_LOTS := {
 	"park": {"name": "Willow Park", "description": "Benches, a fountain, grills and picnic tables."},
 }
@@ -67,6 +71,7 @@ func _ready() -> void:
 	add_child(build)
 	hud.set_build(build, lot)
 	hud.sim_selected.connect(select_sim)
+	build.entered.connect(func(): tip("build", "Build Mode", "Time stops while you build. Use the tools at the top for walls, doors, windows, paint and floors, and buy objects from the catalogue at the bottom. Press F1 to go back to Live Mode."))
 	hud.bubbles.lot = lot
 	hud.bubbles.camera = rig.camera
 	bills = Bills.new()
@@ -74,7 +79,10 @@ func _ready() -> void:
 	bills.lot = lot
 	bills.build = build
 	add_child(bills)
-	bills.notice.connect(func(t: String, title: String): hud.show_notice(t, title))
+	bills.notice.connect(func(t: String, title: String):
+		hud.show_notice(t, title)
+		if t.begins_with("New bills"):
+			tip("bills", "Bills, bills, bills", "Every few days bills arrive in the mailbox. Send a Sim to the mailbox to pay them, or after two days the power will be cut off."))
 	life = LifeCycle.new()
 	life.name = "LifeCycle"
 	life.household = household
@@ -83,7 +91,10 @@ func _ready() -> void:
 	add_child(life)
 	life.notice.connect(func(t: String, title: String): hud.show_notice(t, title))
 	life.born.connect(_on_baby_born)
-	life.passed_away.connect(remove_from_household)
+	life.passed_away.connect(func(s: Sim):
+		if dialogs_enabled:
+			EventDialog.ask(self, s, "Farewell, %s" % s.sim_name, "%s has passed away peacefully after a long and full life. They'll be missed." % s.sim_name, ["Rest in peace"] as Array[String])
+		remove_from_household(s))
 
 	var first := _new_sim("Alex")
 	var start_needs := {"hunger": 70.0, "energy": 85.0, "bladder": 55.0, "hygiene": 80.0, "fun": 45.0, "social": 60.0}
@@ -98,9 +109,7 @@ func _ready() -> void:
 	visitors.name = "Visitors"
 	add_child(visitors)
 	visitors.setup(lot)
-	visitors.arrived.connect(func(v: Sim):
-		var hello := "%s from next door has dropped by to say hello." if v == visitors.neighbour else "%s has come over to visit."
-		hud.show_notice((hello % v.sim_name) + " Click them to socialize.", "Visitor"))
+	visitors.arrived.connect(_on_doorbell)
 	visitors.left.connect(func(v: Sim): hud.show_notice("%s has gone home." % v.sim_name, "Visitor"))
 	hud.phone_invite.connect(func(t: Sim):
 		if location != "home":
@@ -171,6 +180,33 @@ func _on_baby_born(baby: Sim, parents: Array) -> void:
 	for p in parents:
 		if is_instance_valid(p):
 			baby.change_relationship(p, 60.0, 0.0)
+	if dialogs_enabled:
+		var d := EventDialog.ask(self, parents[0], "It's a baby!", "%s has had a baby! What would you like to call them?" % (parents[0] as Sim).sim_name, ["Welcome to the family"] as Array[String], baby.sim_name)
+		d.answered.connect(func(_c: int, text: String):
+			if text != "":
+				baby.sim_name = text
+				hud.set_household(household))
+
+
+## Someone rings the doorbell: let them in, or send them on their way.
+func _on_doorbell(v: Sim) -> void:
+	var hello := "%s from next door rang the doorbell." if v == visitors.neighbour else "%s has come over and is at the door."
+	if not dialogs_enabled:
+		hud.show_notice((hello % v.sim_name) + " Click them to socialize.", "Visitor")
+		return
+	var d := EventDialog.ask(self, v, "Ding dong!", hello % v.sim_name, ["Welcome them in", "Send them away"] as Array[String])
+	d.answered.connect(func(choice: int, _t: String):
+		if choice == 1:
+			visitors.send_home(v)
+			sim.change_relationship(v, -3.0, 0.0))
+
+
+## A one-time explanation the first time something happens.
+func tip(id: String, title: String, text: String) -> void:
+	if _tips_seen.has(id) or not dialogs_enabled:
+		return
+	_tips_seen[id] = true
+	EventDialog.ask(self, null, title, text, ["Got it"] as Array[String])
 
 
 func remove_from_household(s: Sim) -> void:
@@ -555,6 +591,8 @@ func _check_dev_args() -> void:
 			shot = arg.trim_prefix("--screenshot=")
 		elif arg.begins_with("--scenario="):
 			scenario = arg.trim_prefix("--scenario=")
+	if shot != "" or scenario in ["trace", "saveload", "audiocheck", "travelcheck"]:
+		dialogs_enabled = false
 	if shot != "":
 		_run_scenario(scenario, shot)
 	elif scenario == "trace":
@@ -739,6 +777,7 @@ func save_game() -> void:
 		"active": household.find(sim),
 		"townies": visitors.to_dict(),
 		"bills": bills.to_dict(),
+		"tips": _tips_seen.keys(),
 	}, true)
 	if SaveGame.write(data):
 		hud.show_notice("Game saved.", "OpenSims")
@@ -779,6 +818,8 @@ func load_game() -> void:
 	elif d.has("neighbour"):
 		visitors.from_dict([d["neighbour"]], everyone)
 	bills.from_dict(d.get("bills", {}))
+	for t in d.get("tips", []):
+		_tips_seen[t] = true
 	select_sim(household[clampi(int(d.get("active", 0)), 0, household.size() - 1)])
 	_enter_live(false)
 	hud.show_notice("Welcome back! Your game was loaded.", "OpenSims")
@@ -1123,6 +1164,11 @@ func _run_scenario(scenario: String, path: String) -> void:
 			await get_tree().create_timer(4.0).timeout
 			Clock.set_speed(1)
 			await get_tree().create_timer(0.4).timeout
+		"dialog":
+			dialogs_enabled = true
+			visitors.bring(visitors.townies[2], INF)
+			_on_doorbell(visitors.townies[2])
+			await get_tree().create_timer(0.8).timeout
 		"fire":
 			var stove := find_furniture("stove")
 			lot.add_mess("fire", stove.global_position + Vector3(0, 0, 1.2))

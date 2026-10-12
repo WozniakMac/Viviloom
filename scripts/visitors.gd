@@ -121,6 +121,12 @@ func populate(count: int, spots: Array) -> void:
 		bring(pool[i], INF, spots[i % spots.size()])
 
 
+## Sends one townie away straight away.
+func send_home(t: Sim) -> void:
+	if not t.away:
+		_hide(t)
+
+
 func send_all_home() -> void:
 	for t in townies:
 		if not t.away:

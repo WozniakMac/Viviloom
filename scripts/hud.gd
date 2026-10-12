@@ -240,9 +240,7 @@ var _clock_label: Label
 var _date_label: Label
 var _speed_buttons: Array[IconButton] = []
 var _queue_box: HBoxContainer
-var _portrait_rect: TextureRect
-var _portrait_mat: ShaderMaterial
-var _portrait_cam: Camera3D
+var _portrait_rect: SimPortrait
 var _mood_plate: Panel
 var _mood_style: StyleBoxFlat
 var _mood_label: Label
@@ -641,40 +639,10 @@ func _build_sim_cluster() -> void:
 	_mood_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_mood_plate.add_child(_mood_label)
 
-	# Live portrait: a small camera in front of the Sim's face, masked to a circle.
-	var vp := SubViewport.new()
-	vp.size = Vector2i(256, 256)
-	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	vp.msaa_3d = Viewport.MSAA_2X
-	add_child(vp)
-	_portrait_cam = Camera3D.new()
-	_portrait_cam.fov = 30.0
-	_portrait_cam.near = 0.05
-	_portrait_cam.far = 30.0
-	_portrait_cam.cull_mask = Sim.PORTRAIT_LAYER
-	var penv := Environment.new()
-	penv.background_mode = Environment.BG_COLOR
-	penv.background_color = Color(0.78, 0.88, 0.97)
-	penv.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	penv.ambient_light_color = Color(0.85, 0.88, 0.95)
-	penv.ambient_light_energy = 0.8
-	_portrait_cam.environment = penv
-	vp.add_child(_portrait_cam)
-	# A soft fill light travels with the portrait camera so the face reads at night.
-	var fill := OmniLight3D.new()
-	fill.omni_range = 1.6
-	fill.light_energy = 0.7
-	fill.light_color = Color(1.0, 0.96, 0.9)
-	_portrait_cam.add_child(fill)
-	_portrait_cam.current = true
-	_portrait_rect = TextureRect.new()
-	_portrait_rect.texture = vp.get_texture()
-	_portrait_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	# Live portrait of the active Sim, masked to a circle.
+	_portrait_rect = SimPortrait.new()
 	_portrait_rect.position = Vector2(56, 70)
 	_portrait_rect.size = Vector2(170, 170)
-	_portrait_mat = ShaderMaterial.new()
-	_portrait_mat.shader = _portrait_shader()
-	_portrait_rect.material = _portrait_mat
 	_portrait_rect.mouse_filter = Control.MOUSE_FILTER_STOP
 	c.add_child(_portrait_rect)
 	_away_label = UiTheme.title(Label.new(), 16)
@@ -732,23 +700,6 @@ func _build_sim_cluster() -> void:
 	_household_box.position = Vector2(352, 218)
 	_household_box.add_theme_constant_override("separation", 4)
 	c.add_child(_household_box)
-
-
-static func _portrait_shader() -> Shader:
-	var sh := Shader.new()
-	sh.code = """
-shader_type canvas_item;
-uniform vec4 ring_color : source_color = vec4(1.0);
-void fragment() {
-	float d = distance(UV, vec2(0.5));
-	vec4 tex = texture(TEXTURE, UV);
-	float inside = 1.0 - smoothstep(0.425, 0.435, d);
-	float ring = smoothstep(0.425, 0.435, d) * (1.0 - smoothstep(0.49, 0.5, d));
-	vec3 col = mix(tex.rgb, ring_color.rgb, ring);
-	COLOR = vec4(col, max(inside, ring));
-}
-"""
-	return sh
 
 
 ## Shows `s` in the portrait, queue, moodlets and panels (the active Sim).
@@ -1251,8 +1202,8 @@ func _process(delta: float) -> void:
 	var col := Emotions.color(emotion)
 	_mood_label.text = sim.emotions.mood_label()
 	_mood_style.bg_color = col
-	_portrait_mat.set_shader_parameter("ring_color", col.lerp(Color.WHITE, 0.25))
-	_update_portrait_camera()
+	_portrait_rect.ring_color = col.lerp(Color.WHITE, 0.25)
+	_portrait_rect.sim = sim
 	_away_label.visible = sim.away
 	_portrait_rect.modulate = Color(0.75, 0.78, 0.85) if sim.away else Color.WHITE
 	for n in NEED_LAYOUT:
@@ -1270,20 +1221,6 @@ func _process(delta: float) -> void:
 		_refresh_relationships()
 	if _pages[1].visible:
 		_refresh_skills()
-
-
-func _update_portrait_camera() -> void:
-	# Follow the body's own axes so the face stays framed while sitting or lying.
-	var body := sim.get_node_or_null("Body") as Node3D
-	if body == null:
-		return
-	var basis := body.global_basis.orthonormalized()
-	var head := body.to_global(Vector3(0, 1.62, 0))
-	var face := basis * Vector3.FORWARD
-	var up := basis * Vector3.UP
-	var side := face.cross(up).normalized()
-	var eye := head + face * 1.05 + side * 0.3 + up * 0.08
-	_portrait_cam.look_at_from_position(eye, head - up * 0.06, up)
 
 
 static func initials(text: String) -> String:
