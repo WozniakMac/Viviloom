@@ -343,6 +343,7 @@ func _furniture_at(screen_pos: Vector2) -> Furniture:
 
 func _process(delta: float) -> void:
 	_update_audio()
+	_update_mess()
 	if _menu_orbit:
 		rig.frame(lot.center(), rig.yaw + delta * 0.08, deg_to_rad(-32.0), 30.0)
 	lot.update_walls(rig.camera.global_position, rig.global_position, delta)
@@ -592,6 +593,24 @@ func _check_dev_args() -> void:
 # --- title screen, game menu, saving ---------------------------------------------
 
 ## Title screen over a slowly orbiting camera.
+var _mess_check := 0.0
+
+
+## A messy home makes everyone there tense; more mess, stronger feeling.
+func _update_mess() -> void:
+	if Clock.total_minutes < _mess_check:
+		return
+	_mess_check = Clock.total_minutes + 10.0
+	var count := lot.messes().size()
+	for s in household:
+		if s.away:
+			continue
+		if count >= 2:
+			s.emotions.add("messy", "tense", mini(3, count / 2), "Messy Surroundings", "There are dirty dishes and worse lying around.", 30.0)
+		elif s.emotions.has("messy"):
+			s.emotions.remove("messy")
+
+
 ## Music follows the mode (title / Create a Sim, live, build); ambience follows
 ## the time of day.
 func _update_audio() -> void:
@@ -1064,6 +1083,16 @@ func _run_scenario(scenario: String, path: String) -> void:
 		"phone":
 			hud._toggle_phone()
 			await get_tree().create_timer(0.6).timeout
+		"mess":
+			lot.add_mess("dishes", lot.cell_to_world(Vector2i(13, 7)))
+			lot.add_mess("dishes", lot.cell_to_world(Vector2i(10, 4)))
+			lot.add_mess("puddle", lot.cell_to_world(Vector2i(9, 9)))
+			for n in Needs.ORDER:
+				sim.needs.set_value(n, 80.0)
+			Clock.set_speed(3)
+			await get_tree().create_timer(9.0).timeout
+			Clock.set_speed(0)
+			print("MESS left=%d action=%s" % [lot.messes().size(), sim.current_action().label if sim.current_action() else "-"])
 		"family":
 			var stages := ["toddler", "child", "teen", "adult", "elder"]
 			for i in stages.size():

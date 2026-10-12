@@ -651,7 +651,14 @@ func _build_sim_cluster() -> void:
 	_portrait_cam.fov = 30.0
 	_portrait_cam.near = 0.05
 	_portrait_cam.far = 30.0
-	_portrait_cam.cull_mask = 1
+	_portrait_cam.cull_mask = Sim.PORTRAIT_LAYER
+	var penv := Environment.new()
+	penv.background_mode = Environment.BG_COLOR
+	penv.background_color = Color(0.78, 0.88, 0.97)
+	penv.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	penv.ambient_light_color = Color(0.85, 0.88, 0.95)
+	penv.ambient_light_energy = 0.8
+	_portrait_cam.environment = penv
 	vp.add_child(_portrait_cam)
 	# A soft fill light travels with the portrait camera so the face reads at night.
 	var fill := OmniLight3D.new()

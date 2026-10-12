@@ -53,6 +53,7 @@ class SimAction:
 @export var hair_style := "short"
 
 const MODEL := preload("res://assets/sim/sim.glb")
+const PORTRAIT_LAYER := 4
 const HAIR_STYLES: Array[String] = ["short", "long", "bun"]
 @export var walk_speed := 2.0
 
@@ -87,6 +88,8 @@ var _path_index := 0
 var _pose := "stand"
 var _selected := false
 var _voice: AudioStreamPlayer3D
+## Game minutes left lying on the floor after collapsing from exhaustion.
+var _passed_out := 0.0
 var _voice_timer := 0.0
 ## Voice pitch, picked once per Sim.
 var _voice_pitch := 1.0
@@ -410,9 +413,13 @@ func _process(real_delta: float) -> void:
 	if away:
 		return
 	var delta := Clock.scaled(real_delta)
+	if _passed_out > 0.0:
+		_sleep_it_off(delta)
+		return
 	if _social_with != null:
 		_listen(delta)
 		return
+	_check_limits()
 	var cur := current_action()
 	if cur != null and not cur.started:
 		_start(cur)
@@ -448,6 +455,36 @@ func _process(real_delta: float) -> void:
 			_end_perform(cur, true)
 			_complete(cur)
 	_animate(delta, moving, cur)
+
+
+## What happens when a need runs out completely: an accident, or passing out.
+func _check_limits() -> void:
+	if lot == null:
+		return
+	if needs.get_value("bladder") <= 0.0:
+		clear_queue()
+		lot.add_mess("puddle", global_position)
+		needs.set_value("bladder", 100.0)
+		needs.add("hygiene", -40.0)
+		emotions.add("accident", "embarrassed", 2, "Had an Accident", "That was mortifying.", 240.0)
+		Sfx.play("fail", -4.0)
+		announced.emit("%s couldn't hold it any longer..." % sim_name)
+	elif needs.get_value("energy") <= 0.0:
+		clear_queue()
+		_passed_out = 180.0
+		_set_pose("lie")
+		emotions.add("passed_out", "tense", 1, "Passed Out", "Fell asleep on the floor. Ouch.", 300.0)
+		announced.emit("%s was so exhausted they passed out on the floor!" % sim_name)
+
+
+func _sleep_it_off(delta: float) -> void:
+	_passed_out -= Clock.game_delta
+	needs.tick(Clock.game_delta, {"energy": 25.0}, Traits.decay_mult(traits))
+	emotions.tick(Clock.game_delta)
+	if _passed_out <= 0.0 or needs.get_value("energy") >= 70.0:
+		_passed_out = 0.0
+		_set_pose("stand")
+	_animate(delta, false, null)
 
 
 ## Sims drop something they chose themselves when another need becomes critical.
@@ -679,6 +716,11 @@ func _end_perform(a: SimAction, finished := false) -> void:
 	_reward(a.interaction, a.elapsed, finished)
 	a.performing = false
 	a.furniture.user = null
+	if finished and a.interaction.leaves_mess != "" and lot != null:
+		lot.add_mess(a.interaction.leaves_mess, a.spot if a.spot != Vector3.ZERO else global_position)
+	if finished and a.interaction.consumes and lot != null:
+		lot.remove_furniture(a.furniture)
+		a.furniture.queue_free()
 	if a.furniture.use_position != null:
 		global_position = a.spot
 	_set_pose("stand")
@@ -785,6 +827,8 @@ func _build_visual() -> void:
 	_materials = {}
 	for node in model.find_children("*", "MeshInstance3D", true, false):
 		var mi := node as MeshInstance3D
+		# Layer 3 as well, so the portrait camera can see Sims and nothing else.
+		mi.layers = 1 | PORTRAIT_LAYER
 		if mi.name.begins_with("Hair_"):
 			_hair_meshes[mi.name.trim_prefix("Hair_").to_lower()] = mi
 		for i in mi.mesh.get_surface_count():

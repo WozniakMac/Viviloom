@@ -670,6 +670,9 @@ func place_furniture(f: Furniture, at_cell: Vector2i, rot_steps := 0) -> void:
 	position_furniture(f, at_cell, rot_steps)
 	if f.get_parent() == null:
 		add_child(f)
+	if not f.blocks:
+		furniture.append(f)
+		return
 	var rect := f.footprint_rect()
 	set_rect_blocked(rect, true)
 	for x in range(rect.position.x, rect.end.x):
@@ -678,7 +681,6 @@ func place_furniture(f: Furniture, at_cell: Vector2i, rot_steps := 0) -> void:
 	furniture.append(f)
 
 
-## Takes `f` off the grid; the node itself stays (e.g. while it is being moved).
 ## Removes every wall, door, floor, decoration and object, leaving an empty lot.
 func clear_build() -> void:
 	for f in furniture.duplicate():
@@ -697,8 +699,29 @@ func clear_build() -> void:
 	_rooms_dirty = true
 
 
+## Takes `f` off the grid; the node itself stays (e.g. while it is being moved).
+## Messes on the lot right now.
+func messes() -> Array[Furniture]:
+	var out: Array[Furniture] = []
+	for f in furniture:
+		if Catalog.MESSES.has(f.kind):
+			out.append(f)
+	return out
+
+
+## Leaves a mess (Catalog.MESSES kind) on the nearest free tile to `near`.
+func add_mess(kind: String, near: Vector3) -> Furniture:
+	var c := nearest_walkable(world_to_cell(near))
+	var m := Catalog.create(kind)
+	place_furniture(m, c, 0)
+	return m
+
+
 func remove_furniture(f: Furniture) -> void:
 	if not furniture.has(f):
+		return
+	if not f.blocks:
+		furniture.erase(f)
 		return
 	var rect := f.footprint_rect()
 	set_rect_blocked(rect, false)

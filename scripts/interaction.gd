@@ -23,6 +23,10 @@ var earns := 0
 var earns_per_level := 0
 ## A HUD panel to open when finished (e.g. "career" after looking for a job).
 var opens_panel := ""
+## A mess this leaves behind when finished ("dishes"), and whether doing it
+## removes the object (cleaning a mess up).
+var leaves_mess := ""
+var consumes := false
 ## Set for social interactions between two Sims (see Socials).
 var social := {}
 

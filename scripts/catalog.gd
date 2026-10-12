@@ -4,6 +4,9 @@ extends RefCounted
 
 const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain"]
 
+## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
+const MESSES: Array[String] = ["dishes", "puddle"]
+
 ## Display name and price for the build-mode catalogue.
 const INFO := {
 	"bed": ["Double Bed", 1100],
@@ -30,6 +33,8 @@ const INFO := {
 	"grill": ["Charcoal Grill", 280],
 	"picnic_table": ["Picnic Table", 320],
 	"fountain": ["Wishing Fountain", 900],
+	"dishes": ["Dirty Dishes", 0],
+	"puddle": ["Puddle", 0],
 }
 ## Build-mode catalogue sections: [id, label]; "all" lists everything.
 const CATEGORIES := [["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"], ["living", "Living"], ["outdoor", "Outdoor"]]
@@ -109,7 +114,7 @@ static func create(kind: String) -> Furniture:
 			f.spots = [Vector3(0, 0, 1.0)]
 			f.interactions = [
 				Interaction.new("Grab a Snack", {"hunger": 90.0}, 15.0, "hunger", "stand", true),
-				Interaction.new("Cook a Meal", {"hunger": 75.0, "fun": 4.0}, 80.0, "hunger", "stand", true).practices("cooking", 70.0).grants("tasty_meal", "happy", 1, "Tasty Meal", "That really hit the spot.", 180.0),
+				_dishes(Interaction.new("Cook a Meal", {"hunger": 75.0, "fun": 4.0}, 80.0, "hunger", "stand", true).practices("cooking", 70.0).grants("tasty_meal", "happy", 1, "Tasty Meal", "That really hit the spot.", 180.0)),
 			]
 		"bed":
 			f.display_name = "Double Bed"
@@ -278,7 +283,7 @@ static func create(kind: String) -> Furniture:
 			f.use_position = Vector3(0, 0, 0.55)
 			f.use_facing = Vector3(0, 0, -1)
 			f.interactions = [
-				Interaction.new("Have a Proper Meal", {"hunger": 80.0, "social": 4.0}, 45.0, "hunger", "sit", true).grants("good_meal", "happy", 1, "Nice Dinner", "Eating at the table makes all the difference.", 180.0),
+				_dishes(Interaction.new("Have a Proper Meal", {"hunger": 80.0, "social": 4.0}, 45.0, "hunger", "sit", true).grants("good_meal", "happy", 1, "Nice Dinner", "Eating at the table makes all the difference.", 180.0)),
 			]
 		"chair":
 			f.display_name = "Dining Chair"
@@ -292,14 +297,14 @@ static func create(kind: String) -> Furniture:
 			f.height = 0.95
 			f.spots = [Vector3(0, 0, 0.8)]
 			f.interactions = [
-				Interaction.new("Make a Salad", {"hunger": 70.0}, 30.0, "hunger", "stand", true).practices("cooking", 50.0),
+				_dishes(Interaction.new("Make a Salad", {"hunger": 70.0}, 30.0, "hunger", "stand", true).practices("cooking", 50.0)),
 			]
 		"stove":
 			f.display_name = "Stove"
 			f.height = 0.95
 			f.spots = [Vector3(0, 0, 0.8)]
 			f.interactions = [
-				Interaction.new("Cook Dinner", {"hunger": 65.0, "fun": 6.0}, 75.0, "hunger", "stand", true).practices("cooking", 90.0).grants("home_cooked", "happy", 1, "Home Cooked", "Made it from scratch!", 240.0),
+				_dishes(Interaction.new("Cook Dinner", {"hunger": 65.0, "fun": 6.0}, 75.0, "hunger", "stand", true).practices("cooking", 90.0).grants("home_cooked", "happy", 1, "Home Cooked", "Made it from scratch!", 240.0)),
 			]
 		"sink":
 			f.display_name = "Kitchen Sink"
@@ -338,7 +343,7 @@ static func create(kind: String) -> Furniture:
 			f.height = 1.0
 			f.spots = [Vector3(0, 0, 0.8)]
 			f.interactions = [
-				Interaction.new("Grill Burgers", {"hunger": 75.0, "fun": 8.0}, 50.0, "hunger", "stand", true).practices("cooking", 60.0).grants("bbq", "happy", 1, "Backyard Barbecue", "Nothing beats a grilled burger.", 180.0),
+				_dishes(Interaction.new("Grill Burgers", {"hunger": 75.0, "fun": 8.0}, 50.0, "hunger", "stand", true).practices("cooking", 60.0).grants("bbq", "happy", 1, "Backyard Barbecue", "Nothing beats a grilled burger.", 180.0)),
 			]
 		"picnic_table":
 			f.display_name = "Picnic Table"
@@ -348,7 +353,7 @@ static func create(kind: String) -> Furniture:
 			f.use_position = Vector3(0, 0, 0.6)
 			f.use_facing = Vector3(0, 0, -1)
 			f.interactions = [
-				Interaction.new("Have a Picnic", {"hunger": 60.0, "social": 10.0, "fun": 10.0}, 45.0, "hunger", "sit", true).grants("picnic", "happy", 1, "Lovely Picnic", "Fresh air and good food.", 180.0),
+				_dishes(Interaction.new("Have a Picnic", {"hunger": 60.0, "social": 10.0, "fun": 10.0}, 45.0, "hunger", "sit", true).grants("picnic", "happy", 1, "Lovely Picnic", "Fresh air and good food.", 180.0)),
 			]
 		"fountain":
 			f.display_name = "Wishing Fountain"
@@ -358,6 +363,28 @@ static func create(kind: String) -> Furniture:
 			f.interactions = [
 				Interaction.new("Make a Wish", {"fun": 20.0}, 10.0, "", "stand", true).grants("wished", "inspired", 1, "Made a Wish", "Maybe it'll come true...", 240.0),
 			]
+		"dishes":
+			f.display_name = "Dirty Dishes"
+			f.blocks = false
+			f.height = 0.15
+			for k in 3:
+				var plate := f.add_box(Vector3(0.26 - k * 0.02, 0.025, 0.26 - k * 0.02), Vector3(0.05 * k, 0.015 + k * 0.026, -0.03 * k), WHITE)
+				plate.rotation.y = k * 0.5
+			f.add_box(Vector3(0.1, 0.02, 0.08), Vector3(-0.02, 0.09, 0.0), Color(0.55, 0.35, 0.2))
+			f.spots = [Vector3.ZERO]
+			var clean := Interaction.new("Clean Up", {"fun": 2.0}, 10.0, "", "stand", true)
+			clean.consumes = true
+			f.interactions = [clean]
+		"puddle":
+			f.display_name = "Puddle"
+			f.blocks = false
+			f.height = 0.05
+			var p := f.add_box(Vector3(0.8, 0.01, 0.6), Vector3(0, 0.025, 0), Color(0.75, 0.85, 0.3, 0.55))
+			p.rotation.y = 0.4
+			f.spots = [Vector3.ZERO]
+			var mop := Interaction.new("Mop Up", {"hygiene": -2.0}, 15.0, "", "stand", true)
+			mop.consumes = true
+			f.interactions = [mop]
 		_:
 			push_error("Unknown furniture kind: %s" % kind)
 	f.price = INFO[kind][1]
@@ -392,3 +419,9 @@ static func _use_model(f: Furniture, kind: String) -> void:
 		m.albedo_color = Color(0.97, 0.9, 0.76)
 		shade.material_override = m
 		f.add_child(shade)
+
+
+## Meals leave a stack of dirty dishes behind.
+static func _dishes(i: Interaction) -> Interaction:
+	i.leaves_mess = "dishes"
+	return i

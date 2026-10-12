@@ -26,6 +26,7 @@ func _ready() -> void:
 	_test_new_objects()
 	_test_finishes()
 	_test_life_cycle()
+	_test_messes()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -396,3 +397,25 @@ func _test_life_cycle() -> void:
 		s.free()
 	w.free()
 	life.free()
+
+
+func _test_messes() -> void:
+	var lot := _make_lot()
+	add_child(lot)
+	var sim := Sim.new()
+	sim.lot = lot
+	add_child(sim)
+	sim.global_position = lot.cell_to_world(Vector2i(5, 5))
+	var dishes := lot.add_mess("dishes", sim.global_position)
+	_check(lot.messes().size() == 1 and lot.is_walkable(Vector2i(5, 5)), "dishes sit on a tile without blocking it")
+	sim.needs.set_value("bladder", 0.0)
+	sim._check_limits()
+	_check(lot.messes().size() == 2 and sim.emotions.has("accident") and sim.needs.get_value("bladder") == 100.0, "an empty bladder leaves a puddle")
+	sim.needs.set_value("energy", 0.0)
+	sim._check_limits()
+	_check(sim._passed_out > 0.0 and sim.emotions.has("passed_out"), "zero energy means passing out")
+	var salad := Catalog.create("counter")
+	_check(salad.interactions[0].leaves_mess == "dishes" and dishes.interactions[0].consumes, "meals leave dishes and cleaning removes them")
+	salad.free()
+	sim.queue_free()
+	lot.queue_free()

@@ -8,6 +8,8 @@ extends RefCounted
 const SATISFIED := 90.0
 ## Below this score the Sim just stays idle.
 const MIN_SCORE := 4.0
+## How appealing cleaning up a mess is (on the same scale as need scores).
+const MESS_SCORE := 16.0
 
 
 ## How pressing a need is at value `v` (0..100). Grows sharply as it empties.
@@ -64,6 +66,11 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 		if Daylight.power_off and Bills.ELECTRIC.has(f.kind):
 			continue
 		var dist := sim.global_position.distance_to(f.global_position)
+		# Tidy Sims clean up messes when nothing more pressing needs doing.
+		if Catalog.MESSES.has(f.kind):
+			if urgent.is_empty() and not sim.is_visitor and Ages.allows(sim.age_stage, f.interactions[0]):
+				options.append([MESS_SCORE / (1.0 + dist / 20.0), f, f.interactions[0]])
+			continue
 		for i in f.interactions:
 			if not Ages.allows(sim.age_stage, i):
 				continue

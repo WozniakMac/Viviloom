@@ -21,6 +21,8 @@ var use_position: Variant = null
 ## Local direction the Sim faces while at `use_position`.
 var use_facing := Vector3(0, 0, 1)
 var user: Node3D = null
+## Messes (dirty dishes, puddles) sit on a tile without blocking it.
+var blocks := true
 
 
 func _ready() -> void:
