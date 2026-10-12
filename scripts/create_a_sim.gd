@@ -15,8 +15,9 @@ const PALETTES := {
 	"hair": [Color(0.08, 0.07, 0.07), Color(0.25, 0.16, 0.1), Color(0.5, 0.32, 0.17), Color(0.85, 0.7, 0.4), Color(0.7, 0.25, 0.12), Color(0.75, 0.75, 0.78)],
 	"shirt": [Color(0.22, 0.47, 0.82), Color(0.2, 0.62, 0.38), Color(0.85, 0.3, 0.45), Color(0.95, 0.75, 0.2), Color(0.55, 0.35, 0.75), Color(0.92, 0.92, 0.9)],
 	"pants": [Color(0.18, 0.2, 0.28), Color(0.3, 0.4, 0.62), Color(0.45, 0.35, 0.25), Color(0.12, 0.12, 0.12), Color(0.6, 0.58, 0.5), Color(0.5, 0.15, 0.2)],
+	"eyes": [Color(0.25, 0.17, 0.1), Color(0.12, 0.08, 0.05), Color(0.2, 0.45, 0.75), Color(0.25, 0.55, 0.35), Color(0.5, 0.5, 0.55), Color(0.55, 0.4, 0.2)],
 }
-const PART_LABELS := {"skin": "Skin Tone", "hair": "Hair Colour", "shirt": "Top", "pants": "Bottom"}
+const PART_LABELS := {"skin": "Skin Tone", "hair": "Hair Colour", "eyes": "Eye Colour", "shirt": "Top", "pants": "Bottom"}
 const RANDOM_NAMES: Array[String] = ["Ada", "Bruno", "Celia", "Dario", "Edie", "Felix", "Greta", "Hugo", "Iris", "Jonas", "Kira", "Leo", "Mila", "Nico", "Olga", "Pablo"]
 
 var sim: Sim
@@ -226,7 +227,7 @@ func _build() -> void:
 		hrow.add_child(hb)
 		_hair_buttons[style] = hb
 	_pick_hair(sim.hair_style)
-	for part in ["skin", "hair", "shirt", "pants"]:
+	for part in ["skin", "hair", "eyes", "shirt", "pants"]:
 		var l := Label.new()
 		l.text = PART_LABELS[part]
 		l.add_theme_font_size_override("font_size", 14)
@@ -345,7 +346,7 @@ func _on_swatch(part: String, c: Color) -> void:
 
 ## Marks the swatch matching each part's current colour.
 func _sync_swatches() -> void:
-	var current := {"skin": sim.skin_color, "hair": sim.hair_color, "shirt": sim.shirt_color, "pants": sim.pants_color}
+	var current := {"skin": sim.skin_color, "hair": sim.hair_color, "eyes": sim.eye_color, "shirt": sim.shirt_color, "pants": sim.pants_color}
 	for part in _swatches:
 		for pair in _swatches[part]:
 			(pair[0] as Button).set_pressed_no_signal((pair[1] as Color).is_equal_approx(current[part]))

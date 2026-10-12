@@ -60,6 +60,7 @@ class SimAction:
 @export var pants_color := Color(0.18, 0.2, 0.28)
 @export var skin_color := Color(0.87, 0.69, 0.55)
 @export var hair_color := Color(0.25, 0.16, 0.1)
+@export var eye_color := Color(0.25, 0.17, 0.1)
 ## "short", "long" or "bun".
 @export var hair_style := "short"
 ## Body shape sliders (0..1) and outfit cut.
@@ -141,6 +142,9 @@ var _anim: AnimationPlayer
 ## Hair style name -> its mesh in the model.
 var _hair_meshes := {}
 var _body_mesh: MeshInstance3D
+## Mouth and brow shapes by name ("Mouth_Smile", "Brows_Angry"...).
+var _face_meshes := {}
+var _expression := ""
 var _selection_ring: MeshInstance3D
 var _plumbob: MeshInstance3D
 ## Materials by part ("shirt", "pants", "skin", "hair") so the look can change later.
@@ -164,6 +168,30 @@ func _ready() -> void:
 	_voice_pitch = 0.92 + float(h % 17) / 100.0
 
 
+## Face for the current emotion: which mouth and brows show.
+const EXPRESSIONS := {
+	"happy": ["Smile", "Neutral"], "playful": ["Smile", "Neutral"], "flirty": ["Smile", "Neutral"],
+	"confident": ["Smile", "Neutral"], "energized": ["Smile", "Neutral"], "inspired": ["Smile", "Neutral"],
+	"sad": ["Frown", "Sad"], "angry": ["Frown", "Angry"], "tense": ["Neutral", "Sad"],
+	"uncomfortable": ["Frown", "Sad"], "embarrassed": ["Frown", "Sad"], "bored": ["Frown", "Neutral"],
+}
+
+
+func _update_expression() -> void:
+	if _face_meshes.is_empty():
+		return
+	var e: Array = EXPRESSIONS.get(emotions.mood(), ["Neutral", "Neutral"])
+	if dying or _passed_out > 0.0:
+		e = ["Frown", "Sad"]
+	var key := "%s/%s" % e
+	if key == _expression:
+		return
+	_expression = key
+	for name in _face_meshes:
+		var mi: MeshInstance3D = _face_meshes[name]
+		mi.visible = name == "Mouth_" + e[0] or name == "Brows_" + e[1]
+
+
 ## Recolours one part of the Sim: "shirt", "pants", "skin" or "hair".
 func set_part_color(part: String, c: Color) -> void:
 	match part:
@@ -171,8 +199,10 @@ func set_part_color(part: String, c: Color) -> void:
 		"pants": pants_color = c
 		"skin": skin_color = c
 		"hair": hair_color = c
-	if _materials.has(part):
-		(_materials[part] as BaseMaterial3D).albedo_color = c
+		"eyes": eye_color = c
+	var key := "pupil" if part == "eyes" else part
+	if _materials.has(key):
+		(_materials[key] as BaseMaterial3D).albedo_color = c
 	_apply_outfit()
 	_store_outfit()
 
@@ -460,7 +490,7 @@ func to_dict() -> Dictionary:
 			rels[o.sim_name] = [relationships[o].x, relationships[o].y]
 	return {
 		"name": sim_name,
-		"colors": {"shirt": shirt_color.to_html(), "pants": pants_color.to_html(), "skin": skin_color.to_html(), "hair": hair_color.to_html()},
+		"colors": {"shirt": shirt_color.to_html(), "pants": pants_color.to_html(), "skin": skin_color.to_html(), "hair": hair_color.to_html(), "eyes": eye_color.to_html()},
 		"hair_style": hair_style,
 		"body": [body_heavy, body_fit, long_sleeves, shorts],
 		"outfit": outfit,
@@ -1272,6 +1302,7 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 				anim = "talk"
 			elif busy:
 				anim = "use"
+	_update_expression()
 	if _anim != null:
 		# Standing around and walking show the Sim's mood (strong feelings only).
 		if (anim == "idle" or anim == "walk") and emotions.intensity() >= 1:
@@ -1314,6 +1345,8 @@ func _build_visual() -> void:
 		mi.layers = 1 | PORTRAIT_LAYER
 		if mi.name == "Body":
 			_body_mesh = mi
+		if mi.name.begins_with("Mouth_") or mi.name.begins_with("Brows_"):
+			_face_meshes[mi.name] = mi
 		if mi.name.begins_with("Hair_"):
 			_hair_meshes[mi.name.trim_prefix("Hair_").to_lower()] = mi
 		for i in mi.mesh.get_surface_count():
@@ -1328,6 +1361,7 @@ func _build_visual() -> void:
 	set_part_color("pants", pants_color)
 	set_part_color("skin", skin_color)
 	set_part_color("hair", hair_color)
+	set_part_color("eyes", eye_color)
 	set_hair_style(hair_style)
 	set_body(body_heavy, body_fit)
 	_apply_outfit()

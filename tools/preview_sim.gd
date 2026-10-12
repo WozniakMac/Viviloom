@@ -21,6 +21,8 @@ func _initialize() -> void:
 	root3d.add_child(sun)
 	var scene: PackedScene = load("res://assets/sim/sim.glb")
 	var names := ["idle", "walk", "sit", "sit_use", "lie", "talk", "use"]
+	if args.size() > 4 and args[4] == "faces":
+		names = ["idle", "idle", "idle", "idle", "idle", "idle", "idle"]
 	if args.size() > 4 and args[4] == "moods":
 		names = ["idle_sad", "idle_angry", "idle_happy", "idle_tense", "idle_flirty", "walk_sad", "walk_angry"]
 	for i in names.size():
@@ -35,6 +37,13 @@ func _initialize() -> void:
 		var hs := inst.find_child("Hair_Short", true, false) as Node3D
 		if hs != null:
 			hs.visible = i % 3 == 0
+		if args.size() > 4 and args[4] == "faces":
+			var faces := [["Smile", "Neutral"], ["Smile", "Neutral"], ["Frown", "Sad"], ["Frown", "Angry"], ["Neutral", "Sad"], ["Smile", "Neutral"], ["Neutral", "Neutral"]]
+			for m in inst.find_children("*", "MeshInstance3D", true, false):
+				if m.name.begins_with("Mouth_"):
+					m.visible = m.name == "Mouth_" + faces[i][0]
+				if m.name.begins_with("Brows_"):
+					m.visible = m.name == "Brows_" + faces[i][1]
 		var ap := inst.find_child("AnimationPlayer", true, false) as AnimationPlayer
 		if ap != null and ap.has_animation(names[i]):
 			ap.play(names[i])

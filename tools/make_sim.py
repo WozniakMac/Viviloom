@@ -186,17 +186,51 @@ def build_head(mats):
     for sx in (1, -1):
         parts.append(sphere("EyeWhite", (0.045 * sx, 0.103, 1.705), (0.022, 0.012, 0.016), mats["EyeWhite"], 16, 10))
         parts.append(sphere("Pupil", (0.045 * sx, 0.113, 1.705), (0.011, 0.006, 0.012), mats["Pupil"], 12, 8))
-        brow = sphere("Brow", (0.046 * sx, 0.105, 1.74), (0.026, 0.008, 0.006), mats["Hair"], 12, 6)
-        parts.append(brow)
         parts.append(sphere("Ear", (0.112 * sx, 0.0, 1.69), (0.022, 0.032, 0.04), mats["Skin"], 12, 8))
     parts.append(sphere("Nose", (0, 0.122, 1.675), (0.017, 0.022, 0.024), mats["Skin"], 12, 8))
-    parts.append(sphere("Lips", (0, 0.107, 1.628), (0.03, 0.01, 0.009), mats["Lips"], 16, 8))
     bpy.ops.object.select_all(action="DESELECT")
     for p in parts:
         p.select_set(True)
     bpy.context.view_layer.objects.active = head
     bpy.ops.object.join()
     return head
+
+
+def _dots(name, points, scale, mat):
+    """A curved stroke made of small overlapping spheres, joined into one mesh."""
+    objs = [sphere(name, p, scale, mat, 10, 6) for p in points]
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in objs:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = objs[0]
+    bpy.ops.object.join()
+    objs[0].name = name
+    return objs[0]
+
+
+def build_expressions(mats):
+    """Separate mouths and brows the game swaps to show emotion."""
+    out = []
+    y_mouth = 0.108
+    def arc(half, curve, z0):
+        pts = []
+        for k in range(-8, 9):
+            u = k / 8.0
+            pts.append((u * half, y_mouth - 0.004 * u * u, z0 + curve * u * u))
+        return pts
+    out.append(_dots("Mouth_Neutral", arc(0.026, 0.0, 1.628), (0.007, 0.006, 0.0055), mats["Lips"]))
+    out.append(_dots("Mouth_Smile", arc(0.034, 0.012, 1.621), (0.007, 0.006, 0.0055), mats["Lips"]))
+    out.append(_dots("Mouth_Frown", arc(0.027, -0.009, 1.632), (0.007, 0.006, 0.0055), mats["Lips"]))
+    for name, tilt, lift in (("Brows_Neutral", 0.0, 0.0), ("Brows_Angry", -0.012, -0.004), ("Brows_Sad", 0.012, 0.002)):
+        pts = []
+        for sx in (1, -1):
+            for k in range(9):
+                x = 0.03 + k * 0.004
+                # Tilt raises or lowers the inner ends (angry: inner ends down).
+                z = 1.74 + lift + tilt * (1.0 - k / 8.0)
+                pts.append((x * sx, 0.104 + 0.001 * (4 - abs(k - 4)), z))
+        out.append(_dots(name, pts, (0.006, 0.006, 0.0045), mats["Hair"]))
+    return out
 
 
 def cut_below(obj, z_cut, keep_back_below=None, front=1.762):
@@ -529,8 +563,9 @@ def main():
     add_shape_keys(body)
     head = build_head(mats)
     hairs = build_hair(mats)
+    faces = build_expressions(mats)
     rig = build_armature()
-    skin_to_rig(rig, body, [head] + hairs)
+    skin_to_rig(rig, body, [head] + hairs + faces)
     assign_body_materials(body, mats)
     animations(rig)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
