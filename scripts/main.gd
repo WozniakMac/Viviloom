@@ -36,6 +36,8 @@ var _home_snapshot := {}
 ## household), and keys of the save that belong to the whole world.
 var other_households: Array = []
 var _ui_hidden := false
+static var _open_manage_next := false
+var _autosave_timer := 0.0
 var _story_rng := RandomNumberGenerator.new()
 const WORLD_KEYS: Array[String] = ["version", "minutes", "townies", "tips", "others"]
 ## Modal event cards (doorbell, new baby, farewells, first-time tips). Scripted
@@ -62,6 +64,7 @@ var _menu_orbit := false
 
 
 func _ready() -> void:
+	Settings.apply(get_tree())
 	_setup_environment()
 
 	lot = Lot.new()
@@ -289,7 +292,7 @@ func _on_doorbell(v: Sim) -> void:
 
 ## A one-time explanation the first time something happens.
 func tip(id: String, title: String, text: String) -> void:
-	if _tips_seen.has(id) or not dialogs_enabled:
+	if _tips_seen.has(id) or not dialogs_enabled or not Settings.get_value("show_tips"):
 		return
 	_tips_seen[id] = true
 	EventDialog.ask(self, null, title, text, ["Got it"] as Array[String])
@@ -653,6 +656,7 @@ func _furniture_at(screen_pos: Vector2) -> Furniture:
 
 
 func _process(delta: float) -> void:
+	_autosave(delta)
 	rig.height_keys_enabled = not build.active
 	rig.rotate_keys_enabled = not (build.active and build.is_holding())
 	_update_audio()
@@ -1041,8 +1045,16 @@ func open_main_menu() -> void:
 	var menu := MainMenu.new()
 	menu.name = "MainMenu"
 	add_child(menu)
-	menu.setup(SaveGame.exists())
+	menu.setup(SaveGame.exists(), _title_info())
 	_menu = menu
+	menu.options_pressed.connect(func():
+		var gm := GameMenu.new()
+		add_child(gm)
+		gm.setup(SaveGame.exists(), false))
+	if _open_manage_next:
+		_open_manage_next = false
+		menu.visible = false
+		_open_manage_households(menu)
 	menu.play_pressed.connect(func():
 		_close_main_menu(menu)
 		load_game())
@@ -1055,6 +1067,14 @@ func open_main_menu() -> void:
 
 
 # --- several households -------------------------------------------------------------
+
+## "Lived in by" line and funds for the title screen, from the last save.
+func _title_info() -> String:
+	if not SaveGame.exists():
+		return ""
+	var s := _summary(_household_part(SaveGame.read()), true)
+	return "Lived in by: %s\n%s" % [s["name"], Hud.money(s["funds"])]
+
 
 ## A saved household's summary line for the Manage Households screen.
 static func _summary(h: Dictionary, last: bool) -> Dictionary:
@@ -1138,6 +1158,11 @@ func open_game_menu() -> void:
 	m.save_pressed.connect(save_game)
 	m.load_pressed.connect(load_game)
 	m.main_menu_pressed.connect(func(): get_tree().reload_current_scene())
+	m.manage_pressed.connect(func():
+		# Like Manage Worlds: save, then pick a household from the title screen.
+		save_game()
+		_open_manage_next = true
+		get_tree().reload_current_scene())
 	m.setup(SaveGame.exists())
 
 
@@ -1161,6 +1186,18 @@ func _lot_dict() -> Dictionary:
 	for e in lot.fences:
 		fences.append([e.x, e.y, e.z, lot.gates.has(e), lot.fence_styles.get(e, 0)])
 	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "fences": fences, "roof": [lot.roof_style, lot.roof_color], "foundation": lot.foundation, "terrain": lot.terrain_tiles.keys().map(func(c): return [c.x, c.y, lot.terrain_tiles[c]]), "lot_traits": lot.lot_traits.duplicate(), "upper": _level_dict(upper)}
+
+
+## Saves on the Autosave interval from Game Options while playing at home.
+func _autosave(delta: float) -> void:
+	var mins: int = Settings.AUTOSAVE_MINUTES[Settings.get_value("autosave")]
+	if mins <= 0 or _menu != null or _cas != null or build.active or location != "home" or not dialogs_enabled:
+		_autosave_timer = 0.0
+		return
+	_autosave_timer += delta
+	if _autosave_timer >= mins * 60.0:
+		_autosave_timer = 0.0
+		save_game()
 
 
 ## Raises (or lowers) the house onto a foundation; the upper storey moves with it.
@@ -1901,6 +1938,15 @@ func _run_scenario(scenario: String, path: String) -> void:
 			lot.wall_view = Lot.WallView.CUTAWAY
 			rig.frame(pn.global_position, deg_to_rad(25.0), deg_to_rad(-35.0), 8.0)
 			await get_tree().create_timer(4.0).timeout
+		"gamemenu":
+			open_game_menu()
+			await get_tree().create_timer(0.8).timeout
+		"options":
+			var o := GameOptions.new()
+			add_child(o)
+			o.setup()
+			o._show_tab(3)
+			await get_tree().create_timer(0.8).timeout
 		"paused":
 			Clock.set_speed(0)
 			await get_tree().create_timer(0.6).timeout

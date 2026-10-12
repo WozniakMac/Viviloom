@@ -56,6 +56,8 @@ func minute() -> int:
 
 
 func time_string() -> String:
+	if Settings.get_value("clock_24h"):
+		return "%02d:%02d" % [hour(), minute()]
 	var h := hour() % 12
 	if h == 0:
 		h = 12

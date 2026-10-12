@@ -1081,7 +1081,11 @@ func _update_autonomy() -> void:
 		_idle_minutes = 0.0
 		return
 	_idle_minutes += Clock.game_delta
-	if not autonomy_enabled or _idle_minutes < IDLE_BEFORE_AUTONOMY:
+	var free_will: int = Settings.get_value("free_will")
+	if free_will == 0 or (_selected and Settings.get_value("disable_selected_autonomy")):
+		return
+	var wait := IDLE_BEFORE_AUTONOMY * (3.0 if free_will == 1 else 1.0)
+	if not autonomy_enabled or _idle_minutes < wait:
 		return
 	_idle_minutes = 0.0
 	var pick := Autonomy.choose(self, lot, _rng)

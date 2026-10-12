@@ -41,10 +41,10 @@ func new_day() -> void:
 			s.pregnant_days += 1
 			if s.pregnant_days >= PREGNANCY_DAYS:
 				_give_birth(s)
-		if not aging_enabled:
+		if not aging_enabled or not Settings.get_value("aging_played"):
 			continue
 		s.age_days += 1
-		if s.age_days >= Ages.INFO[s.age_stage]["days"]:
+		if s.age_days >= Ages.stage_days(s.age_stage):
 			if s.age_stage == "elder":
 				_pass_away(s)
 			else:

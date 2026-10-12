@@ -18,22 +18,33 @@ var _cache := {}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	for bus in ["Music", "SFX", "Ambience"]:
+		if AudioServer.get_bus_index(bus) < 0:
+			AudioServer.add_bus()
+			var i := AudioServer.bus_count - 1
+			AudioServer.set_bus_name(i, bus)
+			AudioServer.set_bus_send(i, "Master")
 	for i in POOL:
 		var p := AudioStreamPlayer.new()
+		p.bus = "SFX"
 		add_child(p)
 		_sfx.append(p)
 	for i in 2:
 		var m := AudioStreamPlayer.new()
 		m.volume_db = -80.0
+		m.bus = "Music"
 		add_child(m)
 		_music.append(m)
 	_ambience = AudioStreamPlayer.new()
 	_ambience.volume_db = -14.0
+	_ambience.bus = "Ambience"
 	add_child(_ambience)
 	get_tree().node_added.connect(_on_node_added)
 
 
 func _on_node_added(n: Node) -> void:
+	if n is AudioStreamPlayer3D:
+		(n as AudioStreamPlayer3D).bus = "SFX"
 	if n is BaseButton:
 		(n as BaseButton).pressed.connect(play.bind("click", -6.0))
 

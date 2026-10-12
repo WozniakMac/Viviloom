@@ -297,7 +297,7 @@ var _live_button: IconButton
 var _build_button: IconButton
 var _notices: VBoxContainer
 var _hint: Label
-var _hint_time := 25.0
+var _hint_time := 0.0
 
 
 func _ready() -> void:
@@ -500,7 +500,6 @@ func _ensure_pause_frame() -> void:
 	_pause_frame.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_pause_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_pause_frame)
-	_live_ui.append(_pause_frame)
 
 
 ## Opens a side panel by its hotkey, or closes it if it's already showing.
@@ -648,7 +647,8 @@ func _show_page(index: int) -> void:
 		_refresh_aspiration()
 	if index == 4:
 		_refresh_career()
-	_autonomy_button.visible = index == 0
+	# Free will is a Game Options setting in the reference, not a panel button.
+	_autonomy_button.visible = false
 	for i in _pages.size():
 		_pages[i].visible = i == index
 	for b in _tabs:
@@ -1318,7 +1318,7 @@ func _rebuild_traits() -> void:
 		c.queue_free()
 	var age := UiTheme.title(Label.new(), 15)
 	var stage: Dictionary = Ages.INFO[sim.age_stage]
-	age.text = "%s  ·  day %d of %d" % [stage["label"], sim.age_days + 1, stage["days"]]
+	age.text = "%s  ·  day %d of %d" % [stage["label"], sim.age_days + 1, Ages.stage_days(sim.age_stage)]
 	if sim.pregnant_days >= 0:
 		age.text += "  ·  expecting"
 	_traits_box.add_child(age)
@@ -1412,6 +1412,10 @@ func _refresh_skills() -> void:
 
 func _process(delta: float) -> void:
 	_clock_label.text = Clock.time_string()
+	if _wants_box != null:
+		_wants_box.visible = Settings.get_value("show_wants")
+	if _pause_frame != null:
+		_pause_frame.visible = Clock.speed == 0 and (_speed_buttons.is_empty() or _speed_buttons[0].is_visible_in_tree())
 	_date_label.text = "%s · Day %d" % [Clock.weekday_name(), Clock.day()]
 	if _hint_time > 0.0:
 		_hint_time -= delta

@@ -4,6 +4,15 @@ extends RefCounted
 ## they're allowed to do.
 
 const ORDER: Array[String] = ["toddler", "child", "teen", "young_adult", "adult", "elder"]
+## Sim Lifespan option (Short / Normal / Long).
+static var lifespan_mult := 1.0
+
+
+## Days spent in `stage` at the current lifespan setting.
+static func stage_days(stage: String) -> int:
+	return maxi(1, roundi(INFO[stage]["days"] * lifespan_mult))
+
+
 const INFO := {
 	"toddler": {"label": "Toddler", "days": 4, "scale": 0.5, "speed": 0.6},
 	"child": {"label": "Child", "days": 8, "scale": 0.66, "speed": 0.85},

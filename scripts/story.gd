@@ -21,8 +21,9 @@ static func advance_day(households: Array, day: int, rng: RandomNumberGenerator)
 		for m in members.duplicate():
 			var sim: Dictionary = m["sim"]
 			var age: Array = sim.get("age", ["young_adult", 0, -1])
-			age[1] = int(age[1]) + 1
-			if int(age[1]) >= Ages.INFO[age[0]]["days"]:
+			if Settings.get_value("aging_unplayed"):
+				age[1] = int(age[1]) + 1
+			if int(age[1]) >= Ages.stage_days(age[0]):
 				if age[0] == "elder":
 					members.erase(m)
 					for other in members:

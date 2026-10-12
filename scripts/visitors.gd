@@ -74,10 +74,10 @@ func _make_townie(n: String) -> Sim:
 func new_day(rng: RandomNumberGenerator) -> Array[String]:
 	var news: Array[String] = []
 	for t in townies.duplicate():
-		if t.visible:
+		if t.visible or not Settings.get_value("aging_unplayed"):
 			continue
 		t.age_days += 1
-		if t.age_days < Ages.INFO[t.age_stage]["days"]:
+		if t.age_days < Ages.stage_days(t.age_stage):
 			continue
 		t.age_days = 0
 		if t.age_stage == "elder":
