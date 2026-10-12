@@ -95,6 +95,7 @@ func entry_point() -> Vector3:
 func bring(t: Sim, leave_minute := INF, at: Variant = null) -> void:
 	t.away = false
 	t.visible = true
+	t.lot = lot
 	t.set_meta("leaving", false)
 	t.global_position = at if at != null else entry_point()
 	for n in Needs.ORDER:

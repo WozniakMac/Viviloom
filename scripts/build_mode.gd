@@ -6,6 +6,8 @@ extends Node
 signal funds_changed(funds: int)
 signal notice(text: String)
 signal entered
+## An object was put down (main uses this to cut stairwells).
+signal placed(f: Furniture)
 
 enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL }
 
@@ -49,7 +51,13 @@ var _floor_start: Variant = null
 var _floor_end := Vector2i.ZERO
 
 
+## Overlays live under this node, which rises to the level being built on.
+var _overlays: Node3D
+
+
 func _ready() -> void:
+	_overlays = Node3D.new()
+	add_child(_overlays)
 	_footprint = _overlay_box(Color(0.3, 0.9, 0.4, 0.45))
 	_footprint_mat = _footprint.material_override
 	_wall_preview = _overlay_box(Color(0.4, 0.7, 1.0, 0.55))
@@ -99,6 +107,9 @@ func set_tool(t: Tool) -> void:
 
 ## Starts placing a new object of `kind` from the catalogue.
 func start_place(kind: String) -> void:
+	if kind == "stairs" and lot.level > 0:
+		notice.emit("Stairs go on the ground floor and lead up to the next one.")
+		return
 	set_tool(Tool.PLACE)
 	var price: int = Catalog.INFO[kind][1]
 	if price > funds:
@@ -286,6 +297,7 @@ func _drop() -> void:
 	lot.place_furniture(_held, _held_cell, _held_rot)
 	Sfx.play("place")
 	_held.set_ghost(false)
+	placed.emit(_held)
 	_held = null
 	if tool == Tool.PLACE:
 		set_tool(Tool.MOVE)
@@ -412,7 +424,7 @@ func earn(amount: int) -> void:
 
 func _ground(screen_pos: Vector2) -> Variant:
 	var origin := camera.project_ray_origin(screen_pos)
-	return Plane(Vector3.UP, 0.0).intersects_ray(origin, camera.project_ray_normal(screen_pos))
+	return Plane(Vector3.UP, lot.base_y()).intersects_ray(origin, camera.project_ray_normal(screen_pos))
 
 
 func _furniture_under(screen_pos: Vector2) -> Furniture:
@@ -434,8 +446,18 @@ func _overlay_box(color: Color) -> MeshInstance3D:
 	m.material_override = mat
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	m.visible = false
-	add_child(m)
+	_overlays.add_child(m)
 	return m
+
+
+## Builds on another level from now on.
+func set_lot(l: Lot) -> void:
+	_cancel_held()
+	_wall_start = null
+	_floor_start = null
+	lot = l
+	_overlays.position.y = l.base_y()
+	_refresh_overlays(null)
 
 
 func _set_visible(v: bool) -> void:

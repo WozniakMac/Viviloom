@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -42,6 +42,7 @@ const INFO := {
 	"treadmill": ["Treadmill", 650],
 	"mirror": ["Standing Mirror", 150],
 	"guitar": ["Acoustic Guitar", 300],
+	"stairs": ["Staircase", 800],
 	"dishes": ["Dirty Dishes", 0],
 	"puddle": ["Puddle", 0],
 	"fire": ["Fire!", 0],
@@ -55,7 +56,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -85,6 +86,7 @@ const DESCRIPTIONS := {
 	"treadmill": "Run for miles without leaving the room.",
 	"mirror": "Practise speeches until you believe them.",
 	"guitar": "Strum, practise, maybe even get good.",
+	"stairs": "Leads up to the next floor. The top step needs floor upstairs to land on.",
 }
 const WALL_PRICE := 14
 const DOOR_PRICE := 150
@@ -422,6 +424,20 @@ static func create(kind: String) -> Furniture:
 			var clean := Interaction.new("Clean Up", {"fun": 2.0}, 10.0, "", "stand", true)
 			clean.consumes = true
 			f.interactions = [clean]
+		"stairs":
+			f.display_name = "Staircase"
+			f.footprint = Vector2i(1, 3)
+			f.height = Lot.WALL_HEIGHT
+			# Twelve solid steps rising from the front (+Z) to the back, with rails.
+			var steps := 12
+			var rise := Lot.WALL_HEIGHT / steps
+			var run := 3.0 / steps
+			for k in steps:
+				var h := rise * (k + 1)
+				f.add_box(Vector3(0.94, h, run), Vector3(0, h * 0.5, 1.5 - run * (k + 0.5)), WOOD if k % 2 == 0 else WOOD.darkened(0.08))
+			for x in [-0.47, 0.47]:
+				var rail := f.add_box(Vector3(0.04, 0.04, 3.4), Vector3(x, Lot.WALL_HEIGHT * 0.5 + 0.9, 0), DARK)
+				rail.rotation.x = atan2(Lot.WALL_HEIGHT, 3.0)
 		"pool":
 			# Its footprint, spots and visuals come from Lot.add_pool.
 			f.display_name = "Swimming Pool"

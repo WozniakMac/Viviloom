@@ -8,6 +8,11 @@ extends Node3D
 const CAS_STUDIO := Vector3(400, 0, 400)
 
 var lot: Lot
+## The storey above the ground floor, and both levels; `active_level` is the one
+## being viewed, clicked on and built on.
+var upper: Lot
+var levels: Array = []
+var active_level := 0
 var sim: Sim
 var rig: CameraRig
 var hud: Hud
@@ -52,6 +57,12 @@ func _ready() -> void:
 	lot = Lot.new()
 	lot.name = "Lot"
 	add_child(lot)
+	upper = Lot.new()
+	upper.name = "UpperLevel"
+	upper.level = 1
+	upper.position.y = Lot.WALL_HEIGHT
+	add_child(upper)
+	levels = [lot, upper]
 	_place_house()
 
 	rig = CameraRig.new()
@@ -69,8 +80,12 @@ func _ready() -> void:
 	build.lot = lot
 	build.camera = rig.camera
 	add_child(build)
+	build.placed.connect(func(f: Furniture):
+		if f.kind == "stairs":
+			upper.clear_floor(f.footprint_rect()))
 	hud.set_build(build, lot)
 	hud.sim_selected.connect(select_sim)
+	hud.level_change.connect(func(step: int): set_level(active_level + step))
 	build.entered.connect(func(): tip("build", "Build Mode", "Time stops while you build. Use the tools at the top for walls, doors, windows, paint and floors, and buy objects from the catalogue at the bottom. Press F1 to go back to Live Mode."))
 	hud.bubbles.lot = lot
 	hud.bubbles.camera = rig.camera
@@ -109,6 +124,8 @@ func _ready() -> void:
 	visitors.name = "Visitors"
 	add_child(visitors)
 	visitors.setup(lot)
+	for t in visitors.townies:
+		t.levels = levels
 	visitors.arrived.connect(_on_doorbell)
 	visitors.left.connect(func(v: Sim): hud.show_notice("%s has gone home." % v.sim_name, "Visitor"))
 	hud.phone_invite.connect(func(t: Sim):
@@ -136,6 +153,7 @@ func _new_sim(sim_name: String) -> Sim:
 	s.name = "Sim_%d" % (household.size() + 1)
 	s.sim_name = sim_name
 	s.lot = lot
+	s.levels = levels
 	add_child(s)
 	s.set_selected(false)
 	s.global_position = lot.cell_to_world(Vector2i(10 + household.size(), 14))
@@ -173,6 +191,7 @@ func add_to_household(s: Sim) -> void:
 
 func _on_baby_born(baby: Sim, parents: Array) -> void:
 	baby.name = "Sim_%d" % (household.size() + 1)
+	baby.levels = levels
 	add_child(baby)
 	baby.set_selected(false)
 	baby.global_position = (parents[0] as Sim).global_position + Vector3(0.8, 0, 0.4)
@@ -263,6 +282,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				lot.wall_view = ((lot.wall_view + 1) % 3) as Lot.WallView
 				hud.refresh_walls_button(lot)
 				return
+			KEY_PAGEUP:
+				set_level(active_level + 1)
+				return
+			KEY_PAGEDOWN:
+				set_level(active_level - 1)
+				return
 	if build.active:
 		build.handle_input(event)
 		return
@@ -288,9 +313,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			if picked is Sim and picked != sim:
 				open_sim_menu(picked, mb.position)
 				return
+			var here: Lot = levels[active_level]
 			var hit: Variant = _ground_point(mb.position)
-			if hit != null and lot.contains_point(hit):
-				if lot.is_walkable(lot.world_to_cell(hit)) and sim.queue_go(hit):
+			if hit != null and here.contains_point(hit):
+				if here.is_walkable(here.world_to_cell(hit)) and sim.queue_go(hit, here):
 					_show_marker(hit)
 
 
@@ -366,7 +392,10 @@ func _pick_at(screen_pos: Vector2) -> Object:
 		return null
 	var col := hit.collider as Object
 	if col.has_meta("furniture"):
-		return col.get_meta("furniture")
+		var f := col.get_meta("furniture") as Furniture
+		if f.get_parent() is Lot and (f.get_parent() as Lot).level > active_level:
+			return null
+		return f
 	if col.has_meta("sim"):
 		return col.get_meta("sim")
 	return null
@@ -382,11 +411,19 @@ func _process(delta: float) -> void:
 	_update_mess()
 	if _menu_orbit:
 		rig.frame(lot.center(), rig.yaw + delta * 0.08, deg_to_rad(-32.0), 30.0)
-	lot.update_walls(rig.camera.global_position, rig.global_position, delta)
+	upper.wall_view = lot.wall_view
+	for l in levels:
+		l.update_walls(rig.camera.global_position, rig.global_position, delta)
+	# With walls up the whole house shows; otherwise floors above the one being
+	# viewed are hidden, and the ground roof gives way to the upper storey.
+	upper.visible = active_level >= 1 or lot.wall_view == Lot.WallView.UP
+	if lot._roof != null and not upper.floor_tiles.is_empty():
+		lot._roof.visible = false
 	var people: Array[Vector3] = []
 	for s in lot.sims:
 		people.append(s.global_position)
-	lot.update_doors(people, delta)
+	for l in levels:
+		l.update_doors(people, delta)
 	if _marker.visible:
 		_marker_time += delta
 		_marker.scale = Vector3.ONE * (1.0 + 0.15 * sin(_marker_time * 6.0))
@@ -397,11 +434,23 @@ func _process(delta: float) -> void:
 			_marker.visible = false
 
 
+## Views (and builds on) another floor; the camera rises with it.
+func set_level(n: int) -> void:
+	n = clampi(n, 0, levels.size() - 1)
+	if n == active_level:
+		return
+	active_level = n
+	build.set_lot(levels[n])
+	var tw := create_tween()
+	tw.tween_property(rig, "position:y", n * Lot.WALL_HEIGHT, 0.3).set_trans(Tween.TRANS_SINE)
+	hud.show_notice("Viewing the %s." % ["ground floor", "upper floor"][n], "Floors")
+
+
 func _ground_point(screen_pos: Vector2) -> Variant:
 	var cam := rig.camera
 	var origin := cam.project_ray_origin(screen_pos)
 	var dir := cam.project_ray_normal(screen_pos)
-	return Plane(Vector3.UP, 0.0).intersects_ray(origin, dir)
+	return Plane(Vector3.UP, active_level * Lot.WALL_HEIGHT).intersects_ray(origin, dir)
 
 
 func _show_marker(at: Vector3) -> void:
@@ -738,11 +787,47 @@ func _lot_dict() -> Dictionary:
 	var pool_rects: Array = []
 	for r in lot.pools:
 		pool_rects.append([r.position.x, r.position.y, r.size.x, r.size.y])
-	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects}
+	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "upper": _level_dict(upper)}
+
+
+## Walls, floors and objects of an upper level.
+func _level_dict(l: Lot) -> Dictionary:
+	var walls: Array = []
+	for e in l.walls:
+		walls.append([e.x, e.y, e.z, l.doors.has(e), l.windows.has(e), l.wall_styles.get(e, 0)])
+	var floors: Array = []
+	for c in l.floor_tiles:
+		floors.append([c.x, c.y, l.floor_tiles[c]])
+	var objects: Array = []
+	for f in l.furniture:
+		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps, f.broken])
+	return {"walls": walls, "floors": floors, "objects": objects}
+
+
+func _apply_level_dict(l: Lot, d: Dictionary) -> void:
+	l.clear_build()
+	for f in d.get("floors", []):
+		l.floor_tiles[Vector2i(int(f[0]), int(f[1]))] = int(f[2])
+	l.add_floor(Rect2i(), 0)
+	for w in d.get("walls", []):
+		var e := Vector3i(int(w[0]), int(w[1]), int(w[2]))
+		l.add_wall(e)
+		if w[3]:
+			l.add_door(e)
+		if w[4]:
+			l.add_window(e)
+		l.paint_wall(e, int(w[5]))
+	for o in d.get("objects", []):
+		if Catalog.INFO.has(o[0]):
+			var f := Catalog.create(o[0])
+			l.place_furniture(f, Vector2i(int(o[1]), int(o[2])), int(o[3]))
+			if o[4]:
+				f.set_broken(true)
 
 
 func _apply_lot_dict(d: Dictionary) -> void:
 	lot.clear_build()
+	_apply_level_dict(upper, d.get("upper", {}))
 	home_id = d.get("home", "cottage")
 	_place_grounds(home_id)
 	for w in d.get("walls", []):
@@ -811,6 +896,8 @@ func load_game() -> void:
 		add_to_household(_new_sim(""))
 	while household.size() > maxi(members.size(), 1):
 		remove_from_household(household[household.size() - 1])
+	for m in household:
+		m.lot = lot
 	var everyone: Array = household.duplicate()
 	everyone.append_array(visitors.townies)
 	for i in members.size():
@@ -850,10 +937,13 @@ func travel(dest: String) -> void:
 		_apply_lot_dict(_home_snapshot)
 	else:
 		lot.clear_build()
+		upper.clear_build()
 		_place_community(dest)
 	_set_location(dest)
+	set_level(0)
 	for i in household.size():
 		var m := household[i]
+		m.lot = lot
 		if not m.away:
 			m.global_position = lot.cell_to_world(Vector2i(9 + i, lot.size.y - 2))
 	if dest != "home":
@@ -1180,6 +1270,32 @@ func _run_scenario(scenario: String, path: String) -> void:
 			Clock.set_speed(1)
 			rig.frame(lot.cell_to_world(Vector2i(15, 13)), deg_to_rad(20.0), deg_to_rad(-38.0), 14.0)
 			await get_tree().create_timer(5.0).timeout
+		"upstairs", "twostorey":
+			upper.add_floor(Rect2i(3, 2, 15, 10), 2)
+			for r in [[Vector2i(3, 2), Vector2i(18, 2)], [Vector2i(3, 12), Vector2i(18, 12)], [Vector2i(3, 2), Vector2i(3, 12)], [Vector2i(18, 2), Vector2i(18, 12)]]:
+				for e in Lot.wall_run(r[0], r[1]):
+					upper.add_wall(e)
+					upper.paint_wall(e, 2)
+			for e in [Vector3i(6, 12, 0), Vector3i(11, 12, 0), Vector3i(15, 12, 0), Vector3i(8, 2, 0), Vector3i(18, 6, 1)]:
+				upper.add_window(e)
+			var st := Catalog.create("stairs")
+			lot.place_furniture(st, Vector2i(10, 6), 0)
+			upper.clear_floor(st.footprint_rect())
+			var bed2 := Catalog.create("bed")
+			upper.place_furniture(bed2, Vector2i(13, 3), 0)
+			var lamp2 := Catalog.create("lamp")
+			upper.place_furniture(lamp2, Vector2i(16, 3), 0)
+			sim.needs.set_value("energy", 20.0)
+			sim.queue_interaction(bed2, bed2.interactions.filter(func(i): return i.name == "Sleep")[0])
+			Clock.set_speed(2)
+			if scenario == "upstairs":
+				set_level(1)
+				rig.frame(Vector3(11, Lot.WALL_HEIGHT, 7), deg_to_rad(35.0), deg_to_rad(-50.0), 20.0)
+			else:
+				lot.wall_view = Lot.WallView.UP
+				rig.frame(lot.center() + Vector3(0, 0, 3), deg_to_rad(25.0), deg_to_rad(-25.0), 34.0)
+			await get_tree().create_timer(6.0).timeout
+			print("UPSTAIRS lot_level=%d action=%s y=%.2f" % [sim.lot.level, sim.current_action().label if sim.current_action() else "-", sim.global_position.y])
 		"store":
 			aspirations.satisfaction = 2300
 			hud._show_page(5)

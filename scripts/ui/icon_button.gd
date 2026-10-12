@@ -189,6 +189,10 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 				for i in 9:
 					pts.append(Vector2(c.x - s * 0.8 + i * s * 0.2, y + sin(i * 1.6) * s * 0.12))
 				ci.draw_polyline(pts, col, 1.8, true)
+		"level_up", "level_down":
+			var dirn := -1.0 if id == "level_up" else 1.0
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0, s * 0.8 * dirn), c + Vector2(-s * 0.8, -s * 0.2 * dirn), c + Vector2(s * 0.8, -s * 0.2 * dirn)]), col)
+			ci.draw_rect(Rect2(c + Vector2(-s * 0.8, (-s * 0.7 if dirn > 0 else s * 0.5)), Vector2(s * 1.6, s * 0.22)), col)
 		"menu":
 			for x in [-0.6, 0.0, 0.6]:
 				ci.draw_circle(c + Vector2(x * s, 0), s * 0.2, col)

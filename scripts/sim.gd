@@ -37,6 +37,13 @@ class SimAction:
 	var target_sim: Sim
 	var outcome := true
 	var retries := 0
+	## Which level a "Go Here" leads to (null = the Sim's current level).
+	var target_lot: Lot
+	## Taking the stairs: the staircase, and where the climb starts and ends.
+	var stairs: Furniture
+	var climb_from := Vector3.ZERO
+	var climb_to := Vector3.ZERO
+	var climb_lot: Lot
 
 	func progress() -> float:
 		if not performing or interaction == null:
@@ -259,11 +266,64 @@ func set_selected(selected: bool) -> void:
 	_plumbob.visible = selected
 
 
-func queue_go(target: Vector3) -> bool:
+func queue_go(target: Vector3, on_lot: Lot = null) -> bool:
 	var a := SimAction.new()
 	a.label = "Go Here"
 	a.target = target
+	a.target_lot = on_lot
 	return _enqueue(a)
+
+
+## Every level of the lot (set by main); the ground floor first.
+var levels: Array = []
+
+
+## Furniture on every level, for autonomy.
+func all_furniture() -> Array:
+	if levels.is_empty():
+		return lot.furniture
+	var out: Array = []
+	for l in levels:
+		out.append_array(l.furniture)
+	return out
+
+
+## The level an action takes place on.
+func _action_lot(a: SimAction) -> Lot:
+	if a.furniture != null and a.furniture.get_parent() is Lot:
+		return a.furniture.get_parent()
+	if a.target_lot != null:
+		return a.target_lot
+	return lot
+
+
+## Puts a "Take Stairs" step before `a` when it's on another level. Returns false
+## (and fails `a`) when there is no way up or down.
+func _route_levels(a: SimAction) -> bool:
+	var dest := _action_lot(a)
+	if dest == lot or levels.is_empty():
+		return true
+	var stairs: Furniture = null
+	for f in (levels[0] as Lot).furniture:
+		if f.kind == "stairs":
+			stairs = f
+	if stairs == null:
+		_fail(a, "%s can't get to the other floor without stairs." % sim_name)
+		return false
+	var up := dest.level > lot.level
+	var bottom := stairs.to_global(Vector3(0, 0, 2.0))
+	var top := stairs.to_global(Vector3(0, Lot.WALL_HEIGHT, -2.0))
+	var climb := SimAction.new()
+	climb.label = "Take Stairs"
+	climb.stairs = stairs
+	climb.climb_from = bottom if up else top
+	climb.climb_to = top if up else bottom
+	climb.climb_lot = dest
+	climb.autonomous = a.autonomous
+	a.started = false
+	queue.insert(0, climb)
+	queue_changed.emit()
+	return true
 
 
 ## Everything about this Sim that a save game needs. Relationships are stored by
@@ -431,7 +491,11 @@ func cancel(index: int) -> void:
 	if index < 0 or index >= queue.size():
 		return
 	var a := queue[index]
-	if a.started:
+	if a.stairs != null and a.performing:
+		# Never leave a Sim halfway up the stairs: finish the climb.
+		lot = a.climb_lot
+		global_position = a.climb_to
+	elif a.started:
 		if a.performing:
 			_end_perform(a)
 		else:
@@ -471,7 +535,7 @@ func _process(real_delta: float) -> void:
 		cur = current_action()
 
 	var rates := {}
-	if cur != null and cur.performing:
+	if cur != null and cur.performing and cur.interaction != null:
 		rates = cur.interaction.rates
 		_practise(cur.interaction, Clock.game_delta)
 	needs.tick(Clock.game_delta, rates, _decay_mult())
@@ -481,7 +545,9 @@ func _process(real_delta: float) -> void:
 
 	_update_autonomy()
 	var moving := _follow_path(delta)
-	if cur != null and cur.started and not cur.performing and not is_moving():
+	if cur != null and cur.stairs != null and cur.started:
+		moving = _climb(cur, delta) or moving
+	elif cur != null and cur.started and not cur.performing and not is_moving():
 		if cur.interaction == null:
 			_complete(cur)
 		elif cur.target_sim != null and global_position.distance_to(cur.target_sim.global_position) > 1.8 and cur.retries < 3:
@@ -500,6 +566,29 @@ func _process(real_delta: float) -> void:
 			_end_perform(cur, true)
 			_complete(cur)
 	_animate(delta, moving, cur)
+
+
+## Walks up or down the staircase, then carries on from the other level.
+func _climb(a: SimAction, delta: float) -> bool:
+	if not a.performing:
+		if is_moving():
+			return false
+		a.performing = true
+		a.elapsed = 0.0
+		global_position = a.climb_from
+	a.elapsed += delta
+	var t := clampf(a.elapsed / 2.2, 0.0, 1.0)
+	global_position = a.climb_from.lerp(a.climb_to, t)
+	var dir := a.climb_to - a.climb_from
+	dir.y = 0.0
+	if dir.length() > 0.01:
+		rotation.y = atan2(-dir.x, -dir.z)
+	if t >= 1.0:
+		lot = a.climb_lot
+		a.performing = false
+		_complete(a)
+		return false
+	return true
 
 
 ## What happens when a need runs out completely: an accident, or passing out.
@@ -597,7 +686,16 @@ func _update_autonomy() -> void:
 
 
 func _start(a: SimAction) -> void:
+	if a.stairs == null and not _route_levels(a):
+		return
+	if a != current_action():
+		# A climb was queued first; it starts on the next update.
+		return
 	a.started = true
+	if a.stairs != null:
+		if not move_to(a.climb_from):
+			_fail(a, "%s can't reach the stairs." % sim_name)
+		return
 	if a.target_sim != null:
 		_path_to_partner(a)
 		return
@@ -837,7 +935,7 @@ func _follow_path(delta: float) -> bool:
 	to.y = 0.0
 	var step := walk_speed * delta
 	if to.length() <= step:
-		global_position = Vector3(target.x, 0.0, target.z)
+		global_position = target
 		_path_index += 1
 		if _path_index >= path.size():
 			stop()
@@ -862,7 +960,7 @@ func _set_pose(p: String) -> void:
 ## Picks the body animation for what the Sim is doing and lays the body down or
 ## sits it on furniture.
 func _animate(delta: float, moving: bool, cur: SimAction) -> void:
-	var busy := cur != null and cur.performing and cur.interaction.busy_hands
+	var busy := cur != null and cur.performing and cur.interaction != null and cur.interaction.busy_hands
 	var talking := _social_with != null or (cur != null and cur.performing and cur.target_sim != null)
 	var anim := "idle"
 	match _pose:
@@ -890,7 +988,7 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 		_:
 			_body.rotation.x = 0.0
 			_body.position.y = 0.0
-			if moving or (cur != null and cur.performing and cur.interaction.pose == "run"):
+			if moving or (cur != null and cur.performing and cur.interaction != null and cur.interaction.pose == "run"):
 				anim = "walk"
 			elif talking:
 				anim = "talk"

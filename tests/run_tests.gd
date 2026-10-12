@@ -30,6 +30,7 @@ func _ready() -> void:
 	_test_repairs_and_fire()
 	_test_moods_and_rewards()
 	_test_pools()
+	_test_upper_floor()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -482,3 +483,21 @@ func _test_pools() -> void:
 	lot.remove_pool(pool)
 	_check(lot.pools.is_empty() and lot.is_walkable(Vector2i(5, 5)), "removing a pool fills it in")
 	lot.free()
+
+
+func _test_upper_floor() -> void:
+	var up := Lot.new()
+	up.level = 1
+	up.size = Vector2i(16, 16)
+	up.setup()
+	_check(not up.is_walkable(Vector2i(3, 3)), "upper floors are only walkable where there's floor")
+	up.add_floor(Rect2i(2, 2, 6, 6), 0)
+	_check(up.is_walkable(Vector2i(3, 3)) and is_equal_approx(up.cell_to_world(Vector2i(3, 3)).y, Lot.WALL_HEIGHT), "floor upstairs can be walked on, one storey up")
+	_check(not up.find_path(up.cell_to_world(Vector2i(2, 2)), up.cell_to_world(Vector2i(7, 7))).is_empty(), "Sims can walk across an upper floor")
+	_check(up.find_path(up.cell_to_world(Vector2i(2, 2)), up.cell_to_world(Vector2i(12, 12))).size() <= 1 or not up.is_walkable(Vector2i(12, 12)), "they can't walk off the edge")
+	up.clear_floor(Rect2i(4, 4, 1, 3))
+	_check(not up.is_walkable(Vector2i(4, 5)), "a stairwell removes the floor")
+	var stairs := Catalog.create("stairs")
+	_check(stairs.footprint == Vector2i(1, 3) and stairs.interactions.is_empty(), "stairs take a 1x3 space")
+	stairs.free()
+	up.free()

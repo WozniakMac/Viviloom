@@ -61,7 +61,7 @@ static func preference(sim: Sim, f: Furniture, interaction: Interaction) -> floa
 static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 	var urgent := urgent_needs(sim.needs)
 	var options: Array = []
-	for f in lot.furniture:
+	for f in sim.all_furniture():
 		if f.user != null and f.user != sim:
 			continue
 		if Daylight.power_off and Bills.ELECTRIC.has(f.kind):

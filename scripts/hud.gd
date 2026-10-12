@@ -16,6 +16,8 @@ const NEED_COLORS := {
 	"social": Color(0.35, 0.75, 0.35),
 }
 signal menu_requested
+## The floor up/down buttons (+1 or -1).
+signal level_change(step: int)
 ## A household member's portrait was clicked.
 signal sim_selected(sim: Sim)
 signal phone_invite(townie: Sim)
@@ -292,7 +294,7 @@ func _ready() -> void:
 	_build_sim_cluster()
 
 	_hint = Label.new()
-	_hint.text = "Click the ground to walk, objects to interact.   WASD / Q E / Z X: camera   F3: build   V: walls"
+	_hint.text = "Click the ground to walk, objects to interact.   WASD / Q E / Z X: camera   PgUp/PgDn: floors   F3: build   V: walls"
 	_hint.add_theme_font_size_override("font_size", 14)
 	_hint.add_theme_color_override("font_color", Color.WHITE)
 	_hint.add_theme_color_override("font_outline_color", Color(0.05, 0.1, 0.25, 0.8))
@@ -324,6 +326,10 @@ func _build_top_right() -> void:
 	bar.position = Vector2(-16, 14)
 	bar.add_theme_constant_override("separation", 6)
 	_root.add_child(bar)
+	for d in [["level_down", -1, "Down a floor (Page Down)"], ["level_up", 1, "Up a floor (Page Up)"]]:
+		var lb := IconButton.make(d[0], 38, d[2])
+		lb.pressed.connect(func(): level_change.emit(d[1]))
+		bar.add_child(lb)
 	_walls_button = IconButton.make("walls", 44, "Walls (V)")
 	bar.add_child(_walls_button)
 	_live_button = IconButton.make("live", 52, "Live mode (F1)")

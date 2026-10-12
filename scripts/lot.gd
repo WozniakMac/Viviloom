@@ -21,6 +21,9 @@ const WINDOW_TOP := 2.1
 enum WallView { UP, CUTAWAY, DOWN }
 
 @export var size := Vector2i(24, 20)
+## 0 for the ground floor, 1 for the storey above (which sits WALL_HEIGHT up and
+## is only walkable where it has floor).
+var level := 0
 
 var furniture: Array[Furniture] = []
 ## Sims currently on the lot (household and visitors), for socials and doors.
@@ -61,7 +64,13 @@ var _door_mat: StandardMaterial3D
 
 
 func _ready() -> void:
-	_build_ground()
+	if level == 0:
+		_build_ground()
+
+
+## Height of this level's floor in the world.
+func base_y() -> float:
+	return level * WALL_HEIGHT
 
 
 ## Kept for callers that build a lot outside the scene tree (tests).
@@ -70,7 +79,7 @@ func setup() -> void:
 
 
 func cell_to_world(c: Vector2i) -> Vector3:
-	return Vector3((c.x + 0.5) * CELL, 0.0, (c.y + 0.5) * CELL)
+	return Vector3((c.x + 0.5) * CELL, base_y(), (c.y + 0.5) * CELL)
 
 
 func world_to_cell(p: Vector3) -> Vector2i:
@@ -90,6 +99,8 @@ func contains_point(p: Vector3) -> bool:
 
 
 func is_walkable(c: Vector2i) -> bool:
+	if level > 0 and not floor_tiles.has(c):
+		return false
 	return in_bounds(c) and not _blocked.has(c)
 
 
@@ -264,8 +275,17 @@ func set_floor(c: Vector2i, style: int) -> void:
 	_rebuild_floor()
 
 
+## Removes floor tiles (a stairwell on an upper level).
+func clear_floor(rect: Rect2i) -> void:
+	for x in range(rect.position.x, rect.end.x):
+		for y in range(rect.position.y, rect.end.y):
+			floor_tiles.erase(Vector2i(x, y))
+	_rebuild_floor()
+
+
 ## Builds one mesh for all floor tiles; the colour carries the finish and pattern.
 func _rebuild_floor() -> void:
+	_dirty = true
 	if _floor_mesh == null:
 		_floor_mesh = MeshInstance3D.new()
 		_floor_mesh.name = "Floors"
@@ -602,11 +622,11 @@ func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 	if ids.is_empty():
 		return PackedVector3Array()
 
-	var raw: Array[Vector3] = [Vector3(from.x, 0.0, from.z)]
+	var raw: Array[Vector3] = [Vector3(from.x, base_y(), from.z)]
 	for i in range(1, ids.size() - 1):
 		var p := _astar.get_point_position(ids[i])
 		raw.append(cell_to_world(Vector2i(int(p.x), int(p.y))))
-	raw.append(Vector3(to.x, 0.0, to.z))
+	raw.append(Vector3(to.x, base_y(), to.z))
 
 	# String-pulling: skip intermediate waypoints that have clear line of sight.
 	var out := PackedVector3Array()
