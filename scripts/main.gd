@@ -420,6 +420,9 @@ func _place_house(layout := "cottage") -> void:
 	_place("stove", Vector2i(15, 3))
 	_place("sofa", Vector2i(11, 5), 2)
 	_place("plant", Vector2i(17, 11))
+	_place("treadmill", Vector2i(16, 9))
+	_place("mirror", Vector2i(9, 10))
+	_place("guitar", Vector2i(13, 10))
 
 
 ## Hedges and the floor finish of a home; walls and objects come separately so a
@@ -1083,7 +1086,22 @@ func _run_scenario(scenario: String, path: String) -> void:
 		"phone":
 			hud._toggle_phone()
 			await get_tree().create_timer(0.6).timeout
-		"mess":
+		"hobbies":
+			var tm := find_furniture("treadmill")
+			sim.queue_interaction(tm, tm.interactions[0])
+			var bea := _new_sim("Bea")
+			add_to_household(bea)
+			bea.set_hair_style("long")
+			bea.set_part_color("shirt", Color(0.9, 0.4, 0.5))
+			bea.global_position = lot.cell_to_world(Vector2i(13, 13))
+			var gt := find_furniture("guitar")
+			bea.queue_interaction(gt, gt.interactions[0])
+			Clock.set_speed(2)
+			hud._show_page(1)
+			await get_tree().create_timer(4.0).timeout
+			Clock.set_speed(1)
+			await get_tree().create_timer(0.4).timeout
+
 			lot.add_mess("dishes", lot.cell_to_world(Vector2i(13, 7)))
 			lot.add_mess("dishes", lot.cell_to_world(Vector2i(10, 4)))
 			lot.add_mess("puddle", lot.cell_to_world(Vector2i(9, 9)))

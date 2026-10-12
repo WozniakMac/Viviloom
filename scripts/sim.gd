@@ -701,7 +701,8 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 		var amount := i.earns + i.earns_per_level * lvl
 		count_stat("paintings_sold")
 		earned.emit(amount)
-		announced.emit("%s sold their painting for §%d." % [sim_name, amount])
+		var what: String = {"Write a Book": "earned §%d in royalties", "Play for Tips": "made §%d in tips"}.get(i.name, "sold their painting for §%d")
+		announced.emit(("%s " + what + ".") % [sim_name, amount])
 
 
 func _end_perform(a: SimAction, finished := false) -> void:
@@ -788,7 +789,7 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 		_:
 			_body.rotation.x = 0.0
 			_body.position.y = 0.0
-			if moving:
+			if moving or (cur != null and cur.performing and cur.interaction.pose == "run"):
 				anim = "walk"
 			elif talking:
 				anim = "talk"

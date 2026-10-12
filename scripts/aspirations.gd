@@ -82,13 +82,18 @@ const WANTS := [
 	["shower", "Take a shower", "Take a Shower", 0.6],
 	["flirt", "Flirt with someone", "Flirt", 0.5],
 	["compliment", "Compliment someone", "Compliment", 0.6],
+	["jog", "Go for a jog", "Jog", 0.7],
+	["guitar", "Play the guitar", "Practise Guitar", 0.8],
+	["speech", "Practise a speech", "Practise Speech", 0.6],
+	["write", "Write a book", "Write a Book", 0.6],
 ]
 ## What makes a want more likely: trait or emotion -> {want id: multiplier}.
 const WANT_LIKES := {
-	"creative": {"paint": 3.0}, "genius": {"chess": 3.0, "study": 2.0}, "bookworm": {"books": 3.0, "study": 1.5},
+	"creative": {"paint": 3.0, "guitar": 2.0, "write": 2.0}, "genius": {"chess": 3.0, "study": 2.0}, "bookworm": {"books": 3.0, "study": 1.5},
 	"cheerful": {"joke": 2.5, "chat": 1.5}, "lazy": {"tv": 3.0, "games": 1.5}, "gloomy": {"tv": 1.5},
 	"inspired": {"paint": 3.0, "cook": 1.5}, "focused": {"chess": 2.0, "study": 2.0}, "playful": {"joke": 3.0, "games": 2.0},
 	"flirty": {"flirt": 4.0, "compliment": 2.0}, "bored": {"games": 2.0, "tv": 2.0}, "happy": {"chat": 1.5},
+	"energized": {"jog": 3.0}, "confident": {"speech": 2.5},
 }
 
 

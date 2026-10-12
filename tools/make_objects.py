@@ -386,12 +386,41 @@ def fountain(M):
     cylinder(0.3, 0.04, (0, 1.15, 0), M["glass"], 24)
 
 
+def treadmill(M):
+    box((0.7, 0.14, 1.7), (0, 0.07, -0.05), M["dark"], 0.03)
+    box((0.56, 0.02, 1.5), (0, 0.15, -0.05), M["fabric_grey"], 0.0)
+    for x in (-0.33, 0.33):
+        tilted(box((0.05, 1.2, 0.05), (x, 0.65, -0.78), M["metal"], 0.01), -12)
+    box((0.72, 0.06, 0.08), (0, 1.15, -0.62), M["metal"], 0.02)
+    box((0.5, 0.25, 0.08), (0, 1.25, -0.72), M["dark"], 0.03)
+    box((0.36, 0.14, 0.01), (0, 1.27, -0.675), M["screen"], 0.0)
+
+
+def mirror(M):
+    box((0.7, 1.75, 0.06), (0, 0.98, -0.42), M["wood_light"], 0.02)
+    box((0.6, 1.6, 0.01), (0, 0.98, -0.385), M["glass"], 0.0)
+    box((0.12, 0.1, 0.35), (-0.25, 0.05, -0.3), M["wood_light"], 0.01)
+    box((0.12, 0.1, 0.35), (0.25, 0.05, -0.3), M["wood_light"], 0.01)
+
+
+def guitar(M):
+    # A guitar resting on its stand.
+    for x in (-0.12, 0.12):
+        tilted(box((0.03, 0.6, 0.03), (x, 0.3, -0.05), M["dark"], 0.005), 10)
+    body = sphere((0.19, 0.24, 0.06), (0, 0.42, -0.1), M["wood"])
+    sphere((0.15, 0.17, 0.062), (0, 0.66, -0.1), M["wood"])
+    cylinder(0.05, 0.005, (0, 0.55, -0.04), M["dark"], 16, None, "Part", "z")
+    box((0.05, 0.62, 0.03), (0, 1.05, -0.1), M["wood_dark"], 0.005)
+    box((0.08, 0.14, 0.035), (0, 1.42, -0.1), M["wood_dark"], 0.01)
+
+
 OBJECTS = {
     "fridge": fridge, "bed": bed, "toilet": toilet, "shower": shower, "tv": tv, "desk": desk,
     "bookshelf": bookshelf, "easel": easel, "chess": chess, "lamp": lamp, "sofa": sofa,
     "dining_table": dining_table, "chair": chair, "counter": counter, "stove": stove,
     "sink": sink, "plant": plant, "mailbox": mailbox, "bench": bench, "tree": tree, "bush": bush,
     "grill": grill, "picnic_table": picnic_table, "fountain": fountain,
+    "treadmill": treadmill, "mirror": mirror, "guitar": guitar,
 }
 
 

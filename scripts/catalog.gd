@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle"]
@@ -33,6 +33,9 @@ const INFO := {
 	"grill": ["Charcoal Grill", 280],
 	"picnic_table": ["Picnic Table", 320],
 	"fountain": ["Wishing Fountain", 900],
+	"treadmill": ["Treadmill", 650],
+	"mirror": ["Standing Mirror", 150],
+	"guitar": ["Acoustic Guitar", 300],
 	"dishes": ["Dirty Dishes", 0],
 	"puddle": ["Puddle", 0],
 }
@@ -44,6 +47,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -70,6 +74,9 @@ const DESCRIPTIONS := {
 	"grill": "Burgers taste better outdoors.",
 	"picnic_table": "Room for a whole family's lunch.",
 	"fountain": "Toss in a coin and make a wish.",
+	"treadmill": "Run for miles without leaving the room.",
+	"mirror": "Practise speeches until you believe them.",
+	"guitar": "Strum, practise, maybe even get good.",
 }
 const WALL_PRICE := 14
 const DOOR_PRICE := 150
@@ -189,6 +196,7 @@ static func create(kind: String) -> Furniture:
 			f.interactions = [
 				_find_job(),
 				Interaction.new("Chat Online", {"social": 25.0, "fun": 8.0}, 180.0, "social", "sit", true),
+				Interaction.new("Write a Book", {"fun": 10.0}, 240.0, "", "sit", true).practices("writing", 55.0).pays(40, 35).grants("author", "confident", 1, "Published Author", "Their words are out in the world.", 240.0),
 				Interaction.new("Play Games", {"fun": 45.0, "energy": -6.0}, 180.0, "fun", "sit", true).practices("gaming", 60.0).grants("gamer_high", "playful", 1, "Game On", "That was a great match.", 120.0),
 			]
 		"bookshelf":
@@ -318,7 +326,7 @@ static func create(kind: String) -> Furniture:
 			f.height = 0.8
 			f.spots = [Vector3(0, 0, 0.8)]
 			f.interactions = [
-				Interaction.new("Water", {"fun": 15.0}, 10.0, "", "stand", true).grants("green_thumb", "happy", 1, "Green Thumb", "The plant looks grateful.", 90.0),
+				Interaction.new("Water", {"fun": 15.0}, 10.0, "", "stand", true).practices("gardening", 40.0).grants("green_thumb", "happy", 1, "Green Thumb", "The plant looks grateful.", 90.0),
 			]
 		"mailbox":
 			f.display_name = "Mailbox"
@@ -362,6 +370,32 @@ static func create(kind: String) -> Furniture:
 			f.spots = [Vector3(0, 0, 1.4), Vector3(1.4, 0, 0), Vector3(-1.4, 0, 0)]
 			f.interactions = [
 				Interaction.new("Make a Wish", {"fun": 20.0}, 10.0, "", "stand", true).grants("wished", "inspired", 1, "Made a Wish", "Maybe it'll come true...", 240.0),
+			]
+		"treadmill":
+			f.display_name = "Treadmill"
+			f.footprint = Vector2i(1, 2)
+			f.height = 1.4
+			f.spots = [Vector3(0, 0, 1.4), Vector3(0.9, 0, 0)]
+			f.use_position = Vector3(0, 0.16, 0.1)
+			f.use_facing = Vector3(0, 0, -1)
+			f.interactions = [
+				Interaction.new("Jog", {"fun": 12.0, "energy": -14.0, "hygiene": -18.0}, 60.0, "", "run").practices("fitness", 65.0).grants("pumped", "energized", 1, "Pumped", "Great workout!", 180.0),
+			]
+		"mirror":
+			f.display_name = "Standing Mirror"
+			f.height = 1.8
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Practise Speech", {"fun": 8.0, "social": 6.0}, 45.0, "", "stand", true).practices("charisma", 60.0).grants("confident_talk", "confident", 1, "Feeling Charming", "Ready to win anyone over.", 180.0),
+				Interaction.new("Admire Self", {"fun": 10.0}, 10.0, "", "stand").grants("looking_good", "confident", 1, "Looking Good", "Not bad at all.", 90.0),
+			]
+		"guitar":
+			f.display_name = "Acoustic Guitar"
+			f.height = 1.5
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Practise Guitar", {"fun": 30.0}, 90.0, "fun", "stand", true).practices("guitar", 60.0).grants("jammed", "playful", 1, "Jammed Out", "That riff is stuck in their head.", 180.0),
+				Interaction.new("Play for Tips", {"fun": 20.0}, 90.0, "", "stand", true).practices("guitar", 40.0).pays(10, 15),
 			]
 		"dishes":
 			f.display_name = "Dirty Dishes"
