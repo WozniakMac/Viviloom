@@ -7,6 +7,8 @@ extends Node
 signal notice(text: String, title: String)
 signal paid(amount: int)
 signal changed
+## A choice came up at work: main shows it; call `resolve_event` with the answer.
+signal work_event(title: String, text: String, choices: Array)
 
 enum State { HOME, LEAVING, WAITING, AT_WORK, RETURNING }
 
@@ -24,10 +26,16 @@ var state := State.HOME
 var carpool: Carpool
 var _last_shift_day := 0
 var _mood_at_start := "fine"
+## Skill experience when the daily task window opened (after the last shift).
+var task_base_xp := 0.0
+var _event_hour := -1
+var _event: Array = []
+var _rng := RandomNumberGenerator.new()
 
 
 func join(c: String, quiet := false) -> void:
 	career = c
+	task_base_xp = _task_xp()
 	level = 0
 	performance = 0.0
 	# Joining after today's shift started means starting tomorrow.
@@ -49,7 +57,7 @@ func quit() -> void:
 
 
 func to_dict() -> Dictionary:
-	return {"career": career, "level": level, "performance": performance, "last_shift_day": _last_shift_day, "style": work_style}
+	return {"career": career, "level": level, "performance": performance, "last_shift_day": _last_shift_day, "style": work_style, "task_base": task_base_xp}
 
 
 ## Loading always puts the Sim at home; a shift in progress is simply skipped.
@@ -59,6 +67,7 @@ func from_dict(d: Dictionary) -> void:
 	performance = d.get("performance", 0.0)
 	_last_shift_day = int(d.get("last_shift_day", 0))
 	work_style = d.get("style", "normal")
+	task_base_xp = d.get("task_base", _task_xp())
 	state = State.HOME
 	changed.emit()
 
@@ -95,6 +104,9 @@ func _process(_delta: float) -> void:
 				else:
 					_arrive_at_work()
 		State.AT_WORK:
+			if _event_hour >= 0 and h >= _event_hour and h < info["end"]:
+				_event_hour = -1
+				_raise_event()
 			if h >= info["end"] or h < info["start"]:
 				if carpool != null:
 					state = State.RETURNING
@@ -121,6 +133,11 @@ func _leave_for_work() -> void:
 func _arrive_at_work() -> void:
 	sim.clear_queue()
 	state = State.AT_WORK
+	# Most shifts bring one choice to make, partway through the day.
+	var info: Dictionary = Careers.INFO[career]
+	_event_hour = -1
+	if not Careers.is_school(career) and _rng.randf() < 0.7:
+		_event_hour = _rng.randi_range(int(info["start"]) + 1, maxi(int(info["start"]) + 1, int(info["end"]) - 2))
 	sim.away = true
 	sim.visible = false
 	lot.sims.erase(sim)
@@ -153,6 +170,10 @@ func _finish_shift() -> void:
 	var skill: String = Careers.INFO[career]["skill"]
 	var style: Array = Careers.WORK_STYLES[work_style]
 	var gain: float = Careers.shift_performance(_mood_at_start, sim.skills.level(skill)) * style[1]
+	var task_done := daily_task_done()
+	if task_done:
+		gain += Careers.TASK_BONUS
+	task_base_xp = _task_xp()
 	performance = minf(100.0, performance + gain)
 	var m: Array = style[2]
 	if not m.is_empty():
@@ -170,8 +191,60 @@ func _finish_shift() -> void:
 		notice.emit("%s is home from school with homework. Current grade: %s." % [sim.sim_name, Careers.grade(performance)], Careers.label(career))
 		return
 	paid.emit(pay)
-	notice.emit("%s is back from work and earned §%d. Performance %d%%." % [sim.sim_name, pay, int(performance)], Careers.title(career, level))
+	notice.emit("%s is back from work and earned §%d. Performance %d%%.%s" % [sim.sim_name, pay, int(performance), " Daily task done!" if task_done else ""], Careers.title(career, level))
 	_try_promotion()
+
+
+## Experience in the daily task's skill right now (0 for mood tasks).
+func _task_xp() -> float:
+	var t: Dictionary = Careers.DAILY_TASKS.get(career, {})
+	if sim == null or not t.has("skill"):
+		return 0.0
+	return sim.skills.xp.get(t["skill"], 0.0)
+
+
+func daily_task_done() -> bool:
+	var t: Dictionary = Careers.DAILY_TASKS.get(career, {})
+	if t.is_empty():
+		return false
+	if t.has("mood"):
+		var mood := _mood_at_start if state != State.HOME else sim.emotions.mood()
+		return mood == t["mood"]
+	return _task_xp() - task_base_xp >= t["xp"]
+
+
+func _raise_event() -> void:
+	_event = Careers.EVENTS[_rng.randi() % Careers.EVENTS.size()]
+	var choices: Array = []
+	for c in _event[2]:
+		var label: String = c[0]
+		if c.size() > 3:
+			var req: Dictionary = c[3]
+			var sk: String = req.keys()[0]
+			label += " (%s %d)" % [Skills.label(sk), req[sk]]
+		choices.append(label)
+	var text: String = _event[1] % sim.sim_name if "%s" in _event[1] else _event[1]
+	work_event.emit(_event[0], text, choices)
+
+
+## Applies the answer to the current work event.
+func resolve_event(choice: int) -> void:
+	if _event.is_empty():
+		return
+	var c: Array = _event[2][clampi(choice, 0, _event[2].size() - 1)]
+	var perf: float = c[1]
+	var m: Array = c[2]
+	if c.size() > 3:
+		var req: Dictionary = c[3]
+		var sk: String = req.keys()[0]
+		if sim.skills.level(sk) < req[sk]:
+			perf = c[4]
+			m = c[5]
+	performance = clampf(performance + perf, 0.0, 100.0)
+	if not m.is_empty():
+		sim.emotions.add(m[0], m[1], m[2], m[3], m[4], m[5])
+	_event = []
+	changed.emit()
 
 
 func _try_promotion() -> void:

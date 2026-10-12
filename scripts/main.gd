@@ -222,6 +222,14 @@ func add_to_household(s: Sim) -> void:
 	add_child(w)
 	w.paid.connect(build.earn)
 	w.carpool = carpool
+	w.work_event.connect(func(title: String, text: String, choices: Array):
+		if not dialogs_enabled:
+			w.resolve_event(0)
+			return
+		var opts: Array[String] = []
+		opts.assign(choices)
+		var d := EventDialog.ask(self, s, title, text, opts)
+		d.answered.connect(func(i: int, _t: String): w.resolve_event(i)))
 	s.homework_done.connect(func():
 		w.performance = minf(100.0, w.performance + 15.0)
 		w.changed.emit())
@@ -1784,6 +1792,13 @@ func _run_scenario(scenario: String, path: String) -> void:
 			lot.wall_view = Lot.WallView.CUTAWAY
 			rig.frame(pn.global_position, deg_to_rad(25.0), deg_to_rad(-35.0), 8.0)
 			await get_tree().create_timer(4.0).timeout
+		"workevent":
+			dialogs_enabled = true
+			var w: Work = works[sim]
+			w.join("tech", true)
+			w._rng.seed = 2
+			w._raise_event()
+			await get_tree().create_timer(1.0).timeout
 		"lottraits":
 			build.enter()
 			build.open_lot_traits()

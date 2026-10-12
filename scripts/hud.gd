@@ -1165,6 +1165,13 @@ func _refresh_career() -> void:
 		next.add_theme_font_size_override("font_size", 12)
 		next.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
 		_career_box.add_child(next)
+	if Careers.DAILY_TASKS.has(c2):
+		var task := Label.new()
+		var done := work.daily_task_done()
+		task.text = "Daily task: %s  %s" % [Careers.DAILY_TASKS[c2]["text"], "✓ done" if done else "(+%d%% performance)" % int(Careers.TASK_BONUS)]
+		task.add_theme_font_size_override("font_size", 13)
+		task.add_theme_color_override("font_color", UiTheme.GREEN_DARK if done else UiTheme.TEXT)
+		_career_box.add_child(task)
 	if not Careers.is_school(c2):
 		var style_label := Label.new()
 		style_label.text = "Work style"

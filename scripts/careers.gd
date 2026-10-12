@@ -76,6 +76,47 @@ const WORK_STYLES := {
 	"normal": ["Normal", 1.0, []],
 	"easy": ["Take It Easy", 0.4, ["work_easy", "happy", 1, "Easy Day", "Barely broke a sweat today.", 180.0]],
 }
+## A daily task per career: done before the shift, it gives a performance boost.
+## {text, skill, xp} (practise that skill) or {text, mood} (arrive in that mood).
+const DAILY_TASKS := {
+	"culinary": {"text": "Practise Cooking", "skill": "cooking", "xp": 40.0},
+	"tech": {"text": "Practise Programming", "skill": "programming", "xp": 40.0},
+	"painter": {"text": "Paint something", "skill": "painting", "xp": 40.0},
+	"business": {"text": "Go to work Confident", "mood": "confident"},
+	"athlete": {"text": "Work out", "skill": "fitness", "xp": 40.0},
+	"entertainer": {"text": "Practise Comedy", "skill": "comedy", "xp": 30.0},
+	"writer": {"text": "Practise Writing", "skill": "writing", "xp": 40.0},
+	"astronaut": {"text": "Practise Logic", "skill": "logic", "xp": 40.0},
+}
+const TASK_BONUS := 12.0
+
+## Things that come up during a shift: [title, text, [[choice, perf, moodlet or [], needs {skill: level}]...]].
+## A choice with a skill requirement succeeds only if the Sim has it; otherwise the
+## second (failure) performance and moodlet apply.
+const EVENTS := [
+	["Extra Project", "The boss is asking for a volunteer to take on an extra project.", [
+		["Volunteer", 15.0, ["overworked", "tense", 1, "Extra Work", "That project is a lot.", 240.0]],
+		["Keep your head down", 0.0, []],
+	]],
+	["Stolen Credit", "A coworker just presented %s's idea as their own!", [
+		["Speak up", 12.0, ["stood_up", "confident", 1, "Stood My Ground", "Credit where it's due.", 180.0], {"charisma": 3}, -6.0, ["credit_stolen", "angry", 1, "Credit Stolen", "That was MY idea.", 180.0]],
+		["Let it go", 0.0, ["credit_stolen", "sad", 1, "Overlooked", "Nobody noticed.", 120.0]],
+	]],
+	["Pizza Party", "Someone brought pizza to the break room.", [
+		["Grab a slice", 0.0, ["pizza_party", "happy", 1, "Office Pizza", "Free food is the best food.", 120.0]],
+		["Keep working", 8.0, []],
+	]],
+	["Jammed Printer", "The printer jammed right before a big meeting.", [
+		["Fix it yourself", 10.0, ["fixed_it", "confident", 1, "Handy at Work", "Who needs IT?", 120.0], {"handiness": 3}, -5.0, ["ink_mess", "embarrassed", 1, "Covered in Toner", "That did not go well.", 120.0]],
+		["Call IT", 0.0, []],
+	]],
+	["Team Lunch", "The team is heading out for lunch together.", [
+		["Join them", 5.0, ["team_lunch", "happy", 1, "Team Spirit", "Good people to work with.", 180.0]],
+		["Eat at your desk", 6.0, ["lonely_lunch", "sad", 1, "Desk Lunch", "Bit lonely.", 90.0]],
+	]],
+]
+
+
 ## School counts as a "career" for children and teens: no pay, a grade instead.
 const SCHOOLS: Array[String] = ["school", "high_school"]
 const WORK_DAYS := 5

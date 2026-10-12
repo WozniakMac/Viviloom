@@ -39,6 +39,7 @@ func _ready() -> void:
 	_test_room_and_roof()
 	_test_new_skills()
 	_test_lot_traits()
+	_test_career_tasks()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -755,3 +756,24 @@ func _test_lot_traits() -> void:
 	_check(lot.lot_traits.is_empty(), "a cleared lot has no traits")
 	s.free()
 	lot.queue_free()
+
+
+func _test_career_tasks() -> void:
+	var sim := Sim.new()
+	var w := Work.new()
+	w.sim = sim
+	w.join("culinary", true)
+	_check(not w.daily_task_done(), "the daily task starts undone")
+	sim.skills.add_xp("cooking", 50.0)
+	_check(w.daily_task_done(), "practising the career skill completes the daily task")
+	w._raise_event()
+	var before := w.performance
+	w.resolve_event(0)
+	_check(w._event.is_empty() and w.performance >= before - 10.0, "work events resolve")
+	# A skill-gated choice fails without the skill.
+	w._event = Careers.EVENTS[3]
+	w.performance = 50.0
+	w.resolve_event(0)
+	_check(w.performance == 45.0, "fixing the printer without Handiness backfires")
+	w.free()
+	sim.free()
