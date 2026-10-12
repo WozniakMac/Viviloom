@@ -157,6 +157,101 @@ func set_part_color(part: String, c: Color) -> void:
 	if _materials.has(part):
 		(_materials[part] as BaseMaterial3D).albedo_color = c
 	_apply_outfit()
+	_store_outfit()
+
+
+## Outfit categories, each with its own top, bottom and cut. The Sim wears one
+## at a time and changes (with a spin) to suit what they're doing.
+const OUTFITS: Array[String] = ["everyday", "sleep", "athletic", "swim"]
+const OUTFIT_LABELS := {"everyday": "Everyday", "sleep": "Sleepwear", "athletic": "Athletic", "swim": "Swimwear"}
+var outfits := {}
+var outfit := "everyday"
+
+
+## The outfit the Sim is wearing, saved into its category.
+func _store_outfit() -> void:
+	outfits[outfit] = {"shirt": shirt_color, "pants": pants_color, "long_sleeves": long_sleeves, "shorts": shorts}
+
+
+## Fills in missing categories from the everyday outfit.
+func _default_outfits() -> void:
+	var every: Dictionary = outfits.get("everyday", {"shirt": shirt_color, "pants": pants_color, "long_sleeves": long_sleeves, "shorts": shorts})
+	outfits["everyday"] = every
+	if not outfits.has("sleep"):
+		outfits["sleep"] = {"shirt": Color(0.72, 0.8, 0.95), "pants": Color(0.72, 0.8, 0.95), "long_sleeves": true, "shorts": false}
+	if not outfits.has("athletic"):
+		outfits["athletic"] = {"shirt": (every["shirt"] as Color).lightened(0.2), "pants": Color(0.15, 0.15, 0.18), "long_sleeves": false, "shorts": true}
+	if not outfits.has("swim"):
+		outfits["swim"] = {"shirt": Color(0.95, 0.4, 0.35), "pants": Color(0.2, 0.45, 0.85), "long_sleeves": false, "shorts": true}
+
+
+## Changes into another outfit category; `spin` plays the quick twirl.
+func change_outfit(category: String, spin := true) -> void:
+	if outfits.is_empty():
+		_default_outfits()
+	if category == outfit or not outfits.has(category):
+		return
+	outfit = category
+	var o: Dictionary = outfits[category]
+	shirt_color = o["shirt"]
+	pants_color = o["pants"]
+	long_sleeves = o["long_sleeves"]
+	shorts = o["shorts"]
+	for part in ["shirt", "pants"]:
+		if _materials.has(part):
+			(_materials[part] as BaseMaterial3D).albedo_color = shirt_color if part == "shirt" else pants_color
+	_apply_outfit()
+	if spin and is_inside_tree() and visible:
+		_spin()
+
+
+## The outfit change twirl: a quick spin with a burst of sparkles.
+func _spin() -> void:
+	Sfx.play("select", -10.0)
+	var tw := create_tween()
+	tw.tween_property(_body, "rotation:y", _body.rotation.y + TAU, 0.45).set_trans(Tween.TRANS_SINE)
+	tw.tween_callback(func(): _body.rotation.y = 0.0)
+	var sparkle := CPUParticles3D.new()
+	sparkle.one_shot = true
+	sparkle.amount = 30
+	sparkle.lifetime = 0.8
+	sparkle.explosiveness = 0.8
+	sparkle.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	sparkle.emission_sphere_radius = 0.5
+	sparkle.position = Vector3(0, 1.0 * size_scale(), 0)
+	sparkle.direction = Vector3.UP
+	sparkle.spread = 180.0
+	sparkle.initial_velocity_min = 0.4
+	sparkle.initial_velocity_max = 1.2
+	sparkle.gravity = Vector3.ZERO
+	sparkle.scale_amount_min = 0.03
+	sparkle.scale_amount_max = 0.07
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.5
+	mesh.height = 1.0
+	sparkle.mesh = mesh
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(1.0, 0.95, 0.6)
+	m.emission_enabled = true
+	m.emission = Color(1.0, 0.9, 0.5)
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sparkle.material_override = m
+	add_child(sparkle)
+	sparkle.emitting = true
+	get_tree().create_timer(1.2).timeout.connect(sparkle.queue_free)
+
+
+## Which outfit suits an interaction.
+static func outfit_for(i: Interaction) -> String:
+	if i == null:
+		return "everyday"
+	if i.name in ["Sleep", "Nap"] and i.pose == "lie":
+		return "sleep"
+	if i.pose == "swim":
+		return "swim"
+	if i.skill == "fitness":
+		return "athletic"
+	return "everyday"
 
 
 ## Sleeves and lower legs show cloth or skin depending on the outfit's cut.
@@ -171,6 +266,7 @@ func set_outfit(p_long_sleeves: bool, p_shorts: bool) -> void:
 	long_sleeves = p_long_sleeves
 	shorts = p_shorts
 	_apply_outfit()
+	_store_outfit()
 
 
 ## Body sliders: 0..1 heavier and 0..1 more muscular.
@@ -350,6 +446,8 @@ func to_dict() -> Dictionary:
 		"colors": {"shirt": shirt_color.to_html(), "pants": pants_color.to_html(), "skin": skin_color.to_html(), "hair": hair_color.to_html()},
 		"hair_style": hair_style,
 		"body": [body_heavy, body_fit, long_sleeves, shorts],
+		"outfit": outfit,
+		"outfits": _outfits_dict(),
 		"age": [age_stage, age_days, pregnant_days],
 		"perks": perks.duplicate(),
 		"spouse": spouse.sim_name if spouse != null and is_instance_valid(spouse) else "",
@@ -372,6 +470,14 @@ func from_dict(d: Dictionary, others: Array) -> void:
 	var bd: Array = d.get("body", [0.0, 0.0, false, false])
 	set_body(bd[0], bd[1])
 	set_outfit(bd[2], bd[3])
+	outfits.clear()
+	for k in d.get("outfits", {}):
+		var o: Dictionary = d["outfits"][k]
+		outfits[k] = {"shirt": Color.html(o["shirt"]), "pants": Color.html(o["pants"]), "long_sleeves": o["long_sleeves"], "shorts": o["shorts"]}
+	_default_outfits()
+	var wearing: String = d.get("outfit", "everyday")
+	outfit = ""
+	change_outfit(wearing, false)
 	perks = d.get("perks", []).duplicate()
 	var ag: Array = d.get("age", ["young_adult", 0, -1])
 	age_days = int(ag[1])
@@ -400,6 +506,15 @@ func from_dict(d: Dictionary, others: Array) -> void:
 			var r: Array = d["relationships"][o.sim_name]
 			relationships[o] = Vector2(r[0], r[1])
 	relationships_changed.emit()
+
+
+func _outfits_dict() -> Dictionary:
+	_store_outfit()
+	var out := {}
+	for k in outfits:
+		var o: Dictionary = outfits[k]
+		out[k] = {"shirt": (o["shirt"] as Color).to_html(), "pants": (o["pants"] as Color).to_html(), "long_sleeves": o["long_sleeves"], "shorts": o["shorts"]}
+	return out
 
 
 func count_stat(stat: String, amount := 1) -> void:
@@ -833,8 +948,11 @@ func _social_result(a: SimAction) -> void:
 
 func _begin_perform(a: SimAction) -> void:
 	if a.target_sim != null:
+		change_outfit("everyday")
 		_begin_social(a)
 		return
+	if a.furniture.kind != "bed" or a.interaction.pose == "lie":
+		change_outfit(outfit_for(a.interaction))
 	if a.interaction.cost > 0 and wallet != null:
 		if wallet.funds < a.interaction.cost:
 			_fail(a, "%s can't afford that (§%d)." % [sim_name, a.interaction.cost])
@@ -1081,6 +1199,7 @@ func _build_visual() -> void:
 	set_hair_style(hair_style)
 	set_body(body_heavy, body_fit)
 	_apply_outfit()
+	_default_outfits()
 
 	_selection_ring = MeshInstance3D.new()
 	var ring := TorusMesh.new()

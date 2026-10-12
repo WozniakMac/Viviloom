@@ -1167,6 +1167,8 @@ func _cas_show(s: Sim) -> void:
 
 
 func _on_cas_finished() -> void:
+	for m in household:
+		m.change_outfit("everyday", false)
 	_cas = null
 	_studio.queue_free()
 	for i in household.size():

@@ -27,9 +27,10 @@ var _picked: Array[String] = []
 var _trait_info: Label
 var _done: IconButton
 var _swatches := {}
-var _aspiration_buttons := {}
+var _aspiration_pick: OptionButton
 var _hair_buttons := {}
 var _age_buttons := {}
+var _outfit_buttons := {}
 var _heavy_slider: HSlider
 var _fit_slider: HSlider
 var _sleeve_buttons: Array[Button] = []
@@ -43,6 +44,7 @@ func setup(p_sim: Sim) -> void:
 	_picked = sim.traits.duplicate()
 	_build()
 	_refresh()
+	_pick_outfit(sim.outfit)
 
 
 func _build() -> void:
@@ -76,6 +78,17 @@ func _build() -> void:
 	var dice := IconButton.make("dice", 38, "Randomize name, look and traits")
 	dice.pressed.connect(randomize_sim)
 	name_row.add_child(dice)
+
+	# The lifelong aspiration, picked from a compact list under the name.
+	_aspiration_pick = OptionButton.new()
+	_aspiration_pick.focus_mode = Control.FOCUS_NONE
+	_aspiration_pick.custom_minimum_size = Vector2(380, 34)
+	_aspiration_pick.add_theme_font_size_override("font_size", 14)
+	for a in Aspirations.ORDER:
+		_aspiration_pick.add_item("Aspiration: %s  ·  %s" % [Aspirations.label(a), Aspirations.INFO[a]["category"]])
+	_aspiration_pick.item_selected.connect(func(idx: int): _pick_aspiration(Aspirations.ORDER[idx]))
+	left.add_child(_aspiration_pick)
+	_pick_aspiration(sim.aspiration)
 
 	var slots_row := HBoxContainer.new()
 	slots_row.add_theme_constant_override("separation", 4)
@@ -172,6 +185,27 @@ func _build() -> void:
 		arow.add_child(ab)
 		_age_buttons[stage] = ab
 	_pick_age(sim.age_stage)
+	var ol := Label.new()
+	ol.text = "Outfit"
+	ol.add_theme_font_size_override("font_size", 14)
+	ol.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+	lv.add_child(ol)
+	var orow := HFlowContainer.new()
+	orow.add_theme_constant_override("h_separation", 4)
+	orow.add_theme_constant_override("v_separation", 4)
+	orow.custom_minimum_size = Vector2(250, 0)
+	lv.add_child(orow)
+	for cat in Sim.OUTFITS:
+		var obtn := Button.new()
+		obtn.text = Sim.OUTFIT_LABELS[cat]
+		obtn.toggle_mode = true
+		obtn.focus_mode = Control.FOCUS_NONE
+		obtn.add_theme_font_size_override("font_size", 12)
+		obtn.add_theme_stylebox_override("pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		obtn.add_theme_stylebox_override("hover_pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		obtn.pressed.connect(_pick_outfit.bind(cat))
+		orow.add_child(obtn)
+		_outfit_buttons[cat] = obtn
 	var hl := Label.new()
 	hl.text = "Hairstyle"
 	hl.add_theme_font_size_override("font_size", 14)
@@ -214,36 +248,6 @@ func _build() -> void:
 			sw.pressed.connect(_on_swatch.bind(part, c))
 			row.add_child(sw)
 			_swatches[part].append([sw, c])
-
-	# Right, below appearance: the lifelong aspiration.
-	var asp := PanelContainer.new()
-	asp.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	asp.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	asp.position = Vector2(-24, 545)
-	asp.custom_minimum_size = Vector2(286, 0)
-	root.add_child(asp)
-	var av := VBoxContainer.new()
-	av.add_theme_constant_override("separation", 6)
-	asp.add_child(av)
-	var at := UiTheme.title(Label.new(), 18)
-	at.text = "Aspiration"
-	av.add_child(at)
-	for a in Aspirations.ORDER:
-		var b := Button.new()
-		b.text = "%s  ·  %s" % [Aspirations.label(a), Aspirations.INFO[a]["category"]]
-		b.toggle_mode = true
-		b.focus_mode = Control.FOCUS_NONE
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.add_theme_font_size_override("font_size", 13)
-		b.add_theme_stylebox_override("pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
-		b.add_theme_stylebox_override("hover_pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
-		b.tooltip_text = Aspirations.INFO[a]["description"]
-		b.pressed.connect(_pick_aspiration.bind(a))
-		av.add_child(b)
-		_aspiration_buttons[a] = b
-	_pick_aspiration(sim.aspiration)
-	# Stack the aspiration panel under the appearance panel once both have a size.
-	get_tree().process_frame.connect(func(): asp.position.y = look.position.y + look.size.y + 12, CONNECT_ONE_SHOT)
 
 	# Bottom centre: turn the Sim.
 	var turn := HBoxContainer.new()
@@ -312,6 +316,7 @@ func edit(s: Sim) -> void:
 	_pick_hair(s.hair_style)
 	_pick_age(s.age_stage)
 	_pick_aspiration(s.aspiration)
+	_pick_outfit(s.outfit)
 	_sync_body()
 	_sync_swatches()
 	_refresh()
@@ -404,6 +409,15 @@ func _sync_body() -> void:
 		_leg_buttons[k].set_pressed_no_signal((k == 1) == sim.shorts)
 
 
+## Shows and edits one outfit category; the swatches and cut apply to it.
+func _pick_outfit(cat: String) -> void:
+	sim.change_outfit(cat)
+	for k in _outfit_buttons:
+		(_outfit_buttons[k] as Button).button_pressed = k == cat
+	_sync_swatches()
+	_sync_body()
+
+
 func _pick_age(stage: String) -> void:
 	sim.age_days = 0
 	sim.set_age(stage)
@@ -419,8 +433,8 @@ func _pick_hair(style: String) -> void:
 
 func _pick_aspiration(a: String) -> void:
 	sim.aspiration = a
-	for k in _aspiration_buttons:
-		(_aspiration_buttons[k] as Button).button_pressed = k == a
+	_aspiration_pick.select(Aspirations.ORDER.find(a))
+	_aspiration_pick.tooltip_text = Aspirations.INFO[a]["description"]
 
 
 func _turn(amount: float) -> void:

@@ -31,6 +31,7 @@ func _ready() -> void:
 	_test_moods_and_rewards()
 	_test_pools()
 	_test_upper_floor()
+	_test_outfits()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -501,3 +502,28 @@ func _test_upper_floor() -> void:
 	_check(stairs.footprint == Vector2i(1, 3) and stairs.interactions.is_empty(), "stairs take a 1x3 space")
 	stairs.free()
 	up.free()
+
+
+func _test_outfits() -> void:
+	var s := Sim.new()
+	add_child(s)
+	s.set_part_color("shirt", Color.RED)
+	_check(s.outfits["everyday"]["shirt"] == Color.RED, "everyday colours are remembered")
+	s.change_outfit("sleep", false)
+	_check(s.outfit == "sleep" and s.long_sleeves and s.shirt_color != Color.RED, "sleepwear is a different outfit")
+	s.change_outfit("everyday", false)
+	_check(s.shirt_color == Color.RED, "changing back restores the everyday clothes")
+	var bed := Catalog.create("bed")
+	var sleep: Interaction = bed.interactions.filter(func(i): return i.name == "Sleep")[0]
+	_check(Sim.outfit_for(sleep) == "sleep", "Sims sleep in sleepwear")
+	var tm := Catalog.create("treadmill")
+	_check(Sim.outfit_for(tm.interactions[0]) == "athletic", "Sims jog in athletic wear")
+	var data: Dictionary = JSON.parse_string(JSON.stringify(s.to_dict()))
+	var t := Sim.new()
+	add_child(t)
+	t.from_dict(data, [])
+	_check(t.outfits["everyday"]["shirt"].is_equal_approx(Color.RED), "outfits are saved")
+	bed.free()
+	tm.free()
+	s.queue_free()
+	t.queue_free()
