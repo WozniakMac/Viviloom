@@ -118,7 +118,7 @@ func _ready() -> void:
 	var start_traits: Array[String] = ["cheerful", "creative", "bookworm"]
 	first.set_traits(start_traits)
 	add_to_household(first)
-	select_sim(first)
+	select_sim(first, false)
 
 	visitors = Visitors.new()
 	visitors.name = "Visitors"
@@ -246,7 +246,10 @@ func remove_from_household(s: Sim) -> void:
 
 
 ## Takes control of `s`: the HUD, panels and camera follow them.
-func select_sim(s: Sim) -> void:
+var _pan: Tween
+
+
+func select_sim(s: Sim, pan := true) -> void:
 	if sim != null and is_instance_valid(sim):
 		sim.set_selected(false)
 	sim = s
@@ -258,9 +261,16 @@ func select_sim(s: Sim) -> void:
 	hud.set_work(work)
 	hud.set_aspirations(aspirations)
 	# Pan to them unless the camera is held by a menu or Create a Sim.
-	if _cas == null and s.visible and rig.is_processing():
-		var tw := create_tween()
-		tw.tween_property(rig, "position", Vector3(s.global_position.x, 0.0, s.global_position.z), 0.4).set_trans(Tween.TRANS_SINE)
+	if pan and _cas == null and s.visible and rig.is_processing():
+		_stop_pan()
+		_pan = create_tween()
+		_pan.tween_property(rig, "position", Vector3(s.global_position.x, s.lot.base_y(), s.global_position.z), 0.4).set_trans(Tween.TRANS_SINE)
+
+
+## Cancels a camera pan so a menu or Create a Sim can hold the camera.
+func _stop_pan() -> void:
+	if _pan != null and _pan.is_valid():
+		_pan.kill()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -640,7 +650,7 @@ func _check_dev_args() -> void:
 			shot = arg.trim_prefix("--screenshot=")
 		elif arg.begins_with("--scenario="):
 			scenario = arg.trim_prefix("--scenario=")
-	if shot != "" or scenario in ["trace", "saveload", "audiocheck", "travelcheck"]:
+	if shot != "" or scenario in ["trace", "saveload", "audiocheck", "travelcheck", "inputcheck"]:
 		dialogs_enabled = false
 	if shot != "":
 		_run_scenario(scenario, shot)
@@ -674,6 +684,8 @@ func _check_dev_args() -> void:
 		var ok := lot.furniture.size() == before and lot.walls.size() == walls_before and at_park > 10 and townies == 3 and visitors.present().is_empty()
 		print("TRAVEL %s home=%d/%d park=%d townies=%d" % ["OK" if ok else "FAIL", lot.furniture.size(), before, at_park, townies])
 		get_tree().quit()
+	elif scenario == "inputcheck":
+		_input_check()
 	elif scenario == "new":
 		open_create_a_sim()
 	elif scenario != "skip_cas":
@@ -738,6 +750,7 @@ func open_main_menu() -> void:
 	Clock.set_speed(0)
 	hud.visible = false
 	sim.set_selected(false)
+	_stop_pan()
 	rig.set_locked(true)
 	_menu_orbit = true
 	var menu := MainMenu.new()
@@ -1018,6 +1031,7 @@ func open_create_a_sim() -> void:
 	sim.set_selected(false)
 	_studio = CreateASim.make_studio(CAS_STUDIO)
 	add_child(_studio)
+	_stop_pan()
 	rig.set_locked(true)
 	rig.frame(CAS_STUDIO + Vector3(0, 0.95, 0), 0.0, deg_to_rad(-6.0), 4.6)
 	_cas = CreateASim.new()
@@ -1128,6 +1142,91 @@ func _save_load_check() -> void:
 	var ok := sim.sim_name == "Saved Sim" and build.funds == 12345 and work.career == "painter" 		and lot.furniture.size() == objects_before and absf(Clock.total_minutes - 1000.0) < 5.0 and not lot.walls.is_empty()
 	print("SAVELOAD %s name=%s funds=%d career=%s objects=%d/%d" % ["OK" if ok else "FAIL", sim.sim_name, build.funds, work.career, lot.furniture.size(), objects_before])
 	get_tree().quit()
+
+
+## Drives the game with injected mouse and keyboard events (the same path real
+## input takes) and prints what worked.
+func _input_check() -> void:
+	_enter_live()
+	await get_tree().create_timer(0.5).timeout
+	var results := {}
+	# Click the TV: its pie menu opens; pick the first option.
+	var tv := find_furniture("tv")
+	await _click(rig.camera.unproject_position(tv.global_position + Vector3(0, 0.8, 0)))
+	results["pie_opens"] = hud.pie_menu.visible
+	var option: Button = null
+	for c in hud.pie_menu.get_children():
+		if c is Button:
+			option = c
+			break
+	if option != null:
+		await _click(option.get_global_rect().get_center())
+	results["queued_tv"] = sim.queue.any(func(a): return a.furniture == tv)
+	# Click the ground: a Go Here action.
+	sim.clear_queue()
+	await _click(rig.camera.unproject_position(lot.cell_to_world(Vector2i(10, 15))))
+	results["go_here"] = sim.queue.size() == 1 and sim.queue[0].label == "Go Here"
+	# F3 opens build mode; drag a wall; F1 leaves.
+	await _key(KEY_F3)
+	results["build_opens"] = build.active
+	build.set_tool(BuildMode.Tool.WALL)
+	var walls_before := lot.walls.size()
+	var a := rig.camera.unproject_position(Vector3(20, 0, 14))
+	var b := rig.camera.unproject_position(Vector3(23, 0, 14))
+	await _press(a, true)
+	await _move(b)
+	await _press(b, false)
+	results["wall_drag"] = lot.walls.size() == walls_before + 3
+	await _key(KEY_F1)
+	results["build_closes"] = not build.active
+	# Esc opens the game menu, Esc again closes it.
+	await _key(KEY_ESCAPE)
+	results["menu_opens"] = _menu is GameMenu
+	await _key(KEY_ESCAPE)
+	results["menu_closes"] = _menu == null
+	# Speed keys.
+	await _key(KEY_3)
+	results["speed_keys"] = Clock.speed == 3
+	var ok := results.values().all(func(v): return v)
+	print("INPUT %s %s" % ["OK" if ok else "FAIL", results])
+	get_tree().quit()
+
+
+func _press(at: Vector2, down: bool) -> void:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = down
+	e.position = at
+	e.global_position = at
+	Input.parse_input_event(e)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
+func _move(at: Vector2) -> void:
+	var e := InputEventMouseMotion.new()
+	e.position = at
+	e.global_position = at
+	Input.parse_input_event(e)
+	await get_tree().process_frame
+
+
+func _click(at: Vector2) -> void:
+	await _move(at)
+	await _press(at, true)
+	await _press(at, false)
+	await get_tree().create_timer(0.1).timeout
+
+
+func _key(code: Key) -> void:
+	for down in [true, false]:
+		var e := InputEventKey.new()
+		e.keycode = code
+		e.physical_keycode = code
+		e.pressed = down
+		Input.parse_input_event(e)
+		await get_tree().process_frame
+	await get_tree().process_frame
 
 
 ## Headless smoke run: queue a few actions and log what the Sim does.
