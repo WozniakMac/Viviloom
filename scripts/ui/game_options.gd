@@ -8,7 +8,7 @@ signal closed
 signal applied
 
 ## tab -> [[section title, [[key, label, kind, options]...]]...]
-## kinds: "check", "choice" (options = labels), "slider" (0..100)
+## kinds: "check", "choice" (options = labels), "slider" (0..100), "path" (read-only)
 const TABS := [
 	["Graphics", [
 		["Display", [["fullscreen", "Display Type", "choice", ["Windowed", "Fullscreen"]], ["vsync", "Vertical Sync", "check", []]]],
@@ -33,11 +33,18 @@ const TABS := [
 	["Save Settings", [
 		["Saving", [["autosave", "Autosave", "choice", ["Off", "Every 10 Minutes", "Every 30 Minutes", "Every 60 Minutes"]]]],
 	]],
+	["Environment", [
+		["Lunar Cycle", [
+			["lunar_cycle", "Lunar Cycle Length", "choice", ["4 Days", "8 Days (Default)", "16 Days"]],
+			["lunar_fixed", "Set Fixed Phase", "choice", ["Off", "New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous", "Full Moon", "Waning Gibbous", "Third Quarter", "Waning Crescent"]],
+			["lunar_effects_off", "Disable Lunar Effects", "check", []],
+		]],
+	]],
 	["Camera", [
 		["Camera", [["edge_scrolling", "Edge Scrolling", "check", []], ["sims3_camera", "The Sims 3 Camera", "check", []], ["invert_horizontal", "Invert Camera Rotation Horizontal", "check", []], ["invert_vertical", "Invert Camera Rotation Vertical", "check", []]]],
 	]],
 	["Screen Capture", [
-		["Screenshots (C)", [["capture_ui", "Include Interface", "check", []], ["capture_size", "Screenshot Size", "choice", ["Small", "Normal", "Large"]]]],
+		["Screenshots (C)", [["capture_ui", "Capture Interface", "check", []], ["capture_notice", "Show Notification After Screenshot", "check", []], ["capture_size", "Screenshot Size", "choice", ["Small", "Normal", "Large"]], ["", "Save Location", "path", []]]],
 	]],
 	["Tutorial & Tips", [
 		["Tips", [["show_tips", "Show Tips", "check", []]]],
@@ -227,6 +234,13 @@ func _field_row(field: Array) -> Control:
 			o.item_selected.connect(func(idx: int):
 				_pending[key] = (idx == 1) if Settings.DEFAULTS[key] is bool else idx)
 			row.add_child(o)
+		"path":
+			var pl := Label.new()
+			pl.text = ProjectSettings.globalize_path("user://screenshots")
+			pl.add_theme_font_size_override("font_size", 12)
+			pl.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+			row.add_child(pl)
+			return row
 		"slider":
 			var s := HSlider.new()
 			s.custom_minimum_size = Vector2(260, 24)

@@ -481,9 +481,14 @@ func _build_time_controls() -> void:
 	_date_label.add_theme_font_size_override("font_size", 13)
 	_date_label.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
 	row.add_child(_date_label)
+	# Tonight's moon phase, like the reference's lunar cycle indicator.
+	_moon_icon = MoonIcon.new()
+	_moon_icon.custom_minimum_size = Vector2(18, 18)
+	row.add_child(_moon_icon)
 
 
 var _pause_label: Label
+var _moon_icon: Control
 var _pause_frame: Panel
 
 
@@ -1419,6 +1424,12 @@ func _process(delta: float) -> void:
 	if _pause_frame != null:
 		_pause_frame.visible = Clock.speed == 0 and (_speed_buttons.is_empty() or _speed_buttons[0].is_visible_in_tree())
 	_date_label.text = "%s · Day %d" % [Clock.weekday_name(), Clock.day()]
+	if _moon_icon != null:
+		var ph := Lunar.phase(Clock.day())
+		if _moon_icon.get_meta("phase", -1) != ph:
+			_moon_icon.set_meta("phase", ph)
+			_moon_icon.tooltip_text = Lunar.PHASES[ph]
+			_moon_icon.queue_redraw()
 	if _hint_time > 0.0:
 		_hint_time -= delta
 		_hint.modulate.a = clampf(_hint_time / 3.0, 0.0, 1.0)
@@ -1508,3 +1519,27 @@ static func need_color(v: float) -> Color:
 	if v >= 30.0:
 		return Color(0.95, 0.75, 0.15).lerp(Color(0.6, 0.82, 0.22), (v - 30.0) / 30.0)
 	return Color(0.88, 0.22, 0.15).lerp(Color(0.95, 0.6, 0.15), v / 30.0)
+
+
+## A little moon showing the current phase (lit part on the right while waxing).
+class MoonIcon:
+	extends Control
+
+	func _draw() -> void:
+		var ph: int = get_meta("phase", 4)
+		var c := size * 0.5
+		var r := minf(size.x, size.y) * 0.45
+		draw_circle(c, r, Color(0.2, 0.25, 0.42))
+		var lit := Lunar.illumination(ph)
+		var waxing := ph <= 4
+		var pts := PackedVector2Array()
+		for k in 33:
+			var a := -PI * 0.5 + PI * k / 32.0
+			pts.append(c + Vector2(cos(a) * r * (1.0 if waxing else -1.0), sin(a) * r))
+		for k in 33:
+			var a := PI * 0.5 - PI * k / 32.0
+			var w := (1.0 - 2.0 * lit) * r
+			pts.append(c + Vector2(cos(a) * w * (1.0 if waxing else -1.0), sin(a) * r))
+		if lit > 0.02:
+			draw_colored_polygon(pts, Color(0.98, 0.95, 0.78))
+		draw_arc(c, r, 0, TAU, 24, Color(0.75, 0.78, 0.9), 1.0, true)

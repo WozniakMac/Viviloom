@@ -61,7 +61,8 @@ func apply(hour: float) -> void:
 		# The moon: a fixed, soft blue light from high up.
 		sun.rotation_degrees = Vector3(-50.0, -20.0, 0.0)
 		sun.light_color = MOON
-		sun.light_energy = 0.22
+		# Brighter under a full moon, darker on a new moon.
+		sun.light_energy = lerpf(0.1, 0.32, Lunar.illumination(Lunar.phase(Clock.day())))
 	var top := NIGHT_TOP.lerp(DUSK_TOP, smoothstep(-0.15, 0.1, hgt)).lerp(DAY_TOP, smoothstep(0.1, 0.4, hgt))
 	var horizon := NIGHT_HORIZON.lerp(DUSK_HORIZON, smoothstep(-0.15, 0.05, hgt)).lerp(DAY_HORIZON, smoothstep(0.1, 0.4, hgt))
 	sky_mat.sky_top_color = top

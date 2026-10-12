@@ -32,6 +32,10 @@ const DEFAULTS := {
 	"ui_scale": 1,
 	"capture_ui": false,
 	"capture_size": 1,
+	"capture_notice": true,
+	"lunar_cycle": 1,
+	"lunar_fixed": 0,
+	"lunar_effects_off": false,
 }
 const CAPTURE_SCALES: Array[float] = [0.5, 1.0, 2.0]
 const LIFESPAN_MULT: Array[float] = [0.5, 1.0, 2.0]

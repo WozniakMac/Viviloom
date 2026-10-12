@@ -54,6 +54,7 @@ func _ready() -> void:
 	_test_produce_quality()
 	_test_options_and_achievements()
 	_test_save_slots()
+	_test_lunar_cycle()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1056,7 +1057,7 @@ func _test_produce_quality() -> void:
 func _test_options_and_achievements() -> void:
 	_check(Settings.DEFAULTS.has("sims3_camera") and Settings.get_value("edge_scrolling") is bool, "options have defaults")
 	var tabs := GameOptions.TABS.map(func(t): return t[0])
-	_check(tabs == ["Graphics", "Sound", "Music", "Gameplay", "Save Settings", "Camera", "Screen Capture", "Tutorial & Tips", "Other", "Accessibility"], "options tabs follow the reference's order")
+	_check(tabs == ["Graphics", "Sound", "Music", "Gameplay", "Save Settings", "Environment", "Camera", "Screen Capture", "Tutorial & Tips", "Other", "Accessibility"], "options tabs follow the reference's order")
 	Ages.lifespan_mult = 2.0
 	_check(Ages.stage_days("adult") == Ages.INFO["adult"]["days"] * 2, "a long lifespan doubles each life stage")
 	Ages.lifespan_mult = 1.0
@@ -1079,3 +1080,12 @@ func _test_save_slots() -> void:
 	DirAccess.remove_absolute(SaveGame.dir)
 	SaveGame.dir = old_dir
 	SaveGame.current = old_cur
+
+
+func _test_lunar_cycle() -> void:
+	var seen := {}
+	for d in range(1, 9):
+		seen[Lunar.phase(d)] = true
+	_check(seen.size() == 8 and Lunar.phase(1) == 0 and Lunar.phase(5) == 4, "eight phases over the default 8-day cycle")
+	_check(Lunar.illumination(4) > 0.99 and Lunar.illumination(0) < 0.01, "full moons are bright, new moons dark")
+	_check(not Lunar.night_moodlet(4).is_empty() and Lunar.night_moodlet(2).is_empty(), "full moon nights have a mood")

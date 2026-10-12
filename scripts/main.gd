@@ -981,6 +981,14 @@ func _update_mess() -> void:
 				score += f.decor
 		if score >= 4:
 			sm.emotions.add("decorated", "happy", 1 if score < 8 else 2, "Nicely Decorated" if score < 8 else "Beautiful Room", "This room looks great.", 10.0)
+	# Full and new moon nights (Game Options > Environment).
+	var night_hour := fmod(Clock.total_minutes / 60.0, 24.0)
+	if night_hour >= 20.0 or night_hour < 5.0:
+		var lm := Lunar.night_moodlet(Lunar.phase(Clock.day()))
+		if not lm.is_empty():
+			for s in lot.sims + upper.sims:
+				if (s as Sim).pose_name() != "lie":
+					(s as Sim).emotions.add(lm[0], lm[1], lm[2], lm[3], lm[4], lm[5])
 	# Lot traits keep their moodlets topped up for everyone on the lot.
 	var hour := fmod(Clock.total_minutes / 60.0, 24.0)
 	for m in LotTraits.moodlets(lot.lot_traits, hour):
@@ -1106,7 +1114,8 @@ func take_screenshot() -> String:
 	var path := "user://screenshots/OpenSims_%s.png" % Time.get_datetime_string_from_system().replace(":", "-")
 	img.save_png(path)
 	Sfx.play("select", -6.0)
-	hud.show_notice("Screenshot saved to %s." % ProjectSettings.globalize_path(path), "Screenshot")
+	if Settings.get_value("capture_notice"):
+		hud.show_notice("Screenshot saved to %s." % ProjectSettings.globalize_path(path), "Screenshot")
 	return path
 
 
@@ -2039,6 +2048,16 @@ func _run_scenario(scenario: String, path: String) -> void:
 			open_game_menu()
 			await get_tree().process_frame
 			(_menu as GameMenu)._open_achievements()
+			await get_tree().create_timer(0.8).timeout
+		"fullmoon":
+			Clock.total_minutes = (4 * 24 + 22) * 60.0
+			await get_tree().create_timer(1.0).timeout
+			print("MOON phase=%s mood=%s" % [Lunar.PHASES[Lunar.phase(Clock.day())], sim.emotions.mood()])
+		"envoptions":
+			var eo := GameOptions.new()
+			add_child(eo)
+			eo.setup()
+			eo._show_tab(5)
 			await get_tree().create_timer(0.8).timeout
 		"options":
 			var o := GameOptions.new()

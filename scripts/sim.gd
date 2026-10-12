@@ -771,6 +771,10 @@ func can_socialize() -> bool:
 	return visible and not away and _pose != "lie" and _social_with == null
 
 
+func pose_name() -> String:
+	return _pose
+
+
 func is_socializing() -> bool:
 	return _social_with != null
 
