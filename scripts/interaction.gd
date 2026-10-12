@@ -27,6 +27,8 @@ var opens_panel := ""
 ## removes the object (cleaning a mess up).
 var leaves_mess := ""
 var consumes := false
+## Repairing: finishing fixes the object.
+var fixes := false
 ## Set for social interactions between two Sims (see Socials).
 var social := {}
 

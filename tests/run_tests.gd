@@ -27,6 +27,7 @@ func _ready() -> void:
 	_test_finishes()
 	_test_life_cycle()
 	_test_messes()
+	_test_repairs_and_fire()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -419,3 +420,17 @@ func _test_messes() -> void:
 	salad.free()
 	sim.queue_free()
 	lot.queue_free()
+
+
+func _test_repairs_and_fire() -> void:
+	var tv := Catalog.create("tv")
+	_check(tv.available_interactions() == tv.interactions, "working objects offer their usual interactions")
+	tv.set_broken(true)
+	var offered := tv.available_interactions()
+	_check(offered.size() == 1 and offered[0].fixes and offered[0].skill == "handiness", "broken objects can only be repaired")
+	tv.set_broken(false)
+	_check(not tv.broken, "repairing fixes it")
+	tv.free()
+	var fire := Catalog.create("fire")
+	_check(not fire.blocks and fire.interactions[0].consumes, "fires can be put out")
+	fire.free()

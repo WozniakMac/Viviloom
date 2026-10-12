@@ -10,6 +10,7 @@ const SATISFIED := 90.0
 const MIN_SCORE := 4.0
 ## How appealing cleaning up a mess is (on the same scale as need scores).
 const MESS_SCORE := 16.0
+const FIRE_SCORE := 1000.0
 
 
 ## How pressing a need is at value `v` (0..100). Grows sharply as it empties.
@@ -66,6 +67,16 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 		if Daylight.power_off and Bills.ELECTRIC.has(f.kind):
 			continue
 		var dist := sim.global_position.distance_to(f.global_position)
+		# Fires come first for everyone except toddlers and guests.
+		if f.kind == "fire":
+			if not sim.is_visitor and Ages.is_adult(sim.age_stage):
+				options.append([FIRE_SCORE, f, f.interactions[0]])
+			continue
+		# Broken things get fixed when there's time.
+		if f.broken:
+			if urgent.is_empty() and not sim.is_visitor and Ages.is_adult(sim.age_stage):
+				options.append([MESS_SCORE * 0.8 / (1.0 + dist / 20.0), f, f.available_interactions()[0]])
+			continue
 		# Tidy Sims clean up messes when nothing more pressing needs doing.
 		if Catalog.MESSES.has(f.kind):
 			if urgent.is_empty() and not sim.is_visitor and Ages.allows(sim.age_stage, f.interactions[0]):

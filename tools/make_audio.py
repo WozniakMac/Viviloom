@@ -122,6 +122,11 @@ def ui_sounds():
     for k in range(2):
         mix(hammer, mix(noise_burst(0.1, 45, 0.5), tone(120, 0.1, decay=40), 0.0, 0.8), k * 0.12)
     write("demolish", hammer)
+    alarm = silence(0.0)
+    for k in range(6):
+        beep = [math.copysign(1.0, math.sin(2 * math.pi * 3100 * i / RATE)) * 0.35 for i in range(int(0.16 * RATE))]
+        mix(alarm, beep, k * 0.3)
+    write("alarm", alarm)
 
 
 # --- voices -----------------------------------------------------------------------
@@ -260,7 +265,9 @@ def music():
 
 
 if __name__ == "__main__":
+    import sys
     ui_sounds()
-    voices()
-    ambience()
-    music()
+    if "--ui-only" not in sys.argv:
+        voices()
+        ambience()
+        music()

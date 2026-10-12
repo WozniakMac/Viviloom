@@ -5,7 +5,13 @@ extends RefCounted
 const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
-const MESSES: Array[String] = ["dishes", "puddle"]
+const MESSES: Array[String] = ["dishes", "puddle", "fire"]
+## Objects that wear out and sometimes break when used.
+const BREAKABLE: Array[String] = ["tv", "desk", "stove", "fridge", "shower", "toilet", "treadmill", "sink"]
+const BREAK_CHANCE := 0.04
+## Cooks below this skill level can set the kitchen on fire.
+const FIRE_SKILL := 3
+const FIRE_CHANCE := 0.12
 
 ## Display name and price for the build-mode catalogue.
 const INFO := {
@@ -38,6 +44,7 @@ const INFO := {
 	"guitar": ["Acoustic Guitar", 300],
 	"dishes": ["Dirty Dishes", 0],
 	"puddle": ["Puddle", 0],
+	"fire": ["Fire!", 0],
 }
 ## Build-mode catalogue sections: [id, label]; "all" lists everything.
 const CATEGORIES := [["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"], ["living", "Living"], ["outdoor", "Outdoor"]]
@@ -409,6 +416,48 @@ static func create(kind: String) -> Furniture:
 			var clean := Interaction.new("Clean Up", {"fun": 2.0}, 10.0, "", "stand", true)
 			clean.consumes = true
 			f.interactions = [clean]
+		"fire":
+			f.display_name = "Fire!"
+			f.blocks = false
+			f.height = 1.0
+			var flames := CPUParticles3D.new()
+			flames.amount = 40
+			flames.lifetime = 0.9
+			flames.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+			flames.emission_sphere_radius = 0.3
+			flames.direction = Vector3.UP
+			flames.spread = 15.0
+			flames.initial_velocity_min = 0.8
+			flames.initial_velocity_max = 1.6
+			flames.gravity = Vector3(0, 1.0, 0)
+			flames.scale_amount_min = 0.2
+			flames.scale_amount_max = 0.5
+			var grad := Gradient.new()
+			grad.set_color(0, Color(1.0, 0.85, 0.3))
+			grad.set_color(1, Color(0.9, 0.2, 0.05, 0.0))
+			flames.color_ramp = grad
+			var puff := SphereMesh.new()
+			puff.radius = 0.5
+			puff.height = 1.0
+			flames.mesh = puff
+			var fm := StandardMaterial3D.new()
+			fm.vertex_color_use_as_albedo = true
+			fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			fm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+			flames.material_override = fm
+			f.add_child(flames)
+			var glow := OmniLight3D.new()
+			glow.position.y = 0.6
+			glow.light_color = Color(1.0, 0.55, 0.2)
+			glow.light_energy = 2.5
+			glow.omni_range = 5.0
+			f.add_child(glow)
+			f.spots = [Vector3(0, 0, 1.0), Vector3(1.0, 0, 0), Vector3(-1.0, 0, 0)]
+			var douse := Interaction.new("Put Out Fire", {}, 20.0, "", "stand", true)
+			douse.consumes = true
+			douse.grants("hero", "confident", 2, "Fire Fighter", "Saved the house!", 240.0)
+			f.interactions = [douse]
 		"puddle":
 			f.display_name = "Puddle"
 			f.blocks = false

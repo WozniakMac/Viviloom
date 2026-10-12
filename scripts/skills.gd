@@ -18,8 +18,9 @@ const INFO := {
 	"guitar": ["Guitar", "focused"],
 	"gardening": ["Gardening", "focused"],
 	"writing": ["Writing", "focused"],
+	"handiness": ["Handiness", "focused"],
 }
-const ORDER: Array[String] = ["cooking", "logic", "painting", "gaming", "fitness", "charisma", "guitar", "gardening", "writing"]
+const ORDER: Array[String] = ["cooking", "logic", "painting", "gaming", "fitness", "charisma", "guitar", "gardening", "writing", "handiness"]
 const EMOTION_BONUS := 1.5
 
 var xp := {}

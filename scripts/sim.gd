@@ -521,6 +521,11 @@ func _listen(delta: float) -> void:
 	_animate(delta, false, null)
 
 
+## Makes the Sim decide what to do on their next update instead of waiting.
+func think_now() -> void:
+	_idle_minutes = IDLE_BEFORE_AUTONOMY
+
+
 func _update_autonomy() -> void:
 	if not queue.is_empty() or is_moving():
 		_idle_minutes = 0.0
@@ -550,6 +555,9 @@ func _start(a: SimAction) -> void:
 	var f := a.furniture
 	if f.user != null and f.user != self:
 		_fail(a, "The %s is in use." % f.display_name)
+		return
+	if f.broken and not a.interaction.fixes:
+		_fail(a, "The %s is broken. Repair it first." % f.display_name)
 		return
 	if Daylight.power_off and Bills.ELECTRIC.has(f.kind):
 		_fail(a, "The %s doesn't work: the power is off. Pay the bills!" % f.display_name)
@@ -654,6 +662,16 @@ func _begin_perform(a: SimAction) -> void:
 	if a.target_sim != null:
 		_begin_social(a)
 		return
+	# Inexperienced cooks sometimes set the kitchen on fire.
+	if a.interaction.skill == "cooking" and a.interaction.leaves_mess != "" and lot != null \
+			and skills.level("cooking") < Catalog.FIRE_SKILL and _rng.randf() < Catalog.FIRE_CHANCE:
+		var fire := lot.add_mess("fire", a.furniture.global_position + (a.furniture.global_basis * Vector3(0, 0, 1.2)))
+		fire.set_meta("source", a.furniture)
+		a.furniture.set_broken(true)
+		Sfx.play("alarm", -2.0)
+		announced.emit("FIRE! %s set the %s on fire!" % [sim_name, a.furniture.display_name])
+		_complete(a)
+		return
 	a.performing = true
 	var f := a.furniture
 	f.user = self
@@ -719,6 +737,13 @@ func _end_perform(a: SimAction, finished := false) -> void:
 	a.furniture.user = null
 	if finished and a.interaction.leaves_mess != "" and lot != null:
 		lot.add_mess(a.interaction.leaves_mess, a.spot if a.spot != Vector3.ZERO else global_position)
+	if finished and a.interaction.fixes:
+		a.furniture.set_broken(false)
+		announced.emit("%s repaired the %s." % [sim_name, a.furniture.display_name])
+	elif finished and lot != null and Catalog.BREAKABLE.has(a.furniture.kind) and _rng.randf() < Catalog.BREAK_CHANCE:
+		a.furniture.set_broken(true)
+		Sfx.play("demolish", -6.0)
+		announced.emit("Oh no, the %s broke! Click it to repair it." % a.furniture.display_name)
 	if finished and a.interaction.consumes and lot != null:
 		lot.remove_furniture(a.furniture)
 		a.furniture.queue_free()

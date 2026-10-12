@@ -264,8 +264,8 @@ func open_menu(f: Furniture, screen_pos: Vector2) -> void:
 		return
 	var names: Array[String] = []
 	var allowed: Array[Interaction] = []
-	for i in f.interactions:
-		if Ages.allows(sim.age_stage, i):
+	for i in f.available_interactions():
+		if Ages.allows(sim.age_stage, i) or i.fixes:
 			names.append(i.name)
 			allowed.append(i)
 	if allowed.is_empty():
@@ -603,8 +603,26 @@ var _mess_check := 0.0
 func _update_mess() -> void:
 	if Clock.total_minutes < _mess_check:
 		return
-	_mess_check = Clock.total_minutes + 10.0
+	_mess_check = Clock.total_minutes + 2.0
 	var count := lot.messes().size()
+	var fires: Array[Furniture] = []
+	for m in lot.messes():
+		if m.kind == "fire":
+			fires.append(m)
+	for s in lot.sims:
+		for fire in fires:
+			if s.global_position.distance_to(fire.global_position) < 14.0:
+				s.emotions.add("fire_scared", "tense", 3, "Terrified", "The house is on fire!", 30.0)
+	# A fire gets everyone's attention at once: grown-ups drop what they chose
+	# to do themselves and decide again (putting it out wins).
+	if not fires.is_empty():
+		for s in household:
+			var cur := s.current_action()
+			var on_it := cur != null and cur.furniture != null and cur.furniture.kind == "fire"
+			if not on_it and (cur == null or cur.autonomous) and Ages.is_adult(s.age_stage) and not s.away:
+				if cur != null:
+					s.clear_queue()
+				s.think_now()
 	for s in household:
 		if s.away:
 			continue
@@ -676,7 +694,9 @@ func _lot_dict() -> Dictionary:
 		floors.append([c.x, c.y, lot.floor_tiles[c]])
 	var objects: Array = []
 	for f in lot.furniture:
-		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps])
+		if Catalog.MESSES.has(f.kind) and f.kind == "fire":
+			continue
+		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps, f.broken])
 	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects}
 
 
@@ -700,7 +720,9 @@ func _apply_lot_dict(d: Dictionary) -> void:
 		lot.add_floor(Rect2i(), 0)
 	for o in d.get("objects", []):
 		if Catalog.INFO.has(o[0]):
-			_place(o[0], Vector2i(int(o[1]), int(o[2])), int(o[3]))
+			var placed := _place(o[0], Vector2i(int(o[1]), int(o[2])), int(o[3]))
+			if o.size() > 4 and o[4]:
+				placed.set_broken(true)
 
 
 func save_game() -> void:
@@ -1101,7 +1123,15 @@ func _run_scenario(scenario: String, path: String) -> void:
 			await get_tree().create_timer(4.0).timeout
 			Clock.set_speed(1)
 			await get_tree().create_timer(0.4).timeout
-
+		"fire":
+			var stove := find_furniture("stove")
+			lot.add_mess("fire", stove.global_position + Vector3(0, 0, 1.2))
+			stove.set_broken(true)
+			find_furniture("tv").set_broken(true)
+			Clock.set_speed(1)
+			await get_tree().create_timer(2.5).timeout
+			print("FIRE fires=%d action=%s" % [lot.messes().filter(func(m): return m.kind == "fire").size(), sim.current_action().label if sim.current_action() else "-"])
+		"mess":
 			lot.add_mess("dishes", lot.cell_to_world(Vector2i(13, 7)))
 			lot.add_mess("dishes", lot.cell_to_world(Vector2i(10, 4)))
 			lot.add_mess("puddle", lot.cell_to_world(Vector2i(9, 9)))

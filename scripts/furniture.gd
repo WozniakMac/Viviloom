@@ -23,6 +23,11 @@ var use_facing := Vector3(0, 0, 1)
 var user: Node3D = null
 ## Messes (dirty dishes, puddles) sit on a tile without blocking it.
 var blocks := true
+## Broken objects can only be repaired until fixed.
+var broken := false
+var _smoke: CPUParticles3D
+## The interaction offered while broken.
+static var repair_interaction: Interaction
 
 
 func _ready() -> void:
@@ -88,6 +93,48 @@ func build_collider() -> void:
 
 
 ## See-through look while the object is being placed or moved.
+## Breaks or fixes the object; broken ones puff dark smoke.
+func set_broken(b: bool) -> void:
+	broken = b
+	if b and _smoke == null:
+		_smoke = CPUParticles3D.new()
+		_smoke.amount = 14
+		_smoke.lifetime = 1.6
+		_smoke.position = Vector3(0, height, 0)
+		_smoke.direction = Vector3.UP
+		_smoke.spread = 20.0
+		_smoke.initial_velocity_min = 0.3
+		_smoke.initial_velocity_max = 0.6
+		_smoke.gravity = Vector3(0, 0.2, 0)
+		_smoke.scale_amount_min = 0.15
+		_smoke.scale_amount_max = 0.35
+		var puff := SphereMesh.new()
+		puff.radius = 0.5
+		puff.height = 1.0
+		_smoke.mesh = puff
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.2, 0.2, 0.22, 0.55)
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		_smoke.material_override = m
+		add_child(_smoke)
+	if _smoke != null:
+		_smoke.emitting = b
+		_smoke.visible = b
+
+
+## What can be done with the object right now (just Repair while broken).
+func available_interactions() -> Array[Interaction]:
+	if not broken:
+		return interactions
+	if repair_interaction == null:
+		repair_interaction = Interaction.new("Repair", {"fun": 4.0}, 60.0, "", "stand", true).practices("handiness", 80.0).grants("handy", "confident", 1, "Handy", "Fixed it all by themselves.", 180.0)
+		repair_interaction.fixes = true
+	var out: Array[Interaction] = [repair_interaction]
+	return out
+
+
 func set_ghost(ghost: bool) -> void:
 	for c in find_children("*", "MeshInstance3D", true, false):
 		(c as MeshInstance3D).transparency = 0.45 if ghost else 0.0
