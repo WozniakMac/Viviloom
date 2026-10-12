@@ -13,12 +13,21 @@ def build_native_hair(procedural):
     scalp=next(o for o in procedural if o.name=='Hair_Buzz')
     styles={style:(asset,ROOT/asset) for style,asset in STYLES.items()}
     styled=ROOT.parent.parent/'hair01/hair'
-    for style,asset in [('Short','culturalibre_hair_05'),('Curly','culturalibre_hair_06'),('Bun','rehmanpolanski_hair_bun_brown')]:
+    for style,asset in [('Bob','culturalibre_hair_01'),('Long','culturalibre_hair_01'),('Short','culturalibre_hair_05'),('Curly','culturalibre_hair_06'),('Bun','rehmanpolanski_hair_bun_brown')]:
         folder=styled/asset
         if (folder/(asset+'.mhclo')).exists():styles[style]=(asset,folder)
     for style,(asset,folder) in styles.items():
         if not (folder/(asset+'.mhclo')).exists():continue
         bindings,faces,uvs,face_uvs=load_bound_geometry(folder,asset)
+        if style=='Bob':
+            # Original chin-length restyle of the fitted long locks, keeping
+            # the side part, open face, strand UVs and uneven natural ends.
+            for p in bindings:
+                length=max(0.,1.770-p.z)
+                p.z+=.43*length
+                t=min(1.,length/.30)
+                p.x*=1.-.20*t*t
+                p.y-=.004*t*t
         old=next(o for o in result if o.name=='Hair_'+style)
         result.remove(old);bpy.data.objects.remove(old,do_unlink=True)
         mesh=bpy.data.meshes.new('NativeHair_'+style)

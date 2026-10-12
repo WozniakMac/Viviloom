@@ -621,11 +621,11 @@ def animations(rig):
     mood_walk("walk_angry", {"chest": (6, 0, 0), "head": (8, 0, 0), "forearm.L": (-80, 0, 0), "forearm.R": (-80, 0, 0)}, 0.035, 1.2)
 
 
-def main():
+def build_frame(rig,label):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from character_details import build_head, build_hair, build_expressions
     from anatomical_body import build_anatomical_body
-    clear_scene()
+    existing=set(bpy.data.objects)
     mats = {
         "Skin": material("Skin", (0.57, 0.34, 0.22), 0.6),
         "Shirt": material("Shirt", (0.22, 0.47, 0.82)),
@@ -642,7 +642,8 @@ def main():
     mats['Nostril'] = material('Nostril', (0.23, 0.11, 0.08), 0.8)
     mats['Lips'].node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.55, 0.27, 0.22, 1)
     # Preserve the anatomical mesh's UV layout and its CC0 skin detail.
-    skin_path = Path(__file__).resolve().parent.parent / 'assets/source/makehuman/system-assets/skins/young_asian_male/young_lightskinned_male_diffuse3.png'
+    sex='female' if label=='Feminine' else 'male'
+    skin_path = Path(__file__).resolve().parent.parent / ('assets/source/makehuman/system-assets/skins/young_asian_'+sex+'/young_lightskinned_'+sex+'_diffuse3.png')
     if skin_path.exists():
         for name in ['Skin', 'Sleeve', 'Shin']:
             skin = mats[name]
@@ -663,11 +664,24 @@ def main():
     from facial_shapes import add_native_actions
     add_native_actions(head)
     faces.append(build_skirt(mats))
-    rig = build_armature()
     skin_to_rig(rig, body, [head] + hairs + faces)
     assign_body_materials(body, mats)
     from native_clothing import build_clothing
     build_clothing(J, rig)
+    frame=bpy.data.objects.new('Frame_'+label,None)
+    bpy.context.collection.objects.link(frame);frame.parent=rig
+    for part in [obj for obj in bpy.data.objects if obj not in existing and obj.type=='MESH']:
+        part.parent=frame
+        part.name=label+'_'+part.name
+
+
+def main():
+    clear_scene()
+    rig=build_armature()
+    for label,preset in [('Masculine','adult-male'),('Feminine','adult-female')]:
+        os.environ['ANNY_PRESET']=preset
+        build_frame(rig,label)
+    os.environ['ANNY_PRESET']='adult-male'
     animations(rig)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     # Texture-ready UVs also let Godot generate tangents without import errors.

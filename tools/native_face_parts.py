@@ -28,7 +28,7 @@ def build_brows():
     for name,action in [('Neutral',None),('Angry','BrowAngry'),('Sad','BrowSad')]:
         points=base
         if action:
-            variant=read_base('adult-male-action-'+action)[0]
+            variant=read_base(__import__('anny_source').active_preset()+'-action-'+action)[0]
             points=[p.lerp(q,.8) for p,q in zip(base,variant)]
         result.append(bound_part(folder,asset,'Brows_'+name,material,points))
     return result
@@ -38,7 +38,7 @@ def build_lashes():
     material=texture_material(folder,'NativeHair_Lashes')
     obj=bound_part(folder,asset,'NativeLashes',material)
     for action in ACTIONS:
-        points=read_base('adult-male-action-'+action)[0]
+        points=read_base(__import__('anny_source').active_preset()+'-action-'+action)[0]
         variant,_,_,_=load_bound_geometry(folder,asset,source_points=points)
         attribute=obj.data.attributes.new(name='AnnyAction'+action,type='FLOAT_VECTOR',domain='POINT')
         for vertex,p in zip(obj.data.vertices,variant):attribute.data[vertex.index].vector=p-vertex.co

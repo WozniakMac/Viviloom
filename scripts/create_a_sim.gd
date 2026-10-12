@@ -33,6 +33,7 @@ var _aspiration_pick: OptionButton
 var _walk_pick: OptionButton
 var _hair_buttons := {}
 var _age_buttons := {}
+var _frame_buttons := {}
 var _outfit_buttons := {}
 var _heavy_slider: HSlider
 var _fit_slider: HSlider
@@ -194,11 +195,30 @@ func _build() -> void:
 	look.position = Vector2(-24, 20)
 	root.add_child(look)
 	var lv := VBoxContainer.new()
-	lv.add_theme_constant_override("separation", 10)
+	lv.add_theme_constant_override("separation", 6)
 	look.add_child(lv)
 	var lt := UiTheme.title(Label.new(), 18)
 	lt.text = "Appearance"
 	lv.add_child(lt)
+	var frame_label := Label.new()
+	frame_label.text = "Body frame"
+	frame_label.add_theme_font_size_override("font_size", 14)
+	frame_label.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+	lv.add_child(frame_label)
+	var frame_row := HBoxContainer.new()
+	lv.add_child(frame_row)
+	for frame in Sim.BODY_FRAMES:
+		var button := Button.new()
+		button.text = Sim.BODY_FRAME_LABELS[frame]
+		button.toggle_mode = true
+		button.focus_mode = Control.FOCUS_NONE
+		button.add_theme_font_size_override("font_size", 12)
+		button.add_theme_stylebox_override("pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		button.add_theme_stylebox_override("hover_pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		button.pressed.connect(_pick_frame.bind(frame))
+		frame_row.add_child(button)
+		_frame_buttons[frame] = button
+	_pick_frame(sim.body_frame)
 	var al := Label.new()
 	al.text = "Age"
 	al.add_theme_font_size_override("font_size", 14)
@@ -360,6 +380,7 @@ func edit(s: Sim) -> void:
 	sim = s
 	_picked = s.traits.duplicate()
 	_name_edit.text = s.sim_name
+	_pick_frame(s.body_frame)
 	_pick_hair(s.hair_style)
 	_sync_walk()
 	_pick_age(s.age_stage)
@@ -470,6 +491,12 @@ func _pick_outfit(cat: String) -> void:
 	_sync_body()
 
 
+func _pick_frame(frame: String) -> void:
+	sim.set_body_frame(frame)
+	for key in _frame_buttons:
+		(_frame_buttons[key] as Button).button_pressed = key == sim.body_frame
+
+
 func _pick_age(stage: String) -> void:
 	sim.age_days = 0
 	sim.set_age(stage)
@@ -533,6 +560,7 @@ func _refresh() -> void:
 
 
 func randomize_sim() -> void:
+	_pick_frame(Sim.BODY_FRAMES[_rng.randi() % Sim.BODY_FRAMES.size()])
 	sim.sim_name = RANDOM_NAMES[_rng.randi() % RANDOM_NAMES.size()]
 	_name_edit.text = sim.sim_name
 	for part in PALETTES:

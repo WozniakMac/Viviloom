@@ -9,6 +9,16 @@
     "weight": 0.45,
     "muscle": 0.5
   },
+  "frames": {
+    "masculine": {
+      "preset": "adult-male",
+      "gender": 0.0
+    },
+    "feminine": {
+      "preset": "adult-female",
+      "gender": 1.0
+    }
+  },
   "phenotype_labels": [
     "gender",
     "age",

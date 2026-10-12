@@ -4,13 +4,14 @@ Worktree: character-creator. Goal active; the full Sims 4 quality and interactio
 
 ## Current character
 
-- Native Anny 0.6.1 MakeHuman topology supplies the adult male anatomy, including the original fingers, thumbs, feet and face. All 19,158 source indices and UVs are retained before subdivision.
+- Native Anny 0.6.1 MakeHuman topology supplies separate adult male and female anatomy, including the original fingers, thumbs, feet and face. All 19,158 source indices and UVs are retained before subdivision.
 - Body weight and muscle sliders now use actual Anny heavy, fit and combined heavy/fit presets. A corrective morph keeps combined settings coherent. Fitted sweater, jeans and sneakers share those native variations.
 - Hands retain a rigid wrist-to-palm transform; smooth arm masks prevent fingers receiving leg weights. All hand faces keep visible skin materials. The previous missing thumb was a clothing-mask defect.
 - Shoulder coverage and neck binding corrected. Garment membership survives sleeve/leg cuts: connected sweater and trouser pieces get their own materials, including the sweater hem.
 - CC0 MakeHuman casual outfit and shoes are fitted through their native barycentric bindings. Jeans preserve original seam/pocket/wear detail. Fabric shader preserves folds while supporting the game palette.
 - Built-in imagegen edited the sweater UV texture into a plain blue crewneck. Source and prompt are retained in assets/source/generated; original source images remain intact. The generated texture is used only on the sweater.
-- Short, tousled and bun styles use sculpted CC0 hair from the official hair01 pack; long, ponytail and bob use fitted system-pack assets. Short/tousled styles include a fitted scalp underneath. Hair shading has restrained highlights.
+- Short, tousled and bun styles use sculpted CC0 hair from the official hair01 pack; long uses sculpted culturalibre_hair_01 from hair01, bob is an original chin-length restyle of those locks, and ponytail uses a fitted system-pack asset. Short/tousled styles include a fitted scalp underneath. Hair shading has restrained highlights, normal-map detail and dark-texture tone compression to preserve strands.
+- Female base uses its own native facial proportions and CC0 female skin, plus restrained jaw/chin/nose/lip refinement applied consistently to the base and every action. Male/Female controls switch the actual model and persist through saving.
 - Native eyes, softly blended textured eyebrows and eyelashes replace procedural overlays. Iris color preserves pupils and whites. Eyelashes follow the native blink morph.
 - Native Anny blink, smile, frown, angry brow and sad brow actions deform the face; eyes remain fixed. Blinking runs in both CAS and gameplay.
 - Persistent nose, jaw, eye spacing and lip controls retain legacy save defaults. A neutral creator idle keeps gameplay moods from changing posture while editing.
@@ -24,11 +25,14 @@ Worktree: character-creator. Goal active; the full Sims 4 quality and interactio
 - Native facial displacement, fixed eyeballs, save roundtrip and legacy defaults: output/anatomy-final-faces.log, zero failures.
 - Game regression suite: output/anatomy-final-tests.log, TESTS PASSED (0 failures). Existing test cleanup/resource warnings still occur.
 - Actual game renders inspect idle, walk, sitting, using, talking and lying poses; tools/preview_runtime.tscn uses Sim materials instead of raw GLB previews.
+- Both-frame frame switching/identity, props, studio layers and save checks: output/female-final-frame-check.log, zero failures. Native face and clothing checks: output/female-final-face-check.log and output/female-final-morph-check.log, zero failures. Hand binding: output/female-final-binding.log, 37,344 female and 37,410 male vertices, zero errors. Game suite: output/female-final-tests.log, TESTS PASSED (0 failures), with existing out-of-tree transform and resource-cleanup diagnostics.
+- Female AI concept and exact prompt: assets/references/female-character-concept.png and female-character-concept.prompt.txt, generated with built-in imagegen; design reference, not an in-game render.
+- Current female game views: output/female-final-face.png, output/female-final-body.png; body extremes: output/female-final-heavy.png and output/female-final-fit.png; animation poses and hairstyles: output/female-final-poses.png and output/female-final-hair.png.
 - Latest torso/creator: output/garment-region-torso.png and output/character-current.png. Hand closeup: output/final-palm.png. Soft face detail: output/soft-face-detail.png. Tests alone do not establish the visual quality target.
 
 ## Remaining goal work
 
-- Native body/face diversity, gender and age anatomy; current age controls scale the adult male model.
+- Native age anatomy and further face diversity; current age controls still scale the selected adult model.
 - More clothing and hairstyle choices, skin variants and original styling; refine card-hair styles, the skirt and remaining joint silhouettes.
 - Finger articulation for natural resting hands and gripping props; fingers currently follow the hand bone together.
 - Direct face/body manipulation and catalog thumbnails; interface still relies on swatches and sliders.

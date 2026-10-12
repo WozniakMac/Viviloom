@@ -1,0 +1,9 @@
+{
+  "tool": "built-in imagegen",
+  "purpose": "Female anatomy, face and hair prototype; concept image, not an in-game screenshot",
+  "prompt": "female-character-concept.prompt.txt",
+  "references": [
+    "output/feminine-native-face.png",
+    "output/feminine-native-body.png"
+  ]
+}

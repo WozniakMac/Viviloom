@@ -2215,6 +2215,19 @@ func _run_scenario(scenario: String, path: String) -> void:
 			sim.queue_social(jules, Socials.find("Tell a Joke"))
 			hud._show_page(3)
 			await get_tree().create_timer(2.5).timeout
+		"casfemale", "casfemaleface", "casfemaleheavy", "casfemalefit", "casfemalelong":
+			open_create_a_sim()
+			_cas._pick_frame("feminine")
+			sim.set_body(.95 if scenario == "casfemaleheavy" else .1, 1.0 if scenario == "casfemalefit" else .35)
+			sim.set_outfit(true, false)
+			_cas._pick_hair("long" if scenario == "casfemalelong" else "bob")
+			sim.set_part_color("shirt", Color(.62, .3, .47))
+			sim.set_part_color("pants", Color(.3, .3, .37))
+			_cas._sync_body()
+			_cas._sync_swatches()
+			if scenario == "casfemaleface":
+				_cas.view_requested.emit(true)
+			await get_tree().create_timer(1.0).timeout
 		"casclothes", "casshorts", "casskirt":
 			open_create_a_sim()
 			sim.set_body(1.0, 1.0)

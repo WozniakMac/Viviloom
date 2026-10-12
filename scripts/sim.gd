@@ -85,6 +85,9 @@ var _walk_phase := 0.0
 var _preview_walk := 0.0
 var creator_preview := false
 ## Body shape sliders (0..1) and outfit cut.
+const BODY_FRAMES: Array[String] = ["masculine", "feminine"]
+const BODY_FRAME_LABELS := {"masculine": "Male", "feminine": "Female"}
+@export var body_frame := "masculine"
 @export var body_heavy := 0.0
 @export var body_fit := 0.0
 var face_features := {"NoseWidth": 0.0, "JawWidth": 0.0, "EyeSpacing": 0.0, "LipFullness": 0.0}
@@ -164,6 +167,7 @@ var _voice_pitch := 1.0
 var _voice_high := false
 
 var _body: Node3D
+var _model: Node3D
 var _anim: AnimationPlayer
 ## The right hand, for holding props (fishing rods, books, drinks).
 var _hand: BoneAttachment3D
@@ -434,6 +438,15 @@ func set_face_feature(feature: String, value: float) -> void:
 			mesh.set_blend_shape_value(index, face_features[feature])
 
 
+## Both frames use native Anny anatomy fitted to the same animation rig.
+func set_body_frame(frame: String) -> void:
+	if frame not in BODY_FRAMES or frame == body_frame:
+		return
+	body_frame = frame
+	if _body != null:
+		_build_model()
+
+
 ## Body sliders: 0..1 heavier and 0..1 more muscular.
 func set_body(heavy: float, fit: float) -> void:
 	body_heavy = clampf(heavy, 0.0, 1.0)
@@ -613,6 +626,7 @@ func to_dict() -> Dictionary:
 		"name": sim_name,
 		"colors": {"shirt": shirt_color.to_html(), "pants": pants_color.to_html(), "skin": skin_color.to_html(), "hair": hair_color.to_html(), "eyes": eye_color.to_html()},
 		"hair_style": hair_style,
+		"body_frame": body_frame,
 		"walk_style": walk_style,
 		"body": [body_heavy, body_fit, long_sleeves, shorts, skirt],
 		"face": face_features.duplicate(),
@@ -636,6 +650,7 @@ func to_dict() -> Dictionary:
 
 func from_dict(d: Dictionary, others: Array) -> void:
 	sim_name = d.get("name", sim_name)
+	set_body_frame(d.get("body_frame", "masculine"))
 	for part in d.get("colors", {}):
 		set_part_color(part, Color.html(d["colors"][part]))
 	set_hair_style(d.get("hair_style", hair_style))
@@ -991,6 +1006,9 @@ func _set_prop(kind: String) -> void:
 		mat.albedo_color = col
 		m.material_override = mat
 		m.layers = 1 | PORTRAIT_LAYER
+		if creator_preview:
+			m.set_meta("cas_original_layers", m.layers)
+			m.layers = 8 | PORTRAIT_LAYER
 		_prop.add_child(m)
 		return m
 	match kind:
@@ -1653,14 +1671,26 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 	_plumbob.global_position = head + Vector3(0, 0.5 + sin(Time.get_ticks_msec() * 0.003) * 0.04, 0)
 
 
-func _build_visual() -> void:
-	_body = Node3D.new()
-	_body.name = "Body"
-	add_child(_body)
-
+## Reloads only the character meshes; gameplay, selection and collision nodes survive.
+func _build_model() -> void:
+	var held := _prop_kind
+	if is_instance_valid(_model):
+		_model.free()
+	_hand = null
+	_prop = null
+	_prop_kind = ""
+	_head_mesh = null
+	_body_mesh = null
+	_skirt_mesh = null
+	_hair_meshes.clear()
+	_face_meshes.clear()
+	_clothing_meshes.clear()
+	_action_indices.clear()
+	_expression = ""
 	# The character model (tools/make_sim.py) with its own copy of each material so
 	# every Sim can have their own colours.
 	var model := MODEL.instantiate() as Node3D
+	_model = model
 	_body.add_child(model)
 	_anim = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	var skel := model.find_child("Skeleton3D", true, false) as Skeleton3D
@@ -1678,8 +1708,17 @@ func _build_visual() -> void:
 	_materials = {}
 	for node in model.find_children("*", "MeshInstance3D", true, false):
 		var mi := node as MeshInstance3D
+		var prefix := body_frame.capitalize() + "_"
+		if mi.name.begins_with("Masculine_") or mi.name.begins_with("Feminine_"):
+			if not mi.name.begins_with(prefix):
+				mi.free()
+				continue
+			mi.name = mi.name.trim_prefix(prefix)
 		# Layer 3 as well, so the portrait camera can see Sims and nothing else.
 		mi.layers = 1 | PORTRAIT_LAYER
+		if creator_preview:
+			mi.set_meta("cas_original_layers", mi.layers)
+			mi.layers = 8 | PORTRAIT_LAYER
 		if mi.name.begins_with("Outfit"):
 			_clothing_meshes[mi.name] = mi
 		if mi.name == "Head":
@@ -1696,7 +1735,7 @@ func _build_visual() -> void:
 			var src := mi.mesh.surface_get_material(i)
 			if src == null:
 				continue
-			var key := "skirt" if mi.name == "Skirt" else src.resource_name.to_lower()
+			var key := "skirt" if mi.name == "Skirt" else src.resource_name.to_lower().get_slice(".", 0)
 			if not _materials.has(key):
 				if key in ["shirtfabric", "pantsfabric"] and src is BaseMaterial3D:
 					var fabric := ShaderMaterial.new()
@@ -1714,6 +1753,9 @@ func _build_visual() -> void:
 					var hair_material := ShaderMaterial.new()
 					hair_material.shader = preload("res://shaders/facial_hair.gdshader") if key in ["nativehair_brows", "nativehair_lashes"] else preload("res://shaders/hair.gdshader")
 					hair_material.set_shader_parameter("hair_texture", src.albedo_texture)
+					if key not in ["nativehair_brows", "nativehair_lashes"]:
+						hair_material.set_shader_parameter("hair_normal", src.normal_texture)
+						hair_material.set_shader_parameter("has_normal", src.normal_texture != null)
 					_materials[key] = hair_material
 				else:
 					_materials[key] = src.duplicate()
@@ -1729,6 +1771,17 @@ func _build_visual() -> void:
 		set_face_feature(feature, face_features[feature])
 	_apply_outfit()
 	_default_outfits()
+
+	_update_expression()
+	_set_prop(held)
+
+
+func _build_visual() -> void:
+	_body = Node3D.new()
+	_body.name = "Body"
+	add_child(_body)
+
+	_build_model()
 
 	_selection_ring = MeshInstance3D.new()
 	var ring := TorusMesh.new()

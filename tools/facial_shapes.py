@@ -38,7 +38,7 @@ def add_action_attributes(head,source_indices):
     from anatomical_body import read_base
     from mathutils import Vector
     for action in ACTIONS:
-        points,_,_,_=read_base('adult-male-action-'+action)
+        points,_,_,_=read_base(__import__('anny_source').active_preset()+'-action-'+action)
         attribute=head.data.attributes.new(name='AnnyAction'+action,type='FLOAT_VECTOR',domain='POINT')
         for index,original in enumerate(source_indices):
             p=points[original].copy()

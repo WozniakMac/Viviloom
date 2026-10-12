@@ -1,10 +1,15 @@
 """Read Anny's CC0 MakeHuman rest mesh in the existing source coordinates."""
 from pathlib import Path
 import numpy as np
+import os
 
 ROOT=Path(__file__).resolve().parent.parent
 
-def load_raw_points(preset='adult-male'):
+def active_preset():
+    return os.environ.get('ANNY_PRESET','adult-male')
+
+def load_raw_points(preset=None):
+    preset=preset or active_preset()
     path=ROOT/'assets/source/anny'/(preset+'.npz')
     if not path.exists():
         return None
@@ -25,5 +30,19 @@ def load_raw_points(preset='adult-male'):
     raw[:,0]*=scale
     raw[:,2]*=scale
     raw[:,1]=(raw[:,1]-floor)*scale-8.1676
-    print('ANNY SOURCE: adult male,',len(raw),'vertices, normalized height 1.84 m')
+    if preset.startswith('adult-female'):
+        # An original restrained face refinement, shared by the base, actions,
+        # body variants and every barycentrically fitted accessory. UVs stay native.
+        x=raw[:,0]*.11; y=raw[:,2]*.11; z=(raw[:,1]+8.1676)*.11
+        jaw=np.exp(-((z-1.610)/.035)**2)
+        raw[:,0] *= 1.-.075*jaw
+        chin=np.exp(-((z-1.588)/.024)**2)*np.exp(-(x/.070)**4)
+        raw[:,1] += (.004*chin)/.11
+        front=np.clip((y-.045)/.04,0.,1.)
+        nose=np.exp(-((x/.022)**2+((z-1.676)/.023)**2))*front
+        raw[:,0] *= 1.-.07*nose
+        raw[:,2] -= (.0015*nose)/.11
+        lip=np.exp(-((x/.038)**4+((z-1.649)/.012)**2))*front
+        raw[:,2] += (.0012*lip)/.11
+    print('ANNY SOURCE:',preset, len(raw),'vertices, normalized height 1.84 m')
     return raw.tolist()

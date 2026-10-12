@@ -9,7 +9,7 @@ import bmesh
 from mathutils import Vector
 
 
-def read_base(preset='adult-male'):
+def read_base(preset=None):
     positions=[];uvs=[];faces=[];group='';landmarks=defaultdict(set)
     from anny_source import load_raw_points
     anny_points=load_raw_points(preset)
@@ -126,6 +126,6 @@ def build_anatomical_body(target_joints):
 def body_variants(target_joints):
     result={}
     for shape,preset in [('Heavy','heavy'),('Fit','fit'),('HeavyFit','heavy-fit')]:
-        points,_,_,joints=read_base('adult-male-'+preset)
+        points,_,_,joints=read_base(__import__('anny_source').active_preset()+'-'+preset)
         result[shape]=(points,make_transform(target_joints,joints))
     return result

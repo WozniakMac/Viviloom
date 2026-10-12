@@ -7,6 +7,12 @@
   "assets": {
     "culturalibre_hair_05": "culturalibre",
     "culturalibre_hair_06": "culturalibre",
-    "rehmanpolanski_hair_bun_brown": "RehmanPolanski"
+    "rehmanpolanski_hair_bun_brown": "RehmanPolanski",
+    "culturalibre_hair_01": "culturalibre"
+  },
+  "license_verification": {
+    "page": "https://static.makehumancommunity.org/assets/assetpacks/hair01.html",
+    "checked": "2026-10-12",
+    "note": "Official pack lists selected culturalibre assets as CC0. Original legacy AGPL3 header in culturalibre_hair_01.mhclo is retained unmodified."
   }
 }
