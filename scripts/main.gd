@@ -1438,7 +1438,7 @@ func open_create_a_sim() -> void:
 	add_child(_studio)
 	_stop_pan()
 	rig.set_locked(true)
-	rig.frame(CAS_STUDIO + Vector3(0, 0.95, 0), 0.0, deg_to_rad(-2.0), 3.3)
+	_frame_creator(false)
 	var studio_env := Environment.new()
 	studio_env.background_mode = Environment.BG_COLOR
 	studio_env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -1454,8 +1454,7 @@ func open_create_a_sim() -> void:
 	_cas.set_household(household, MAX_HOUSEHOLD)
 	_cas.finished.connect(_on_cas_finished)
 	_cas.member_selected.connect(_cas_show)
-	_cas.view_requested.connect(func(close_up: bool):
-		rig.frame(CAS_STUDIO + Vector3(0, 1.69 if close_up else .95, 0), 0.0, deg_to_rad(-2.0), .8 if close_up else 3.3))
+	_cas.view_requested.connect(_frame_creator)
 	_cas.add_requested.connect(func():
 		var s := _new_sim("")
 		add_to_household(s)
@@ -1466,6 +1465,12 @@ func open_create_a_sim() -> void:
 		_cas.set_household(household, MAX_HOUSEHOLD)
 		_cas_show(household[0]))
 	_cas_show(sim)
+
+
+## Keep direct-edit regions framed at every supported character scale.
+func _frame_creator(close_up: bool) -> void:
+	var scale_factor := sim.size_scale()
+	rig.frame(CAS_STUDIO + Vector3(0, (1.69 if close_up else .95) * scale_factor, 0), 0.0, deg_to_rad(-2.0), (.8 if close_up else 3.3) * scale_factor)
 
 
 ## Puts `s` on the studio floor (the others step out of view) and edits them.

@@ -16,6 +16,8 @@ Worktree: character-creator. The full Sims 4 quality and interaction target is n
 - Female base uses its own native facial proportions and CC0 female skin, plus restrained jaw/chin/nose/lip refinement applied consistently to the base and every action. Male/Female controls switch the actual model and persist through saving.
 - Native eyes, softly blended textured eyebrows and eyelashes replace procedural overlays. Iris color preserves pupils and whites. Eyelashes follow the native blink morph.
 - Native Anny blink, smile, frown, angry brow and sad brow actions deform the face; eyes remain fixed. Blinking runs in both CAS and gameplay.
+- Direct creator gestures project anatomical face regions onto the current model. Clicking the face or scrolling up opens face view; scrolling down returns to body view. Nose/jaw/eye drags adjust widths/spacing, vertical lip drags adjust fullness, and waist/chest drags use native weight/muscle morphs. Dragging the background turns the model. Hover hints identify the target. Undo/redo stores whole drag transactions; Escape/focus loss cancels an active gesture, and UI panels cannot strand a drag.
+- Drag changes synchronize existing sliders and persist through the existing save format. Changing household member/frame/age clears stale gesture history. GUI text undo stays in the name field. Face/body framing now follows the current character scale; this does not replace the scaled-adult age anatomy.
 - Persistent nose, jaw, eye spacing and lip controls retain legacy save defaults. A neutral creator idle keeps gameplay moods from changing posture while editing.
 - Creator studio camera, softer key/fill/rim lighting, a fading floor without a hard horizon and isolated rendering layers improve close inspection. Native skin uses restrained subsurface scattering in Forward+, with normal opaque skin fallback in other renderers. Gameplay layers are restored on exit.
 - Editable compressed Blender source: tools/model_source/character.blend. Image paths are relative. Runtime asset: assets/sim/sim.glb.
@@ -38,12 +40,14 @@ Worktree: character-creator. The full Sims 4 quality and interaction target is n
 - Female hair/studio checkpoint: output/beauty-studio-final-face.png and output/beauty-studio-final-body.png show the actual game creator. Brown/blonde material comparison: output/beauty-hair-comparison-v2.png, built by tools/preview_portraits.tscn. Both native hand bindings, frame/save/prop switches, face morphs, body/clothing morphs and hand modifier checks all pass in output/beauty-hair-*-check.log. Game suite: output/beauty-hair-game-tests.log, TESTS PASSED (0 failures), with existing transform/resource cleanup diagnostics.
 - Live Sims 4 comparison inspected the existing female household in CAS at full body and face zoom. Reference hair uses broad coherent locks, controlled strand highlights and soft silhouette ends; face lighting gives more cheek/nose depth. Current OpenSims card edges and silhouette remain below that target. The compatibility renderer loads successfully but still differs visibly in brightness/material response; Forward+ is the current visual target.
 
+- Direct-edit integration: output/sculpt-final-check.log reports 138 real viewport input checks, zero failures. Coverage includes both frames, all four facial targets, native mesh values, body edits, undo/redo, Escape, release over GUI, GUI slider routing, saved values and palette swatch selection, household-member isolation, text-field undo, wheel zoom and existing age-scale framing. Actual in-game gesture render: output/sculpt-final-interaction.png. A live computer-use check also confirmed head-click zoom, nose dragging and Ctrl+Z in the running OpenSims creator. Game suite: output/sculpt-final-game-tests.log, TESTS PASSED (0 failures), with existing transform/resource cleanup diagnostics.
+
 ## Remaining goal work
 
 - Native age anatomy and further face diversity; current age controls still scale the selected adult model.
 - More clothing and hairstyle choices, skin variants and original styling; refine card-hair styles, the skirt and remaining joint silhouettes.
 - Further hand contact refinement: thumb opposition, object-specific finger placement, grip transitions during reaching and reading, and prop detail. Current grips use authored profiles rather than contact constraints.
-- Direct face/body manipulation and catalog thumbnails; interface still relies on swatches and sliders.
+- Further regional sculpting (nose profile, chin/cheeks, eye/lid shape, individual torso/limb proportions), catalog thumbnails and broader edit history. Current direct manipulation exposes four face proportions and global weight/muscle; slider/catalog changes still clear drag history.
 - More complete facial animation, teeth, speech and expression blending.
 - Live quality comparison with the Sims 4 reference across body extremes, animation, lighting and customizations.
 

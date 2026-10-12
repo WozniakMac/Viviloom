@@ -42,6 +42,8 @@ var _sleeve_buttons: Array[Button] = []
 var _leg_buttons: Array[Button] = []
 var _rng := RandomNumberGenerator.new()
 var _household_row: HBoxContainer
+var _sculpt: CharacterSculpt
+var _turn_tween: Tween
 
 
 func setup(p_sim: Sim) -> void:
@@ -58,6 +60,13 @@ func _build() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
+	_sculpt = CharacterSculpt.new()
+	root.add_child(_sculpt)
+	_sculpt.select(sim)
+	_sculpt.changed.connect(_sync_body)
+	_sculpt.gesture_started.connect(_stop_turn)
+	_sculpt.zoom_requested.connect(func(close_up: bool): view_requested.emit(close_up))
+	view_requested.connect(_sculpt.set_view)
 
 	# Top-left: name and trait slots.
 	var left := VBoxContainer.new()
@@ -161,8 +170,12 @@ func _build() -> void:
 	bv.add_child(bt)
 	_heavy_slider = _slider(bv, "Weight")
 	_fit_slider = _slider(bv, "Fitness")
-	_heavy_slider.value_changed.connect(func(v: float): sim.set_body(v, sim.body_fit))
-	_fit_slider.value_changed.connect(func(v: float): sim.set_body(sim.body_heavy, v))
+	_heavy_slider.value_changed.connect(func(v: float):
+		_sculpt.clear_history()
+		sim.set_body(v, sim.body_fit))
+	_fit_slider.value_changed.connect(func(v: float):
+		_sculpt.clear_history()
+		sim.set_body(sim.body_heavy, v))
 	_sleeve_buttons = _choice_row(bv, "Sleeves", ["Short", "Long"], func(i: int): sim.set_outfit(i == 1, sim.shorts))
 	_leg_buttons = _choice_row(bv, "Legs", ["Trousers", "Shorts", "Skirt"], func(i: int): sim.set_legs(["trousers", "shorts", "skirt"][i]))
 	var face_panel := PanelContainer.new()
@@ -183,7 +196,9 @@ func _build() -> void:
 		var slider := _slider(face_controls, labels[feature])
 		slider.min_value = -1.0
 		slider.value = 0.0
-		slider.value_changed.connect(func(value: float): sim.set_face_feature(feature, value))
+		slider.value_changed.connect(func(value: float):
+			_sculpt.clear_history()
+			sim.set_face_feature(feature, value))
 		slider.drag_started.connect(func(): view_requested.emit(true))
 		_face_sliders[feature] = slider
 	_sync_body()
@@ -316,6 +331,31 @@ func _build() -> void:
 		view.pressed.connect(func(): view_requested.emit(close_up))
 		view_row.add_child(view)
 
+	var history := HBoxContainer.new()
+	history.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	history.position = Vector2(-94,-122)
+	history.add_theme_constant_override("separation",8)
+	root.add_child(history)
+	var undo := Button.new()
+	undo.text = "Undo"
+	undo.tooltip_text = "Undo the last drag (Ctrl+Z)"
+	undo.focus_mode = Control.FOCUS_NONE
+	undo.disabled = true
+	undo.custom_minimum_size = Vector2(90,30)
+	undo.pressed.connect(_sculpt.undo)
+	history.add_child(undo)
+	var redo := Button.new()
+	redo.text = "Redo"
+	redo.tooltip_text = "Redo the last drag (Ctrl+Shift+Z)"
+	redo.focus_mode = Control.FOCUS_NONE
+	redo.disabled = true
+	redo.custom_minimum_size = Vector2(90,30)
+	redo.pressed.connect(_sculpt.redo)
+	history.add_child(redo)
+	_sculpt.history_changed.connect(func(can_undo: bool,can_redo: bool):
+		undo.disabled = not can_undo
+		redo.disabled = not can_redo)
+
 	# Bottom centre: turn the Sim.
 	var turn := HBoxContainer.new()
 	turn.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
@@ -377,6 +417,8 @@ func set_household(members: Array, max_size: int) -> void:
 
 ## Switches the panels to another household member.
 func edit(s: Sim) -> void:
+	_stop_turn()
+	_sculpt.select(s)
 	sim = s
 	_picked = s.traits.duplicate()
 	_name_edit.text = s.sim_name
@@ -417,7 +459,7 @@ func _sync_swatches() -> void:
 	var current := {"skin": sim.skin_color, "hair": sim.hair_color, "eyes": sim.eye_color, "shirt": sim.shirt_color, "pants": sim.pants_color}
 	for part in _swatches:
 		for pair in _swatches[part]:
-			(pair[0] as Button).set_pressed_no_signal((pair[1] as Color).is_equal_approx(current[part]))
+			(pair[0] as Button).set_pressed_no_signal((pair[1] as Color).to_html() == (current[part] as Color).to_html())
 
 
 func _slider(parent: Control, label: String) -> HSlider:
@@ -492,16 +534,21 @@ func _pick_outfit(cat: String) -> void:
 
 
 func _pick_frame(frame: String) -> void:
+	_sculpt.cancel_drag()
+	_sculpt.clear_history()
 	sim.set_body_frame(frame)
 	for key in _frame_buttons:
 		(_frame_buttons[key] as Button).button_pressed = key == sim.body_frame
 
 
 func _pick_age(stage: String) -> void:
+	_sculpt.cancel_drag()
+	_sculpt.clear_history()
 	sim.age_days = 0
 	sim.set_age(stage)
 	for k in _age_buttons:
 		(_age_buttons[k] as Button).button_pressed = k == stage
+	view_requested.emit(_sculpt.close_up)
 
 
 func _pick_hair(style: String) -> void:
@@ -521,9 +568,14 @@ func _pick_aspiration(a: String) -> void:
 	_aspiration_pick.tooltip_text = Aspirations.INFO[a]["description"]
 
 
+func _stop_turn() -> void:
+	if _turn_tween != null and _turn_tween.is_valid(): _turn_tween.kill()
+
 func _turn(amount: float) -> void:
-	var tw := create_tween()
-	tw.tween_property(sim, "rotation:y", sim.rotation.y + amount, 0.25).set_trans(Tween.TRANS_SINE)
+	_stop_turn()
+	_sculpt.clear_history()
+	_turn_tween = create_tween()
+	_turn_tween.tween_property(sim, "rotation:y", sim.rotation.y + amount, 0.25).set_trans(Tween.TRANS_SINE)
 
 
 func _on_trait_clicked(t: String) -> void:
@@ -586,6 +638,8 @@ func randomize_sim() -> void:
 
 
 func _finish() -> void:
+	_stop_turn()
+	_sculpt.cancel_drag()
 	if _done.disabled:
 		return
 	finished.emit()
