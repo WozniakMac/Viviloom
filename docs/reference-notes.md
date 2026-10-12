@@ -60,3 +60,16 @@ names, art and text in OpenSims are original.
   above the portrait, satisfaction points, and an Aspiration tab.
 - Step 10: neighbourhood map after Create a Sim: lots for sale outlined in green, hover
   cards with size, rooms and price, and a moving truck to buy and move in.
+- Steps 11-20: day and night with lamps, title screen and save/load, a rigged and animated
+  character model (Blender), households and switching Sims, modelled furniture, bills,
+  windows/paint/floors, generated sound and music, speech/thought bubbles, life stages,
+  school and babies.
+- Steps 21-30: townies, the phone and community lots, roofs and a street of neighbours,
+  dishes/accidents/passing out, five more skills, breakdowns and fires, event dialogs,
+  body sliders and outfit cuts, emotional interactions and the Rewards Store, pools, and a
+  second storey with stairs.
+- Steps 31-44: marriage and moving in, pizza delivery, gym/library/lounge, picture icons,
+  outfit categories with the change spin, hover highlights, stereo and dancing, carpool,
+  more careers with work styles, fourteen traits, death and the Grim Reaper, furniture
+  colour swatches, mood body language, inventory and paintings to hang, recipes and group
+  meals, homework and toys, and Manage Households.
