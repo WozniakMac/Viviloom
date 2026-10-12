@@ -56,6 +56,7 @@ func _ready() -> void:
 	_test_save_slots()
 	_test_lunar_cycle()
 	_test_room_presets_and_undo()
+	_test_sticky_outfits()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1114,3 +1115,15 @@ func _test_room_presets_and_undo() -> void:
 	_check(states.size() == 1 and build._redo.size() == 1, "undo restores and can be redone")
 	build.free()
 	lot.queue_free()
+
+
+func _test_sticky_outfits() -> void:
+	var s := Sim.new()
+	s.change_outfit("sleep", false)
+	var tv := Interaction.new("Watch TV", {"fun": 10.0}, 30.0, "fun", "sit")
+	_check(Sim.outfit_for(tv) == "everyday", "most activities don't ask for a change")
+	var d := Catalog.create("dresser")
+	var swim: Interaction = d.interactions.filter(func(i): return i.outfit == "swim")[0]
+	_check(swim.menu == "Change Outfit..." and d.interactions.size() == 4, "the dresser changes outfits")
+	d.free()
+	s.free()

@@ -97,6 +97,8 @@ func holding(p_prop: String) -> Interaction:
 var for_stages: Array = []
 
 
+## Changes into this outfit category when started (the dresser's Change Outfit).
+var outfit := ""
 ## Garden planters: only offered when the planter is "empty", "growing" or "ripe".
 var garden_state := ""
 

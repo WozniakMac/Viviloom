@@ -1094,6 +1094,11 @@ func _update_autonomy() -> void:
 	if not autonomy_enabled or _idle_minutes < wait:
 		return
 	_idle_minutes = 0.0
+	# Up and about in sleepwear, swimwear or gym clothes: change back sometimes.
+	var h := Clock.hour()
+	if outfit != "everyday" and _pose == "stand" and h >= 7 and h < 21 and _rng.randf() < 0.35:
+		change_outfit("everyday")
+		return
 	var pick := Autonomy.choose(self, lot, _rng)
 	if pick.is_empty():
 		return
@@ -1266,11 +1271,16 @@ func _begin_perform(a: SimAction) -> void:
 		if a.furniture.kind == "planter":
 			_last_garden = a.furniture
 	if a.target_sim != null:
-		change_outfit("everyday")
 		_begin_social(a)
 		return
-	if not a.furniture.kind in ["bed", "single_bed"] or a.interaction.pose == "lie":
-		change_outfit(outfit_for(a.interaction))
+	# Like the reference, outfits stick: only sleeping, swimming and working out
+	# change clothes by themselves (and the dresser, on request).
+	if a.interaction.outfit != "":
+		change_outfit(a.interaction.outfit)
+	elif not a.furniture.kind in ["bed", "single_bed"] or a.interaction.pose == "lie":
+		var want := outfit_for(a.interaction)
+		if want != "everyday":
+			change_outfit(want)
 	if a.interaction.cost > 0 and wallet != null:
 		if wallet.funds < a.interaction.cost:
 			_fail(a, "%s can't afford that (§%d)." % [sim_name, a.interaction.cost])

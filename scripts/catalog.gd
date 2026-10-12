@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter", "dresser"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -112,6 +112,7 @@ const INFO := {
 	"monkey_bars": ["Monkey Bars", 450],
 	"column": ["Classic Column", 160],
 	"planter": ["Garden Planter", 150],
+	"dresser": ["Dresser", 300],
 	"piano": ["Upright Piano", 1200],
 	"telescope": ["Telescope", 700],
 	"pond": ["Fishing Pond", 500],
@@ -133,7 +134,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "planter": "outdoor",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "planter": "outdoor", "dresser": "bedroom",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -171,6 +172,7 @@ const DESCRIPTIONS := {
 	"dollhouse": "Endless make-believe. Builds a toddler's Imagination.",
 	"activity_table": "Crayons and blocks for little hands.",
 	"rug": "Ties the room together. Sims can walk on it.",
+	"dresser": "Drawers full of clothes. Change into any outfit here.",
 	"planter": "Plant seeds, water them every day and harvest fresh produce to sell.",
 	"column": "A full-height column to frame porches and open-plan rooms.",
 	"monkey_bars": "Climbing, hanging, showing off. Builds a child's Motor skill.",
@@ -645,6 +647,24 @@ static func create(kind: String) -> Furniture:
 			f.add_box(Vector3(1.5, 0.017, 1.5), Vector3(0, 0.009, 0), Color(0.92, 0.82, 0.65))
 			f.add_box(Vector3(0.9, 0.019, 0.9), Vector3(0, 0.01, 0), Color(0.3, 0.45, 0.6))
 			f.decor = 2
+		"dresser":
+			f.display_name = "Dresser"
+			f.footprint = Vector2i(2, 1)
+			f.height = 0.95
+			f.add_box(Vector3(1.5, 0.85, 0.5), Vector3(0, 0.45, -0.18), WOOD)
+			for row in 3:
+				for col in 2:
+					f.add_box(Vector3(0.68, 0.22, 0.02), Vector3(-0.36 + col * 0.72, 0.22 + row * 0.26, 0.08), WOOD.lightened(0.12))
+					f.add_box(Vector3(0.1, 0.03, 0.03), Vector3(-0.36 + col * 0.72, 0.24 + row * 0.26, 0.1), Color(0.75, 0.62, 0.3))
+			f.spots = [Vector3(0, 0, 0.9)]
+			f.decor = 1
+			var outfits: Array[Interaction] = []
+			for o in [["Everyday", "everyday"], ["Sleepwear", "sleep"], ["Athletic", "athletic"], ["Swimwear", "swim"]]:
+				var ch := Interaction.new(o[0], {}, 3.0, "", "stand", true)
+				ch.outfit = o[1]
+				ch.menu = "Change Outfit..."
+				outfits.append(ch)
+			f.interactions = outfits
 		"planter":
 			f.display_name = "Garden Planter"
 			f.height = 0.4

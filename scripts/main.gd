@@ -546,6 +546,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			if picked is Sim and picked != sim:
 				open_sim_menu(picked, mb.position)
 				return
+			if picked == sim:
+				open_self_menu(mb.position)
+				return
 			var here: Lot = levels[active_level]
 			var hit: Variant = _ground_point(mb.position)
 			if hit != null and here.contains_point(hit):
@@ -598,6 +601,18 @@ func _queue_with_partner(f: Furniture, i: Interaction) -> void:
 			p.queue_interaction(f, i)
 
 
+## Clicking the active Sim: things they can do on their own (Change Outfit...).
+func open_self_menu(screen_pos: Vector2) -> void:
+	var cats := [["Everyday", "everyday"], ["Sleepwear", "sleep"], ["Athletic", "athletic"], ["Swimwear", "swim"]]
+	_on_pie_choice(func(_i: int):
+		var names: Array[String] = []
+		for c in cats:
+			names.append(c[0])
+		_on_pie_choice(func(j: int): sim.change_outfit(cats[j][1]))
+		hud.pie_menu.open(screen_pos, "Change Outfit", names))
+	hud.pie_menu.open(screen_pos, sim.sim_name, ["Change Outfit..."] as Array[String])
+
+
 ## Social pie menu for another Sim: first a ring of categories, then the socials in
 ## the chosen one.
 func open_sim_menu(other: Sim, screen_pos: Vector2) -> void:
@@ -635,7 +650,8 @@ func _pick_at(screen_pos: Vector2) -> Object:
 	# Other Sims win over the objects they're sitting at: test their on-screen
 	# silhouette (feet to head, about a shoulder-width wide) first.
 	for other in lot.sims:
-		if other == sim or not other.visible or cam.is_position_behind(other.global_position):
+		# The active Sim counts too while standing (clicking them opens their own menu).
+		if (other == sim and sim.pose_name() != "stand") or not other.visible or cam.is_position_behind(other.global_position):
 			continue
 		var feet := cam.unproject_position(other.global_position)
 		var head := cam.unproject_position(other.global_position + Vector3(0, 1.8, 0))
