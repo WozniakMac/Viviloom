@@ -8,6 +8,8 @@ signal notice(text: String, title: String)
 ## A baby was born; main adds them to the household.
 signal born(baby: Sim, parents: Array)
 signal passed_away(sim: Sim)
+## Midnight: the rest of the world moves on too (story progression).
+signal day_passed(day: int)
 
 const PREGNANCY_DAYS := 3
 const BABY_CHANCE := 0.6
@@ -33,6 +35,7 @@ func _process(_delta: float) -> void:
 
 ## Everything that happens at midnight.
 func new_day() -> void:
+	day_passed.emit(_last_day)
 	for s in household.duplicate():
 		if s.pregnant_days >= 0:
 			s.pregnant_days += 1

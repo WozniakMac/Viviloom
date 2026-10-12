@@ -41,6 +41,7 @@ func _ready() -> void:
 	_test_lot_traits()
 	_test_career_tasks()
 	_test_walk_styles()
+	_test_story()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -792,3 +793,26 @@ func _test_walk_styles() -> void:
 	_check(s._remaining_path() > Sim.JOG_DISTANCE, "long trips are measured for jogging")
 	_check(s.to_dict().get("walk_style") == "lazy", "walk style is saved")
 	s.free()
+
+
+func _test_story() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var grandpa := {"sim": {"name": "Hal", "age": ["elder", 9, -1]}, "work": {"career": ""}}
+	var mum := {"sim": {"name": "Ann", "age": ["adult", 0, -1], "spouse": "Bob"}, "work": {"career": "culinary", "level": 0, "performance": 95.0}}
+	var dad := {"sim": {"name": "Bob", "age": ["adult", 0, -1], "spouse": "Ann"}, "work": {"career": ""}}
+	var h := {"household": [mum, dad, grandpa], "funds": 1000, "home": "cottage"}
+	var world := [h]
+	var news := Story.advance_day(world, 1, rng)
+	_check(h["household"].size() >= 2 and not h["household"].any(func(m): return m["sim"]["name"] == "Hal"), "elders pass away off-screen")
+	_check(news.any(func(n): return "Hal" in n), "deaths make the neighbourhood news")
+	_check(h["funds"] > 1000 and mum["work"]["level"] == 1, "working Sims earn and get promoted off-screen")
+	var babies := 0
+	for d in range(2, 60):
+		Story.advance_day(world, d, rng)
+		babies = h["household"].size()
+	_check(world.is_empty() or babies >= 2, "households carry on (or end) over time")
+	var lone := {"household": [{"sim": {"name": "Old", "age": ["elder", 50, -1]}, "work": {}}], "funds": 0}
+	var w2 := [lone]
+	Story.advance_day(w2, 1, rng)
+	_check(w2.is_empty(), "a household with no one left is removed")

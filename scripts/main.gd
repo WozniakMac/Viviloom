@@ -35,6 +35,7 @@ var _home_snapshot := {}
 ## The other households in this world (snapshots, same shape as a saved
 ## household), and keys of the save that belong to the whole world.
 var other_households: Array = []
+var _story_rng := RandomNumberGenerator.new()
 const WORLD_KEYS: Array[String] = ["version", "minutes", "townies", "tips", "others"]
 ## Modal event cards (doorbell, new baby, farewells, first-time tips). Scripted
 ## dev runs turn them off so nothing waits for an answer.
@@ -139,6 +140,9 @@ func _ready() -> void:
 	life.max_size = MAX_HOUSEHOLD
 	add_child(life)
 	life.notice.connect(func(t: String, title: String): hud.show_notice(t, title))
+	life.day_passed.connect(func(day: int):
+		for n in Story.advance_day(other_households, day, _story_rng):
+			hud.show_notice(n, "Neighbourhood News"))
 	life.born.connect(_on_baby_born)
 	life.passed_away.connect(func(s: Sim): _on_died(s, "old_age"))
 
