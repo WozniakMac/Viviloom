@@ -671,13 +671,15 @@ func _harvest(planter: Furniture, lvl: int) -> void:
 		return
 	var info: Array = Catalog.CROPS[crop]
 	var count := 2 + lvl / 3 + _rng.randi_range(0, 1)
+	var q := Catalog.produce_quality(lvl, int(g.get("care", 0)), int(g.get("fertilized", 0)))
+	var value := roundi((int(info[2]) + lvl) * Catalog.PRODUCE_VALUE_MULT[q])
 	for k in count:
-		inventory.append({"kind": "produce", "name": info[4], "value": int(info[2]) + lvl})
+		inventory.append({"kind": "produce", "name": info[4], "quality": q, "value": value})
 	inventory_changed.emit()
 	count_stat("harvests")
 	planter.set_meta("item", {})
 	planter.refresh_garden()
-	announced.emit("%s harvested %d %s!" % [sim_name, count, info[0].to_lower()])
+	announced.emit("%s harvested %d %s %s!" % [sim_name, count, Catalog.PRODUCE_QUALITY[q].to_lower(), info[0].to_lower()])
 
 
 ## A fishing trip may land something: better anglers catch rarer, pricier fish.
@@ -1349,13 +1351,15 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 	if not i.moodlet.is_empty():
 		var m := i.moodlet
 		emotions.add(m[0], m[1], m[2] + lvl / 4, m[3], m[4], m[5])
-	if finished and i.needs_item == "homework":
+	if finished and i.needs_item != "":
+		# Uses up the item the activity needed (homework, produce for fertilizer...).
 		for k in inventory.size():
-			if inventory[k].get("kind") == "homework":
+			if inventory[k].get("kind") == i.needs_item:
 				inventory.remove_at(k)
 				break
 		inventory_changed.emit()
-		homework_done.emit()
+		if i.needs_item == "homework":
+			homework_done.emit()
 	if finished and i.recipe != "" and lot != null:
 		_serve_meal(i, lvl)
 	if finished and i.creates == "fish":

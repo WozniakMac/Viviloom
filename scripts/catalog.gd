@@ -18,6 +18,15 @@ const RECIPES := [
 	["Baked Alaska", 9, 8, 90.0, Color(0.98, 0.92, 0.85)],
 ]
 const MEAL_QUALITY: Array[String] = ["Poor", "Normal", "Good", "Excellent"]
+## Harvest quality, from Gardening skill, care (watering and weeding) and fertilizer.
+const PRODUCE_QUALITY: Array[String] = ["Poor", "Normal", "Good", "Excellent", "Perfect"]
+const PRODUCE_VALUE_MULT: Array[float] = [0.6, 1.0, 1.4, 1.9, 2.6]
+
+
+static func produce_quality(skill_level: int, care: int, fertilized: int) -> int:
+	return clampi(skill_level / 3 + care / 3 + fertilized, 0, PRODUCE_QUALITY.size() - 1)
+
+
 ## Garden crops: id -> [label, seed cost, produce value, colour, one item's name]
 const CROPS := {
 	"tomato": ["Tomatoes", 10, 8, Color(0.85, 0.15, 0.12), "Tomato"],
@@ -633,9 +642,15 @@ static func create(kind: String) -> Furniture:
 			water.garden_state = "growing"
 			garden.append(water)
 			var weed := Interaction.new("Weed", {"fun": 5.0}, 20.0, "", "stand", true).practices("gardening", 70.0)
-			weed.effect = "water"
+			weed.effect = "weed"
 			weed.garden_state = "growing"
 			garden.append(weed)
+			# Fertilize with produce from the inventory, like the reference's compost of harvestables.
+			var fert := Interaction.new("Fertilize", {"fun": 5.0}, 15.0, "", "stand", true).practices("gardening", 60.0)
+			fert.effect = "fertilize"
+			fert.needs_item = "produce"
+			fert.garden_state = "growing"
+			garden.append(fert)
 			var harvest := Interaction.new("Harvest", {"fun": 15.0}, 20.0, "", "stand", true).practices("gardening", 50.0).makes("produce").grants("harvest", "happy", 1, "Bountiful Harvest", "Grew it themselves!", 180.0)
 			harvest.garden_state = "ripe"
 			garden.append(harvest)

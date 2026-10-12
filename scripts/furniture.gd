@@ -264,6 +264,8 @@ func grow_garden(day: int) -> void:
 		return
 	var watered: bool = int(g.get("watered", -10)) >= day - 1
 	g["growth"] = minf(1.0, g.get("growth", 0.0) + (0.35 if watered else 0.12))
+	if watered:
+		g["care"] = int(g.get("care", 0)) + 1
 	set_meta("item", g)
 	refresh_garden()
 
@@ -316,9 +318,15 @@ func apply_effect(e: String) -> void:
 		set_meta("item", {"crop": e.trim_prefix("plant:"), "growth": 0.0, "watered": Clock.day()})
 		refresh_garden()
 		return
-	if e == "water":
+	if e in ["water", "weed", "fertilize"]:
 		var g: Dictionary = get_meta("item", {}).duplicate()
-		g["watered"] = Clock.day()
+		match e:
+			"water":
+				g["watered"] = Clock.day()
+			"weed":
+				g["care"] = int(g.get("care", 0)) + 1
+			"fertilize":
+				g["fertilized"] = mini(2, int(g.get("fertilized", 0)) + 1)
 		set_meta("item", g)
 		return
 	match e:

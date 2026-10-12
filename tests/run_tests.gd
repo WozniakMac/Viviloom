@@ -51,6 +51,7 @@ func _ready() -> void:
 	_test_townie_babies()
 	_test_fence_styles()
 	_test_gardening()
+	_test_produce_quality()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1029,5 +1030,22 @@ func _test_gardening() -> void:
 	var produce := s.inventory.filter(func(it): return it.get("kind") == "produce")
 	_check(produce.size() >= 3 and produce[0]["name"] == "Tomato", "harvesting fills the inventory")
 	_check(p.garden_state() == "empty", "the planter is ready to sow again")
+	s.free()
+	p.free()
+
+
+func _test_produce_quality() -> void:
+	_check(Catalog.produce_quality(0, 0, 0) == 0 and Catalog.produce_quality(9, 6, 2) == 4, "quality grows with skill, care and fertilizer")
+	var p := Catalog.create("planter")
+	p.apply_effect("plant:carrot")
+	var s := Sim.new()
+	_check(not Ages.allows_for(s, p.available_interactions().filter(func(i): return i.name == "Fertilize")[0]), "fertilizing needs produce in the inventory")
+	p.apply_effect("weed")
+	p.apply_effect("fertilize")
+	var g: Dictionary = p.get_meta("item").duplicate()
+	g["growth"] = 1.0
+	p.set_meta("item", g)
+	s._harvest(p, 6)
+	_check(s.inventory[0]["quality"] >= 3, "a well-tended, fertilized crop comes out excellent")
 	s.free()
 	p.free()
