@@ -14,6 +14,8 @@ signal relationships_changed
 signal baby_tried(partner: Sim)
 ## A Move In or Propose went well; main brings `other` into the household.
 signal moving_in(other: Sim)
+## The Sim has died; main calls the Grim Reaper.
+signal died(cause: String)
 ## Asks the HUD to show a panel ("career"...).
 signal panel_requested(panel: String)
 ## An activity or social was done long enough to count (for wants and goals).
@@ -110,6 +112,13 @@ var _selected := false
 var _voice: AudioStreamPlayer3D
 ## Game minutes left lying on the floor after collapsing from exhaustion.
 var _passed_out := 0.0
+## Set while the Grim Reaper is collecting this Sim.
+var dying := false
+## Game minutes spent starving, and too close to a fire.
+var _starving := 0.0
+var _burning := 0.0
+const STARVE_MINUTES := 1440.0
+const BURN_MINUTES := 40.0
 ## While swimming: the pool's centre and half size, and the lap phase.
 var _swim_center := Vector3.ZERO
 var _swim_half := Vector2.ONE
@@ -648,6 +657,9 @@ func _enqueue(a: SimAction) -> bool:
 func _process(real_delta: float) -> void:
 	if away:
 		return
+	if dying:
+		_animate(Clock.scaled(real_delta), false, null)
+		return
 	var delta := Clock.scaled(real_delta)
 	if _passed_out > 0.0:
 		_sleep_it_off(delta)
@@ -720,7 +732,25 @@ func _climb(a: SimAction, delta: float) -> bool:
 
 ## What happens when a need runs out completely: an accident, or passing out.
 func _check_limits() -> void:
-	if lot == null:
+	if lot == null or is_visitor:
+		return
+	# Starving for a whole day, or standing in a fire too long, is fatal.
+	var was_starving := _starving > 0.0
+	_starving = _starving + Clock.game_delta if needs.get_value("hunger") <= 0.0 else 0.0
+	if _starving > 0.0 and not was_starving:
+		announced.emit("%s is starving! Get them something to eat, fast." % sim_name)
+	if _starving >= STARVE_MINUTES:
+		died.emit("hunger")
+		return
+	var near_fire := false
+	var cur := current_action()
+	var fighting := cur != null and cur.furniture != null and cur.furniture.kind == "fire"
+	for f in lot.furniture:
+		if f.kind == "fire" and f.global_position.distance_to(global_position) < 1.3:
+			near_fire = true
+	_burning = _burning + Clock.game_delta if near_fire and not fighting else maxf(0.0, _burning - Clock.game_delta)
+	if _burning >= BURN_MINUTES:
+		died.emit("fire")
 		return
 	if needs.get_value("bladder") <= 0.0:
 		clear_queue()

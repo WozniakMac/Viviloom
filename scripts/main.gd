@@ -110,10 +110,7 @@ func _ready() -> void:
 	add_child(life)
 	life.notice.connect(func(t: String, title: String): hud.show_notice(t, title))
 	life.born.connect(_on_baby_born)
-	life.passed_away.connect(func(s: Sim):
-		if dialogs_enabled:
-			EventDialog.ask(self, s, "Farewell, %s" % s.sim_name, "%s has passed away peacefully after a long and full life. They'll be missed." % s.sim_name, ["Rest in peace"] as Array[String])
-		remove_from_household(s))
+	life.passed_away.connect(func(s: Sim): _on_died(s, "old_age"))
 
 	var first := _new_sim("Alex")
 	var start_needs := {"hunger": 70.0, "energy": 85.0, "bladder": 55.0, "hygiene": 80.0, "fun": 45.0, "social": 60.0}
@@ -181,6 +178,7 @@ func add_to_household(s: Sim) -> void:
 		lot.sims.append(s)
 	s.earned.connect(build.earn)
 	s.baby_tried.connect(func(p: Sim): life.try_for_baby(s, p))
+	s.died.connect(func(cause: String): _on_died(s, cause))
 	s.wallet = build
 	s.moving_in.connect(_on_moving_in)
 	s.panel_requested.connect(func(p: String):
@@ -243,6 +241,41 @@ func tip(id: String, title: String, text: String) -> void:
 		return
 	_tips_seen[id] = true
 	EventDialog.ask(self, null, title, text, ["Got it"] as Array[String])
+
+
+## Sends for the Grim Reaper; afterwards a tombstone stays where they fell and
+## the household mourns. The last Sim dying ends the game.
+func _on_died(s: Sim, cause: String) -> void:
+	if s.dying or not household.has(s):
+		return
+	if household.size() <= 1 and cause == "old_age":
+		return
+	var reaper := GrimReaper.reap(self, s, cause)
+	reaper.finished.connect(_after_death)
+
+
+func _after_death(s: Sim, cause: String) -> void:
+	var where := s.global_position
+	var home_lot := s.lot if s.lot != null else lot
+	var stone := home_lot.add_mess("tombstone", where)
+	stone.display_name = "Tombstone of %s" % s.sim_name
+	for o in household:
+		if o != s:
+			var close := o.friendship_with(s) >= 30.0 or o.romance_with(s) >= 30.0 or o.spouse == s
+			o.emotions.add("mourning", "sad", 3 if close else 1, "Mourning", "Missing %s." % s.sim_name, 1440.0)
+	var text := "%s %s." % [s.sim_name, GrimReaper.CAUSES[cause]]
+	if household.size() <= 1:
+		if dialogs_enabled:
+			var d := EventDialog.ask(self, null, "Game Over", text + " There's no one left in the household.", ["Back to the Main Menu"] as Array[String])
+			d.answered.connect(func(_c: int, _t: String): get_tree().reload_current_scene())
+		else:
+			hud.show_notice(text, "Game Over")
+		return
+	remove_from_household(s)
+	if dialogs_enabled:
+		EventDialog.ask(self, null, "Rest in Peace", text + " They'll be missed.", ["Farewell"] as Array[String])
+	else:
+		hud.show_notice(text, "Rest in Peace")
 
 
 ## A townie said yes to moving in (or marrying): they join the household.
@@ -1609,6 +1642,27 @@ func _run_scenario(scenario: String, path: String) -> void:
 			work.work_style = "hard"
 			hud._show_page(4)
 			await get_tree().create_timer(0.6).timeout
+		"death":
+			var gus := _new_sim("Gus")
+			add_to_household(gus)
+			gus.set_age("elder")
+			gus.global_position = lot.cell_to_world(Vector2i(11, 9))
+			sim.global_position = lot.cell_to_world(Vector2i(13, 9))
+			sim.change_relationship(gus, 50.0, 0.0)
+			gus._starving = Sim.STARVE_MINUTES - 1.0
+			gus.needs.set_value("hunger", 0.0)
+			Clock.set_speed(1)
+			rig.frame(lot.cell_to_world(Vector2i(12, 9)), deg_to_rad(20.0), deg_to_rad(-30.0), 9.0)
+			await get_tree().create_timer(2.2).timeout
+		"deathafter":
+			var gus2 := _new_sim("Gus")
+			add_to_household(gus2)
+			gus2.global_position = lot.cell_to_world(Vector2i(11, 9))
+			gus2._starving = Sim.STARVE_MINUTES - 1.0
+			gus2.needs.set_value("hunger", 0.0)
+			Clock.set_speed(1)
+			await get_tree().create_timer(7.0).timeout
+			print("DEATH household=%d tombstones=%d mourning=%s" % [household.size(), lot.furniture.filter(func(f): return f.kind == "tombstone").size(), sim.emotions.has("mourning")])
 		"store":
 			aspirations.satisfaction = 2300
 			hud._show_page(5)

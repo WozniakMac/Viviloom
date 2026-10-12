@@ -51,6 +51,7 @@ const INFO := {
 	"puddle": ["Puddle", 0],
 	"fire": ["Fire!", 0],
 	"pool": ["Swimming Pool", 0],
+	"tombstone": ["Tombstone", 0],
 }
 ## Build-mode catalogue sections: [id, label]; "all" lists everything.
 const CATEGORIES := [["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"], ["living", "Living"], ["outdoor", "Outdoor"]]
@@ -474,6 +475,18 @@ static func create(kind: String) -> Furniture:
 			for x in [-0.47, 0.47]:
 				var rail := f.add_box(Vector3(0.04, 0.04, 3.4), Vector3(x, Lot.WALL_HEIGHT * 0.5 + 0.9, 0), DARK)
 				rail.rotation.x = atan2(Lot.WALL_HEIGHT, 3.0)
+		"tombstone":
+			f.display_name = "Tombstone"
+			f.height = 1.0
+			var stone := Color(0.62, 0.63, 0.66)
+			f.add_box(Vector3(0.7, 0.08, 0.45), Vector3(0, 0.04, 0), stone.darkened(0.2))
+			f.add_box(Vector3(0.55, 0.85, 0.14), Vector3(0, 0.5, -0.08), stone)
+			f.add_box(Vector3(0.4, 0.05, 0.02), Vector3(0, 0.75, 0.0), stone.darkened(0.35))
+			f.add_box(Vector3(0.05, 0.3, 0.02), Vector3(0, 0.62, 0.0), stone.darkened(0.35))
+			f.spots = [Vector3(0, 0, 1.0)]
+			f.interactions = [
+				Interaction.new("Mourn", {"social": 20.0}, 30.0, "", "stand").grants("mourned", "sad", 1, "Paid Respects", "They're gone, but not forgotten.", 240.0),
+			]
 		"pool":
 			# Its footprint, spots and visuals come from Lot.add_pool.
 			f.display_name = "Swimming Pool"

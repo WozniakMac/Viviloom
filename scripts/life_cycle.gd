@@ -127,7 +127,6 @@ func _pass_away(s: Sim) -> void:
 		if o != s:
 			var close := o.friendship_with(s) >= 30.0 or o.romance_with(s) >= 30.0
 			o.emotions.add("mourning", "sad", 3 if close else 1, "Mourning", "Missing %s." % s.sim_name, 1440.0)
-	notice.emit("%s has passed away peacefully after a long, full life." % s.sim_name, "Farewell")
 	passed_away.emit(s)
 
 
