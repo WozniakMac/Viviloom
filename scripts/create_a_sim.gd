@@ -244,7 +244,7 @@ func _build() -> void:
 	arow.add_theme_constant_override("v_separation", 4)
 	arow.custom_minimum_size = Vector2(250, 0)
 	lv.add_child(arow)
-	for stage in ["child", "teen", "young_adult", "adult", "elder"]:
+	for stage in Ages.ORDER:
 		var ab := Button.new()
 		ab.text = Ages.label(stage)
 		ab.toggle_mode = true
@@ -539,12 +539,14 @@ func _pick_frame(frame: String) -> void:
 	sim.set_body_frame(frame)
 	for key in _frame_buttons:
 		(_frame_buttons[key] as Button).button_pressed = key == sim.body_frame
+	if not _hair_buttons.is_empty():_pick_hair(sim.hair_style)
+	view_requested.emit(_sculpt.close_up)
 
 
 func _pick_age(stage: String) -> void:
 	_sculpt.cancel_drag()
 	_sculpt.clear_history()
-	sim.age_days = 0
+	if stage != sim.age_stage:sim.age_days = 0
 	sim.set_age(stage)
 	for k in _age_buttons:
 		(_age_buttons[k] as Button).button_pressed = k == stage

@@ -169,8 +169,13 @@ def assign_body_materials(obj, mats):
         hand=sum(hands[i] for i in poly.vertices)/len(poly.vertices)
         if hand>.25:
             slot='Skin'
+        elif 'female' in os.environ.get('ANNY_PRESET','') and arm>.18:
+            slot='Skin'
         elif arm>.5:
-            slot='Skin' if c.z<.86 else 'Sleeve' if c.z<1.12 else 'Shirt'
+            # The fitted female tee has shorter sleeves than the male sweater.
+            # Keep its underlying arm opaque; only fabric occludes the skin.
+            female='female' in os.environ.get('ANNY_PRESET','')
+            slot='Skin' if female or c.z<.86 else 'Sleeve' if c.z<1.12 else 'Shirt'
         elif c.z < 0.12:
             slot = "Shoes"
         elif c.z < 0.5 and abs(c.x) < 0.2:
@@ -677,6 +682,9 @@ def build_frame(rig,label):
         add_face_shapes(part)
     from facial_shapes import add_native_actions
     add_native_actions(head)
+    from head_body_shapes import add_head_body_shapes
+    add_head_body_shapes(head)
+    for hair in hairs:add_head_body_shapes(hair,skin_only=False)
     faces.append(build_skirt(mats))
     print("BUILD FRAME",label,"binding",flush=True)
     skin_to_rig(rig, body, [head] + hairs + faces)
@@ -684,6 +692,10 @@ def build_frame(rig,label):
     from native_clothing import build_clothing
     print("BUILD FRAME",label,"clothing",flush=True)
     build_clothing(J, rig)
+    from age_shapes import AgeShapes
+    ages=AgeShapes(J,rig,BONES)
+    for part in [obj for obj in bpy.data.objects if obj not in existing and obj.type=='MESH']:ages.add(part)
+    ages.save(label)
     frame=bpy.data.objects.new('Frame_'+label,None)
     bpy.context.collection.objects.link(frame);frame.parent=rig
     for part in [obj for obj in bpy.data.objects if obj not in existing and obj.type=='MESH']:
@@ -694,10 +706,17 @@ def build_frame(rig,label):
 def main():
     clear_scene()
     rig=build_armature()
+    male_joints=dict(J)
     for label,preset in [('Masculine','adult-male'),('Feminine','adult-female')]:
+        J.update(male_joints)
+        if label=='Feminine':
+            for side,sx in [('L',1),('R',-1)]:
+                for name,width in [('shoulder',.180),('elbow',.220),('wrist',.240),('hand',.242)]:
+                    p=J[name+'.'+side];J[name+'.'+side]=(width*sx,p[1],p[2])
         os.environ['ANNY_PRESET']=preset
         build_frame(rig,label)
     os.environ['ANNY_PRESET']='adult-male'
+    J.update(male_joints)
     animations(rig)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     # Texture-ready UVs also let Godot generate tangents without import errors.

@@ -368,5 +368,12 @@
   },
   "data_license": "CC0",
   "code_license": "Apache-2.0",
-  "native_hand_weights": "native-hand-weights.npz"
+  "native_hand_weights": "native-hand-weights.npz",
+  "age_presets": {
+    "toddler": 0.14,
+    "child": 0.3333333333333333,
+    "teen": 0.54,
+    "adult": 0.83,
+    "elder": 1.0
+  }
 }

@@ -4,7 +4,7 @@ Worktree: character-creator. The full Sims 4 quality and interaction target is n
 
 ## Current character
 
-- Native Anny 0.6.1 MakeHuman topology supplies separate adult male and female anatomy, including the original fingers, thumbs, feet and face. All 19,158 source indices and UVs are retained before subdivision.
+- Native Anny 0.6.1 MakeHuman topology supplies separate male and female anatomy and native toddler, child, teen, adult and elder presets, including the original fingers, thumbs, feet and face. All 19,158 source indices and UVs are retained before subdivision.
 - Body weight and muscle sliders now use actual Anny heavy, fit and combined heavy/fit presets. A corrective morph keeps combined settings coherent. Fitted sweater, jeans and sneakers share those native variations.
 - Hands retain a rigid wrist-to-palm transform; smooth arm masks prevent fingers receiving leg weights. Native Anny finger weights survive subdivision and cuts. Thirty finger joints provide independent deformation and a gently curled resting pose on both frames; talking and waving relax the fingers further. All hand faces keep visible skin materials. The previous missing thumb was a clothing-mask defect.
 - A Godot skeleton modifier blends right-hand book, cup and fishing-rod grips after body animation. Objects are anchored from the native middle knuckle and rotate with the wrist. Grip changes and release blend smoothly, including after switching frames. The cup has a tapered round mesh, rim and liquid surface.
@@ -21,6 +21,12 @@ Worktree: character-creator. The full Sims 4 quality and interaction target is n
 - Persistent nose, jaw, eye spacing and lip controls retain legacy save defaults. A neutral creator idle keeps gameplay moods from changing posture while editing.
 - Creator studio camera, softer key/fill/rim lighting, a fading floor without a hard horizon and isolated rendering layers improve close inspection. Native skin uses restrained subsurface scattering in Forward+, with normal opaque skin fallback in other renderers. Gameplay layers are restored on exit.
 - Editable compressed Blender source: tools/model_source/character.blend. Image paths are relative. Runtime asset: assets/sim/sim.glb.
+
+- Native ages replace the scaled-adult placeholder. The original topology supplies age deformation fields shared by the skin, eyes, brows, hair, garments and oral cavity. Animation translation keys, bone rest origins, inverse binds and held-prop anchors follow the selected anatomy. Physical height stays separate. Full-body framing now keeps the same camera scale across ages, so shorter stages are visibly shorter; face zoom remains age-scaled. Rig data is packaged as a preloaded Godot resource for exports.
+- Toddler is now selectable in CAS. Opening an unchanged age preserves lived days; choosing a new stage resets the stage days. Elder gray hair is a display tint and no longer overwrites the saved chosen hair color. Returning to a younger age restores that color.
+- Female shoulder and arm fitting is narrower, with softer native cheek/jaw/chin/nose/lip refinements. The fitted CC0 female tee replaces the bulky male sweater; optional fitted long sleeves still work. Exposed arm skin stays opaque. First Female selection chooses Bob, and later frame switches remember customized hairstyles.
+- Built-in ImageGen removed the female tee logo/piping and supplied plain blue fabric detail. Only the tee uses that output; jeans retain the original CC0 atlas. Exact prompt and provenance are retained. An original dark inner mouth surface removes the visible background gap through parted lips.
+- Body weight/muscle also updates restrained original cheek/jaw volume and the hair envelope, keeping eyes, eyelids and neck joins fixed.
 
 ## Verification
 
@@ -42,9 +48,13 @@ Worktree: character-creator. The full Sims 4 quality and interaction target is n
 
 - Direct-edit integration: output/sculpt-final-check.log reports 138 real viewport input checks, zero failures. Coverage includes both frames, all four facial targets, native mesh values, body edits, undo/redo, Escape, release over GUI, GUI slider routing, saved values and palette swatch selection, household-member isolation, text-field undo, wheel zoom and existing age-scale framing. Actual in-game gesture render: output/sculpt-final-interaction.png. A live computer-use check also confirmed head-click zoom, nose dragging and Ctrl+Z in the running OpenSims creator. Game suite: output/sculpt-final-game-tests.log, TESTS PASSED (0 failures), with existing transform/resource cleanup diagnostics.
 
+- Native age checkpoint: output/native-age-ready-check.log verifies 3,566 anatomy, skeleton rest, inverse-bind, posed-mesh, hair-color and save checks with zero failures in the actual renderer. Creator input checks include every exposed age, lived-day preservation, face editing and undo: output/native-age-ready-sculpt.log. Frame/identity, body/clothing morphs and gameplay pass in output/native-age-ready-frames.log, output/native-age-ready-morphs.log and output/native-age-ready-game-tests.log. Game tests still emit existing transform/resource-cleanup diagnostics.
+- Rendered age comparisons: output/native-ages-final-body.png and output/native-ages-final-faces.png. Actual creator: output/native-age-ready-creator-face.png. The original sleeve gaps were found in renders and corrected before the checkpoint. Native facial imports/actions, independent hand weights and animated grip profiles pass in output/native-age-face-final-check.log, output/native-age-binding-check.log and output/native-age-hand-check.log.
+- A previous live preview exited with a Godot renderer indexing error during external asset reload. Stop owned verification previews before importing/replacing models, and open a fresh preview afterward. The fresh-model checks pass; this is not evidence that live model hot reload is stable.
+
 ## Remaining goal work
 
-- Native age anatomy and further face diversity; current age controls still scale the selected adult model.
+- Further age-specific skin detail, clothing, expressions and weight/muscle interaction; age now changes native anatomy as well as physical height. The body and facial editing deltas still start from the adult base and need more refinement for younger stages. Further face diversity is also needed.
 - More clothing and hairstyle choices, skin variants and original styling; refine card-hair styles, the skirt and remaining joint silhouettes.
 - Further hand contact refinement: thumb opposition, object-specific finger placement, grip transitions during reaching and reading, and prop detail. Current grips use authored profiles rather than contact constraints.
 - Further regional sculpting (nose profile, chin/cheeks, eye/lid shape, individual torso/limb proportions), catalog thumbnails and broader edit history. Current direct manipulation exposes four face proportions and global weight/muscle; slider/catalog changes still clear drag history.

@@ -66,6 +66,7 @@ func _camera() -> Camera3D:
 func _region(screen: Vector2, feature: String, local: Vector3, radius: Vector2) -> Dictionary:
     var camera := _camera()
     var head := subject._head_mesh
+    local=subject.age_point(local)
     var world := head.to_global(local)
     if camera.is_position_behind(world):return {}
     var center := camera.unproject_position(world)
@@ -81,7 +82,7 @@ func region_at(screen: Vector2) -> Dictionary:
     var camera := _camera()
     if close_up:
         # Width gestures are useful from the front; the back/profile remains rotatable.
-        var toward_camera := (camera.global_position-head.to_global(Vector3(0,1.7,0))).normalized()
+        var toward_camera := (camera.global_position-head.to_global(subject.age_point(Vector3(0,1.7,0)))).normalized()
         var forward := (head.global_basis*Vector3(0,0,-1)).normalized()
         if forward.dot(toward_camera)<.50:return {}
         var best := {}

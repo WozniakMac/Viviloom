@@ -28,15 +28,26 @@ ACTIONS={
     'BrowSad':{'browInnerUp':.55,'browDownLeft':.15,'browDownRight':.15},
 }
 
-def export(name,gender,weight=.45,muscle=.5,actions=None):
-    output=model(phenotype_kwargs={'gender':gender,'age':2/3,'weight':weight,'muscle':muscle},facial_actions=actions)
+def export(name,gender,weight=.45,muscle=.5,actions=None,age=2/3):
+    output=model(phenotype_kwargs={'gender':gender,'age':age,'weight':weight,'muscle':muscle},facial_actions=actions)
     np.savez_compressed(ROOT/(name+'.npz'),vertices=output['rest_vertices'][0].detach().numpy(),base_indices=model.base_mesh_vertex_indices.cpu().numpy(),faces=model.faces.cpu().numpy())
     print('ANNY EXPORTED',name,flush=True)
+
+AGES={'toddler':.14,'child':1/3,'teen':.54,'adult':.83,'elder':1.}
+if '--ages-only' in sys.argv:
+    for frame,gender in [('male',0.),('female',1.)]:
+        for stage,age in AGES.items():export('adult-'+frame+'-age-'+stage,gender,age=age)
+    metadata=json.loads((ROOT/'preset.json').read_text())
+    metadata['age_presets']=AGES
+    (ROOT/'preset.json').write_text(json.dumps(metadata,indent=2))
+    print('NATIVE AGE PRESETS EXPORTED',flush=True)
+    sys.exit(0)
 
 for frame,gender in [('male',0.),('female',1.)]:
     prefix='adult-'+frame
     export(prefix,gender)
     for label,weight,muscle in [('heavy',1.,.5),('fit',.45,1.),('heavy-fit',1.,1.)]:export(prefix+'-'+label,gender,weight,muscle)
     for name,actions in ACTIONS.items():export(prefix+'-action-'+name,gender,actions=actions)
-metadata={'source':'https://github.com/naver/anny','version':anny.__version__,'topology':'makehuman','rig':'makehuman','phenotypes':{'gender':0.,'age':2/3,'weight':.45,'muscle':.5},'frames':{'masculine':{'preset':'adult-male','gender':0.},'feminine':{'preset':'adult-female','gender':1.}},'phenotype_labels':model.phenotype_labels,'local_change_labels':model.local_change_labels,'facial_action_labels':model.facial_action_labels,'exported_actions':ACTIONS,'native_hand_weights':'native-hand-weights.npz','data_license':'CC0','code_license':'Apache-2.0'}
+    for stage,age in AGES.items():export(prefix+'-age-'+stage,gender,age=age)
+metadata={'source':'https://github.com/naver/anny','version':anny.__version__,'topology':'makehuman','rig':'makehuman','phenotypes':{'gender':0.,'age':2/3,'weight':.45,'muscle':.5},'frames':{'masculine':{'preset':'adult-male','gender':0.},'feminine':{'preset':'adult-female','gender':1.}},'phenotype_labels':model.phenotype_labels,'local_change_labels':model.local_change_labels,'facial_action_labels':model.facial_action_labels,'exported_actions':ACTIONS,'age_presets':AGES,'native_hand_weights':'native-hand-weights.npz','data_license':'CC0','code_license':'Apache-2.0'}
 (ROOT/'preset.json').write_text(json.dumps(metadata,indent=2))

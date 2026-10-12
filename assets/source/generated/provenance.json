@@ -19,5 +19,17 @@
       1254,
       1254
     ]
+  },
+  "female-tee-blue-ai.png": {
+    "tool": "built-in imagegen",
+    "mode": "precise-object-edit",
+    "source": "../makehuman/system-assets/clothes/female_casualsuit01/female_casualsuit01_diffuse.png",
+    "source_license": "CC0",
+    "prompt": "female-tee-blue-ai.prompt.txt",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "use": "Plain tee only; original CC0 jeans atlas retained on trousers. AI UV silhouettes approximate the source and require rendered fit verification."
   }
 }

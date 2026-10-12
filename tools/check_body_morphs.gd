@@ -5,10 +5,12 @@ func _initialize():
  root.add_child(model)
  var failures=0
  var checked=0
+ var seen={}
  for part in model.find_children("*", "MeshInstance3D",true,false):
   var part_name=part.name.trim_prefix("Masculine_").trim_prefix("Feminine_")
   if part_name=="Body" or part_name.begins_with("Outfit"):
    checked+=1
+   seen[part.name]=true
    var original=part.bake_mesh_from_current_blend_shape_mix()
    for name in ["Heavy","Fit","HeavyFit"]:
     var index=part.find_blend_shape_by_name(name)
@@ -26,7 +28,9 @@ func _initialize():
      max_delta=max(max_delta,basis[vertex].distance_to(changed[vertex]))
    if max_height>.10 or max_delta>.20 or max_delta<.001:failures+=1
    print(part.name," morph height error ",max_height," displacement ",max_delta)
- if checked!=12:failures+=1
+ for frame in ["Masculine", "Feminine"]:
+  for required in ["Body", "OutfitTop", "OutfitPants", "OutfitShin", "OutfitShoes", "OutfitSleeve"]:
+   if not seen.has(frame+"_"+required):failures+=1
  model.queue_free()
  await process_frame
  print("BODY/CLOTHING IMPORTED MORPH CHECK: ",failures," failures")

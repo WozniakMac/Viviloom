@@ -138,10 +138,16 @@ func _ready() -> void:
     expect(person.sim_name==name_before,"text-field undo restores the name")
     expect(is_equal_approx(person.face_features.NoseWidth,shape_before),"text-field undo preserves sculpt history")
     # Face editing remains reachable after changes in character scale.
-    for stage in ["child","teen","elder"]:
+    person.age_days=4
+    cas._pick_age(person.age_stage)
+    expect(person.age_days==4,"opening an unchanged age preserves lived days")
+    for stage in ["toddler","child","teen","elder"]:
+        person.set_face_feature("NoseWidth",0.0)
+        cas._sync_body()
         cas._pick_age(stage)
         cas.view_requested.emit(false)
         await get_tree().process_frame
+        expect(is_equal_approx(game.rig.distance,3.3),stage+" full body shows physical age height")
         await click(point(Vector3(0,1.71,-.08)))
         expect(cas._sculpt.close_up,stage+" head click opens details")
         var on_screen:=point(Vector3(0,1.71,-.08))
@@ -149,7 +155,7 @@ func _ready() -> void:
         var nose:=point(Vector3(.01,1.673,-.13))
         var before: float=person.face_features.NoseWidth
         await drag(nose,nose+Vector2(60,0))
-        expect(not is_equal_approx(before,person.face_features.NoseWidth),stage+" scaled face remains editable")
+        expect(not is_equal_approx(before,person.face_features.NoseWidth),stage+" native age face remains editable")
     cas._pick_age("young_adult")
     cas._pick_frame("feminine")
     person.set_body(.15,.35)
@@ -179,7 +185,7 @@ func expect(ok: bool,label: String) -> void:
     if not ok:failures+=1;push_error("SCULPT CHECK: "+label)
 
 func point(local: Vector3) -> Vector2:
-    return game.rig.camera.unproject_position(game.sim._head_mesh.to_global(local))
+    return game.rig.camera.unproject_position(game.sim._head_mesh.to_global(game.sim.age_point(local)))
 
 func move(at: Vector2,mask: int=0) -> void:
     var event:=InputEventMouseMotion.new()

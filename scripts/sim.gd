@@ -91,6 +91,8 @@ const BODY_FRAME_LABELS := {"masculine": "Male", "feminine": "Female"}
 @export var body_heavy := 0.0
 @export var body_fit := 0.0
 var face_features := {"NoseWidth": 0.0, "JawWidth": 0.0, "EyeSpacing": 0.0, "LipFullness": 0.0}
+var _character_age: CharacterAge
+var frame_hair_styles := {}
 var _head_mesh: MeshInstance3D
 @export var long_sleeves := false
 @export var shorts := false
@@ -260,19 +262,25 @@ func set_part_color(part: String, c: Color) -> void:
 		"skin": skin_color = c
 		"hair": hair_color = c
 		"eyes": eye_color = c
+	var display_color := hair_display_color() if part == "hair" else c
 	var key := "iris" if part == "eyes" else part
 	if _materials.has(key):
-		(_materials[key] as BaseMaterial3D).albedo_color = _skin_tint() if part == "skin" else c
+		(_materials[key] as BaseMaterial3D).albedo_color = _skin_tint() if part == "skin" else display_color
 	var fabric_key := part + "fabric"
 	_set_fabric_color(fabric_key, c)
+	if part == "shirt":_set_fabric_color("sleevefabric", c)
 	if part == "eyes" and _materials.has("nativeeyes"):
 		(_materials["nativeeyes"] as ShaderMaterial).set_shader_parameter("eye_color", c)
 	if part == "hair":
 		for material_key in _materials:
 			if material_key.begins_with("nativehair_"):
-				(_materials[material_key] as ShaderMaterial).set_shader_parameter("hair_color", c)
+				(_materials[material_key] as ShaderMaterial).set_shader_parameter("hair_color", display_color)
 	_apply_outfit()
 	_store_outfit()
+
+
+func hair_display_color() -> Color:
+	return hair_color.lerp(Color(.82,.82,.84),.75) if age_stage == "elder" else hair_color
 
 
 ## Palette colors describe the intended skin tone; the source texture already has color.
@@ -443,7 +451,9 @@ func set_face_feature(feature: String, value: float) -> void:
 func set_body_frame(frame: String) -> void:
 	if frame not in BODY_FRAMES or frame == body_frame:
 		return
+	frame_hair_styles[body_frame] = hair_style
 	body_frame = frame
+	hair_style = frame_hair_styles.get(frame, "bob" if frame == "feminine" and hair_style == "short" else hair_style)
 	if _body != null:
 		_build_model()
 
@@ -454,8 +464,9 @@ func set_body(heavy: float, fit: float) -> void:
 	body_fit = clampf(fit, 0.0, 1.0)
 	if _body_mesh == null:
 		return
-	var meshes: Array = [_body_mesh]
+	var meshes: Array = [_body_mesh, _head_mesh]
 	meshes.append_array(_clothing_meshes.values())
+	meshes.append_array(_hair_meshes.values())
 	for mesh in meshes:
 		for pair in [["Heavy", body_heavy], ["Fit", body_fit], ["HeavyFit", body_heavy * body_fit]]:
 			var idx: int = mesh.find_blend_shape_by_name(pair[0])
@@ -469,16 +480,23 @@ func set_hair_style(style: String) -> void:
 		(_hair_meshes[k] as Node3D).visible = k == style
 
 
-## Changes life stage: size, walking speed, and grey hair for elders.
+## Native life-stage anatomy plus physical height and walking speed.
 func set_age(stage: String) -> void:
+	if not Ages.INFO.has(stage):return
 	age_stage = stage
 	var info: Dictionary = Ages.INFO[stage]
 	if _body != null:
-		var k: float = info["scale"]
-		_body.scale = Vector3.ONE * k
+		_body.scale = Vector3.ONE * float(info["scale"])
+	if _character_age != null:
+		_character_age.apply(stage)
+		if _anim != null:_anim.advance(0.0)
 	walk_speed = 2.0 * info["speed"]
-	if stage == "elder":
-		set_part_color("hair", hair_color.lerp(Color(0.82, 0.82, 0.84), 0.75))
+	set_part_color("hair",hair_color)
+	if _prop != null:_set_prop(_prop_kind)
+
+
+func age_point(local: Vector3) -> Vector3:
+	return _character_age.point(local,age_stage) if _character_age != null else local
 
 
 func size_scale() -> float:
@@ -627,7 +645,7 @@ func to_dict() -> Dictionary:
 		"name": sim_name,
 		"colors": {"shirt": shirt_color.to_html(), "pants": pants_color.to_html(), "skin": skin_color.to_html(), "hair": hair_color.to_html(), "eyes": eye_color.to_html()},
 		"hair_style": hair_style,
-		"body_frame": body_frame,
+		"body_frame": body_frame, "frame_hair_styles": frame_hair_styles.duplicate(),
 		"walk_style": walk_style,
 		"body": [body_heavy, body_fit, long_sleeves, shorts, skirt],
 		"face": face_features.duplicate(),
@@ -652,6 +670,7 @@ func to_dict() -> Dictionary:
 func from_dict(d: Dictionary, others: Array) -> void:
 	sim_name = d.get("name", sim_name)
 	set_body_frame(d.get("body_frame", "masculine"))
+	frame_hair_styles = d.get("frame_hair_styles", {}).duplicate()
 	for part in d.get("colors", {}):
 		set_part_color(part, Color.html(d["colors"][part]))
 	set_hair_style(d.get("hair_style", hair_style))
@@ -1780,7 +1799,7 @@ func _build_model() -> void:
 				continue
 			var key := "skirt" if mi.name == "Skirt" else src.resource_name.to_lower().get_slice(".", 0)
 			if not _materials.has(key):
-				if key in ["shirtfabric", "pantsfabric"] and src is BaseMaterial3D:
+				if key in ["shirtfabric", "pantsfabric", "sleevefabric"] and src is BaseMaterial3D:
 					var fabric := ShaderMaterial.new()
 					fabric.shader = preload("res://shaders/fabric.gdshader")
 					fabric.set_shader_parameter("fabric_texture", src.albedo_texture)
@@ -1813,6 +1832,8 @@ func _build_model() -> void:
 						skin.roughness = 0.55
 						skin.metallic_specular = 0.35
 			mi.set_surface_override_material(i, _materials[key])
+	_character_age = CharacterAge.new(model,body_frame)
+	set_age(age_stage)
 	set_part_color("shirt", shirt_color)
 	set_part_color("pants", pants_color)
 	set_part_color("skin", skin_color)

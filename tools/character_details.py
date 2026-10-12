@@ -279,7 +279,12 @@ def build_makehuman_head(mats):
     bm.to_mesh(head.data);bm.free()
     from native_eyes import build_native_eyes
     from native_face_parts import build_lashes
-    parts=[head,build_native_eyes(),build_lashes()]
+    oral=bpy.data.materials.new('OralCavity');oral.diffuse_color=(.08,.018,.020,1)
+    oral.use_nodes=True
+    oral.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value=(.08,.018,.020,1)
+    oral.node_tree.nodes['Principled BSDF'].inputs['Roughness'].default_value=.85
+    cavity=ellipsoid('OralCavity',(0,.094,1.647),(.048,.010,.023),oral)
+    parts=[head,build_native_eyes(),build_lashes(),cavity]
     return join('Head',parts)
 
 # Anatomical base supersedes the procedural prototype above.

@@ -1470,7 +1470,7 @@ func open_create_a_sim() -> void:
 ## Keep direct-edit regions framed at every supported character scale.
 func _frame_creator(close_up: bool) -> void:
 	var scale_factor := sim.size_scale()
-	rig.frame(CAS_STUDIO + Vector3(0, (1.69 if close_up else .95) * scale_factor, 0), 0.0, deg_to_rad(-2.0), (.8 if close_up else 3.3) * scale_factor)
+	rig.frame(CAS_STUDIO + (sim.age_point(Vector3(0,1.69,0)) * scale_factor if close_up else Vector3(0,.95,0)), 0.0, deg_to_rad(-2.0), .8 * scale_factor if close_up else 3.3)
 
 
 ## Puts `s` on the studio floor (the others step out of view) and edits them.

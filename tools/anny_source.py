@@ -35,14 +35,17 @@ def load_raw_points(preset=None):
         # body variants and every barycentrically fitted accessory. UVs stay native.
         x=raw[:,0]*.11; y=raw[:,2]*.11; z=(raw[:,1]+8.1676)*.11
         jaw=np.exp(-((z-1.610)/.035)**2)
-        raw[:,0] *= 1.-.075*jaw
+        raw[:,0] *= 1.-.105*jaw
         chin=np.exp(-((z-1.588)/.024)**2)*np.exp(-(x/.070)**4)
-        raw[:,1] += (.004*chin)/.11
+        raw[:,1] += (.007*chin)/.11
+        cheek=np.exp(-((abs(x)-.060)/.035)**2-((z-1.666)/.032)**2)
+        raw[:,0] += (np.sign(x)*.0025*cheek)/.11
+        raw[:,2] += (.0025*cheek)/.11
         front=np.clip((y-.045)/.04,0.,1.)
         nose=np.exp(-((x/.022)**2+((z-1.676)/.023)**2))*front
-        raw[:,0] *= 1.-.07*nose
-        raw[:,2] -= (.0015*nose)/.11
+        raw[:,0] *= 1.-.105*nose
+        raw[:,2] -= (.002*nose)/.11
         lip=np.exp(-((x/.038)**4+((z-1.649)/.012)**2))*front
-        raw[:,2] += (.0012*lip)/.11
+        raw[:,2] += (.0020*lip)/.11
     print('ANNY SOURCE:',preset, len(raw),'vertices, normalized height 1.84 m')
     return raw.tolist()

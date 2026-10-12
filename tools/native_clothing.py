@@ -31,7 +31,7 @@ def texture_material(folder, name, material_file=None):
         else:material.node_tree.links.new(node.outputs['Color'],shader.inputs[socket])
     return material
 
-def fit_asset(asset, target_joints, rig, shoes=False):
+def fit_asset(asset, target_joints, rig, shoes=False, sleeve_extension=False):
     folder=ROOT/asset
     points,_,_,_=read_base()
     transform=make_transform(target_joints)
@@ -70,13 +70,13 @@ def fit_asset(asset, target_joints, rig, shoes=False):
     modifier=obj.modifiers.new('Fabric refinement','SUBSURF');modifier.levels=1;bpy.ops.object.modifier_apply(modifier=modifier.name)
     bm=bmesh.new();bm.from_mesh(obj.data)
     if not shoes:
-        for height in [.50,.93,1.12]:
+        for height in [.50,.93,1.12]+([1.34] if sleeve_extension else []):
             bmesh.ops.bisect_plane(bm,geom=list(bm.verts)+list(bm.edges)+list(bm.faces),plane_co=(0,0,height),plane_no=(0,0,1),dist=.00001)
     bm.to_mesh(obj.data);bm.free()
-    fabric=texture_material(folder,'ShoesFabric' if shoes else 'ShirtFabric')
+    fabric=texture_material(folder,'ShoesFabric' if shoes else 'SleeveFabric' if sleeve_extension else 'ShirtFabric')
     pants=fabric.copy();pants.name='PantsFabric'
-    generated=ROOT.parents[2]/'generated/crewneck-blue-ai.png'
-    if not shoes and generated.exists():
+    generated=ROOT.parents[2]/'generated'/('female-tee-blue-ai.png' if asset=='female_casualsuit01' else 'crewneck-blue-ai.png')
+    if asset in ['male_casualsuit02','female_casualsuit01'] and generated.exists():
         for node in fabric.node_tree.nodes:
             if node.type=='TEX_IMAGE' and node.image.colorspace_settings.name != 'Non-Color':
                 node.image=bpy.data.images.load(str(generated),check_existing=True)
@@ -85,7 +85,10 @@ def fit_asset(asset, target_joints, rig, shoes=False):
     torso_values=[item.value for item in obj.data.attributes['GarmentTorso'].data]
     for polygon in obj.data.polygons:
         arm=sum(values[i] for i in polygon.vertices)/len(polygon.vertices)
-        if shoes:name='OutfitShoes'
+        if sleeve_extension:
+            if arm<=.5 or polygon.center.z<.86 or polygon.center.z>1.34:continue
+            name='OutfitSleeve'
+        elif shoes:name='OutfitShoes'
         elif sum(torso_values[i] for i in polygon.vertices)/len(polygon.vertices)>.5:
             name='OutfitSleeve' if arm>.5 and polygon.center.z<1.12 else 'OutfitTop'
         elif polygon.center.z<.50:name='OutfitShin'
@@ -116,4 +119,8 @@ def fit_asset(asset, target_joints, rig, shoes=False):
     return result
 
 def build_clothing(joints,rig):
-    return fit_asset('male_casualsuit02',joints,rig)+fit_asset('shoes05',joints,rig,shoes=True)
+    from anny_source import active_preset
+    garment='female_casualsuit01' if 'female' in active_preset() else 'male_casualsuit02'
+    parts=fit_asset(garment,joints,rig)+fit_asset('shoes05',joints,rig,shoes=True)
+    if garment=='female_casualsuit01':parts+=fit_asset('male_casualsuit02',joints,rig,sleeve_extension=True)
+    return parts

@@ -15,15 +15,17 @@ retained in `assets/source/`; `tools/` rebuilds the Blender models and generated
   (see `_run_scenario` in `scripts/main.gd` for the list)
 - Creator gesture check (run with a visible renderer): `... --path . res://tools/check_character_sculpt.tscn -- --scenario=skip_cas`
 - Start straight in Create a Sim: `... -- --scenario=new`; skip the title screen: `--scenario=skip_cas`
+- Native age/rig/hair/save check (with a visible renderer): `... --path . res://tools/check_ages.tscn`
 - Regenerate assets: `blender --background --python tools/make_sim.py`,
   `blender --background --python tools/make_objects.py`, `python tools/make_audio.py`
+  For character source presets, use the isolated Anny environment and `python tools/export_anny.py` first. It exports both frames and all native age presets.
 
 ## What's in it
 
 - **Title screen** with Play, Manage Households (several families per world), New Game.
   Households you are not playing live on: they age, work, get promoted, have babies
   and pass away, with neighbourhood news. Townies age, marry, have children, and newcomers move in.
-- **Create a Sim**: households of up to four, name, male/female anatomy, age (child to elder), body sliders,
+- **Create a Sim**: households of up to four, name, male/female anatomy, native age anatomy (toddler to elder), body sliders,
   direct face/body drag controls with undo and cancellation, hairstyles, walk styles, skin/hair/outfit colours for Everyday, Sleepwear, Athletic and Swimwear,
   fourteen traits with conflicts, and an aspiration.
 - **Neighbourhood map**: buy a furnished home or an empty plot; homes of other families
