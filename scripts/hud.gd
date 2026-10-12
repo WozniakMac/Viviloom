@@ -764,7 +764,7 @@ func _build_sim_cluster() -> void:
 	_funds_label.mouse_filter = Control.MOUSE_FILTER_PASS
 	funds_pill.add_child(_funds_label)
 
-	var phone := IconButton.make("phone", 38, "Phone: invite friends over or travel")
+	var phone := IconButton.make("phone", 38, "Phone")
 	phone.position = Vector2(14, 16)
 	phone.pressed.connect(_toggle_phone)
 	c.add_child(phone)
@@ -827,54 +827,69 @@ func _toggle_phone() -> void:
 		_fill_phone()
 
 
-## The phone: invite a townie over, or travel to a community lot or home.
+## The phone, grouped like the reference's: Social, Travel, Services, Career and
+## Household tabs along the top, the chosen category's actions below.
+const PHONE_TABS := [["Social", "relationships"], ["Travel", "walk"], ["Services", "phone"], ["Career", "career"], ["Household", "live"]]
+var _phone_tab := 0
+
+
+func _phone_button(text: String, cb: Callable, enabled := true) -> void:
+	var b := Button.new()
+	b.text = text
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_size_override("font_size", 13)
+	b.disabled = not enabled
+	b.pressed.connect(func():
+		_phone_panel.visible = false
+		cb.call())
+	_phone_list.add_child(b)
+
+
 func _fill_phone() -> void:
 	for ch in _phone_list.get_children():
 		ch.queue_free()
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 4)
+	_phone_list.add_child(tabs)
+	for i in PHONE_TABS.size():
+		var tb := IconButton.make(PHONE_TABS[i][1], 34, PHONE_TABS[i][0])
+		tb.toggle_mode = true
+		tb.button_pressed = i == _phone_tab
+		tb.pressed.connect(func():
+			_phone_tab = i
+			_fill_phone())
+		tabs.add_child(tb)
 	var t := UiTheme.title(Label.new(), 17)
-	t.text = "Invite Over"
+	t.text = PHONE_TABS[_phone_tab][0]
 	_phone_list.add_child(t)
-	if _visitors != null:
-		for townie in _visitors.townies:
-			var b := Button.new()
-			var rel := sim.relationship_label(townie) if sim.relationships.has(townie) else "Haven't met"
-			b.text = "%s  ·  %s  ·  %s" % [townie.sim_name, Ages.label(townie.age_stage), rel]
-			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-			b.focus_mode = Control.FOCUS_NONE
-			b.add_theme_font_size_override("font_size", 13)
-			b.disabled = not townie.away
-			b.pressed.connect(func():
-				_phone_panel.visible = false
-				phone_invite.emit(townie))
-			_phone_list.add_child(b)
-	var t3 := UiTheme.title(Label.new(), 17)
-	t3.text = "Services"
-	_phone_list.add_child(t3)
-	var pizza := Button.new()
-	pizza.text = "Order Pizza  ·  §40"
-	pizza.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	pizza.focus_mode = Control.FOCUS_NONE
-	pizza.add_theme_font_size_override("font_size", 13)
-	pizza.pressed.connect(func():
-		_phone_panel.visible = false
-		phone_service.emit("pizza"))
-	_phone_list.add_child(pizza)
-	var t2 := UiTheme.title(Label.new(), 17)
-	t2.text = "Travel"
-	_phone_list.add_child(t2)
-	var places := {"home": "Home"}
-	for id in _destinations:
-		places[id] = _destinations[id]["name"]
-	for id in places:
-		var b := Button.new()
-		b.text = places[id]
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.focus_mode = Control.FOCUS_NONE
-		b.add_theme_font_size_override("font_size", 13)
-		b.pressed.connect(func():
-			_phone_panel.visible = false
-			phone_travel.emit(id))
-		_phone_list.add_child(b)
+	match _phone_tab:
+		0:
+			if _visitors != null:
+				for townie in _visitors.townies:
+					var rel := sim.relationship_label(townie) if sim.relationships.has(townie) else "Haven't met"
+					var who: Sim = townie
+					_phone_button("Invite Over: %s  ·  %s" % [townie.sim_name, rel], func(): phone_invite.emit(who), townie.away)
+				for townie in _visitors.townies:
+					if sim.relationships.has(townie):
+						var who: Sim = townie
+						_phone_button("Call to Chat: %s" % townie.sim_name, func(): phone_service.emit("chat:" + who.sim_name))
+		1:
+			var places := {"home": "Home"}
+			for id in _destinations:
+				places[id] = _destinations[id]["name"]
+			for id in places:
+				var dest: String = id
+				_phone_button(places[id], func(): phone_travel.emit(dest))
+		2:
+			_phone_button("Order Pizza  ·  §40", func(): phone_service.emit("pizza"))
+			_phone_button("Hire a Maid  ·  §60", func(): phone_service.emit("maid"))
+			_phone_button("Hire a Repair Technician  ·  §80", func(): phone_service.emit("repair"))
+		3:
+			_phone_button("Find a Job", func(): _show_page(4))
+			_phone_button("Take Day Off", func(): phone_service.emit("day_off"))
+		4:
+			_phone_button("Pay Bills", func(): phone_service.emit("pay_bills"))
 	# Grow upwards from the button.
 	_phone_panel.reset_size()
 	await get_tree().process_frame

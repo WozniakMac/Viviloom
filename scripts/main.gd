@@ -189,6 +189,42 @@ func _ready() -> void:
 			visitors.invite(t))
 	hud.phone_travel.connect(travel)
 	hud.phone_service.connect(func(service: String):
+		if service.begins_with("chat:"):
+			for t in visitors.townies:
+				if t.sim_name == service.trim_prefix("chat:"):
+					sim.needs.add("social", 30.0)
+					sim.change_relationship(t, 4.0, 0.0)
+					sim.emotions.add("phone_chat", "happy", 1, "Nice Chat", "Good to catch up on the phone.", 120.0)
+					hud.show_notice("%s had a nice chat with %s on the phone." % [sim.sim_name, t.sim_name], "Phone")
+			return
+		match service:
+			"maid":
+				var cleanable := lot.messes().filter(func(m): return m.kind in ["dishes", "puddle"])
+				if location != "home" or build.funds < 60:
+					hud.show_notice("The maid can't come right now.", "Phone")
+				else:
+					build.earn(-60)
+					for m in cleanable:
+						lot.remove_furniture(m)
+						m.queue_free()
+					hud.show_notice("The maid cleaned up %d mess%s." % [cleanable.size(), "" if cleanable.size() == 1 else "es"], "Maid")
+				return
+			"repair":
+				var broken := lot.furniture.filter(func(f): return f.broken)
+				if location != "home" or build.funds < 80:
+					hud.show_notice("The repair technician can't come right now.", "Phone")
+				else:
+					build.earn(-80)
+					for f in broken:
+						f.set_broken(false)
+					hud.show_notice("The repair technician fixed %d object%s." % [broken.size(), "" if broken.size() == 1 else "s"], "Repairs")
+				return
+			"pay_bills":
+				bills.pay()
+				return
+			"day_off":
+				(works[sim] as Work).take_day_off()
+				return
 		if service == "pizza":
 			if location != "home":
 				hud.show_notice("Pizza can only be delivered to your home.", "Phone")
@@ -2149,6 +2185,21 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"phonecheck":
+			lot.add_mess("dishes", lot.cell_to_world(Vector2i(10, 8)))
+			var tv := find_furniture("tv")
+			tv.set_broken(true)
+			var funds0 := build.funds
+			hud.phone_service.emit("maid")
+			hud.phone_service.emit("repair")
+			await get_tree().process_frame
+			var ok: bool = lot.messes().is_empty() and not tv.broken and build.funds == funds0 - 140
+			print("PHONE %s funds=%d messes=%d broken=%s" % ["OK" if ok else "FAIL", funds0 - build.funds, lot.messes().size(), tv.broken])
+			get_tree().quit()
+		"phonetabs":
+			hud._phone_tab = 2
+			hud._toggle_phone()
+			await get_tree().create_timer(0.8).timeout
 		"parktrees":
 			Clock.total_minutes = 11 * 60.0
 			await travel("park")
