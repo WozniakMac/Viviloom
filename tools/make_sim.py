@@ -65,6 +65,15 @@ for s in ("L", "R"):
     ]
 
 
+# Body shapes for the Create a Sim sliders: radius multipliers per joint.
+SHAPES = {
+    "Heavy": {"pelvis": 1.35, "spine": 1.45, "chest": 1.25, "hip": 1.3, "knee": 1.2, "ankle": 1.05,
+              "shoulder": 1.2, "elbow": 1.2, "wrist": 1.05, "neck": 1.15},
+    "Fit": {"chest": 1.15, "shoulder": 1.3, "elbow": 1.25, "wrist": 1.05, "spine": 0.92, "pelvis": 0.95,
+            "hip": 1.1, "knee": 1.12, "neck": 1.1},
+}
+
+
 def build_body():
     names = list(J.keys())
     index = {n: i for i, n in enumerate(names)}
@@ -96,12 +105,39 @@ def build_body():
     return obj
 
 
+def _closest_on_links(p):
+    best = None
+    for a, b, _, _ in LINKS:
+        pa, pb = Vector(J[a]), Vector(J[b])
+        ab = pb - pa
+        t = max(0.0, min(1.0, (p - pa).dot(ab) / max(ab.length_squared, 1e-9)))
+        q = pa + ab * t
+        d = (p - q).length
+        if best is None or d < best[0]:
+            best = (d, a, b, t, q)
+    return best
+
+
+def add_shape_keys(body):
+    """Stores each slider's proportions as a shape key: every vertex is pushed
+    away from (or towards) its nearest bone by that joint's radius multiplier."""
+    body.shape_key_add(name="Basis")
+    for name, mults in SHAPES.items():
+        key = body.shape_key_add(name=name)
+        for i, v in enumerate(body.data.vertices):
+            _, a, b, t, q = _closest_on_links(v.co)
+            ka = mults.get(a.split(".")[0], 1.0)
+            kb = mults.get(b.split(".")[0], 1.0)
+            k = ka + (kb - ka) * t
+            key.data[i].co = q + (v.co - q) * k
+
+
 def assign_body_materials(obj, mats):
     """Colours each face by the bone that moves it most (after rigging): short
     sleeves, bare forearms and hands, trousers below the waist, shoes on the feet."""
-    for m in ("Skin", "Shirt", "Pants", "Shoes"):
+    for m in ("Skin", "Shirt", "Pants", "Shoes", "Sleeve", "Shin"):
         obj.data.materials.append(mats[m])
-    order = {"Skin": 0, "Shirt": 1, "Pants": 2, "Shoes": 3}
+    order = {"Skin": 0, "Shirt": 1, "Pants": 2, "Shoes": 3, "Sleeve": 4, "Shin": 5}
     names = {g.index: g.name for g in obj.vertex_groups}
     for poly in obj.data.polygons:
         weights = {}
@@ -113,12 +149,16 @@ def assign_body_materials(obj, mats):
         c = obj.matrix_world @ poly.center
         if bone.startswith("foot") or c.z < 0.12:
             slot = "Shoes"
-        elif bone.startswith(("thigh", "shin")):
-            slot = "Pants" if c.z < 0.93 else "Shirt"
-        elif bone.startswith(("forearm", "hand")):
+        elif bone.startswith("shin"):
+            slot = "Shin"
+        elif bone.startswith("thigh"):
+            slot = ("Shin" if c.z < 0.5 else "Pants") if c.z < 0.93 else "Shirt"
+        elif bone.startswith("hand"):
             slot = "Skin"
+        elif bone.startswith("forearm"):
+            slot = "Sleeve" if c.z > 0.83 else "Skin"
         elif bone.startswith("upperarm"):
-            slot = "Skin" if c.z < 1.27 else "Shirt"
+            slot = "Sleeve" if c.z < 1.27 else "Shirt"
         elif bone in ("neck", "head"):
             slot = "Skin" if c.z > 1.44 else "Shirt"
         elif c.z < 0.93:
@@ -399,12 +439,15 @@ def main():
         "Shirt": material("Shirt", (0.22, 0.47, 0.82)),
         "Pants": material("Pants", (0.18, 0.2, 0.28)),
         "Shoes": material("Shoes", (0.12, 0.1, 0.1), 0.5),
+        "Sleeve": material("Sleeve", (0.87, 0.69, 0.55), 0.6),
+        "Shin": material("Shin", (0.18, 0.2, 0.28)),
         "Hair": material("Hair", (0.25, 0.16, 0.1), 0.55),
         "EyeWhite": material("EyeWhite", (0.97, 0.97, 0.95), 0.3),
         "Pupil": material("Pupil", (0.1, 0.07, 0.05), 0.2),
         "Lips": material("Lips", (0.72, 0.38, 0.38), 0.5),
     }
     body = build_body()
+    add_shape_keys(body)
     head = build_head(mats)
     hairs = build_hair(mats)
     rig = build_armature()

@@ -51,6 +51,11 @@ class SimAction:
 @export var hair_color := Color(0.25, 0.16, 0.1)
 ## "short", "long" or "bun".
 @export var hair_style := "short"
+## Body shape sliders (0..1) and outfit cut.
+@export var body_heavy := 0.0
+@export var body_fit := 0.0
+@export var long_sleeves := false
+@export var shorts := false
 
 const MODEL := preload("res://assets/sim/sim.glb")
 const PORTRAIT_LAYER := 4
@@ -99,6 +104,7 @@ var _body: Node3D
 var _anim: AnimationPlayer
 ## Hair style name -> its mesh in the model.
 var _hair_meshes := {}
+var _body_mesh: MeshInstance3D
 var _selection_ring: MeshInstance3D
 var _plumbob: MeshInstance3D
 ## Materials by part ("shirt", "pants", "skin", "hair") so the look can change later.
@@ -131,6 +137,33 @@ func set_part_color(part: String, c: Color) -> void:
 		"hair": hair_color = c
 	if _materials.has(part):
 		(_materials[part] as BaseMaterial3D).albedo_color = c
+	_apply_outfit()
+
+
+## Sleeves and lower legs show cloth or skin depending on the outfit's cut.
+func _apply_outfit() -> void:
+	if _materials.has("sleeve"):
+		(_materials["sleeve"] as BaseMaterial3D).albedo_color = shirt_color if long_sleeves else skin_color
+	if _materials.has("shin"):
+		(_materials["shin"] as BaseMaterial3D).albedo_color = skin_color if shorts else pants_color
+
+
+func set_outfit(p_long_sleeves: bool, p_shorts: bool) -> void:
+	long_sleeves = p_long_sleeves
+	shorts = p_shorts
+	_apply_outfit()
+
+
+## Body sliders: 0..1 heavier and 0..1 more muscular.
+func set_body(heavy: float, fit: float) -> void:
+	body_heavy = clampf(heavy, 0.0, 1.0)
+	body_fit = clampf(fit, 0.0, 1.0)
+	if _body_mesh == null:
+		return
+	for pair in [["Heavy", body_heavy], ["Fit", body_fit]]:
+		var idx := _body_mesh.find_blend_shape_by_name(pair[0])
+		if idx >= 0:
+			_body_mesh.set_blend_shape_value(idx, pair[1])
 
 
 func set_hair_style(style: String) -> void:
@@ -244,6 +277,7 @@ func to_dict() -> Dictionary:
 		"name": sim_name,
 		"colors": {"shirt": shirt_color.to_html(), "pants": pants_color.to_html(), "skin": skin_color.to_html(), "hair": hair_color.to_html()},
 		"hair_style": hair_style,
+		"body": [body_heavy, body_fit, long_sleeves, shorts],
 		"age": [age_stage, age_days, pregnant_days],
 		"traits": traits,
 		"aspiration": aspiration,
@@ -261,6 +295,9 @@ func from_dict(d: Dictionary, others: Array) -> void:
 	for part in d.get("colors", {}):
 		set_part_color(part, Color.html(d["colors"][part]))
 	set_hair_style(d.get("hair_style", hair_style))
+	var bd: Array = d.get("body", [0.0, 0.0, false, false])
+	set_body(bd[0], bd[1])
+	set_outfit(bd[2], bd[3])
 	var ag: Array = d.get("age", ["young_adult", 0, -1])
 	age_days = int(ag[1])
 	pregnant_days = int(ag[2])
@@ -855,6 +892,8 @@ func _build_visual() -> void:
 		var mi := node as MeshInstance3D
 		# Layer 3 as well, so the portrait camera can see Sims and nothing else.
 		mi.layers = 1 | PORTRAIT_LAYER
+		if mi.name == "Body":
+			_body_mesh = mi
 		if mi.name.begins_with("Hair_"):
 			_hair_meshes[mi.name.trim_prefix("Hair_").to_lower()] = mi
 		for i in mi.mesh.get_surface_count():
@@ -870,6 +909,8 @@ func _build_visual() -> void:
 	set_part_color("skin", skin_color)
 	set_part_color("hair", hair_color)
 	set_hair_style(hair_style)
+	set_body(body_heavy, body_fit)
+	_apply_outfit()
 
 	_selection_ring = MeshInstance3D.new()
 	var ring := TorusMesh.new()

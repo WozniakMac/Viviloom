@@ -30,6 +30,10 @@ var _swatches := {}
 var _aspiration_buttons := {}
 var _hair_buttons := {}
 var _age_buttons := {}
+var _heavy_slider: HSlider
+var _fit_slider: HSlider
+var _sleeve_buttons: Array[Button] = []
+var _leg_buttons: Array[Button] = []
 var _rng := RandomNumberGenerator.new()
 var _household_row: HBoxContainer
 
@@ -115,6 +119,24 @@ func _build() -> void:
 	_trait_info.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
 	_trait_info.text = "Pick up to %d traits. They shape moods, skills and what your Sim likes to do." % Traits.MAX_TRAITS
 	pv.add_child(_trait_info)
+
+	# Body shape and outfit cut.
+	var body := PanelContainer.new()
+	body.custom_minimum_size = Vector2(380, 0)
+	left.add_child(body)
+	var bv := VBoxContainer.new()
+	bv.add_theme_constant_override("separation", 6)
+	body.add_child(bv)
+	var bt := UiTheme.title(Label.new(), 18)
+	bt.text = "Body & Outfit"
+	bv.add_child(bt)
+	_heavy_slider = _slider(bv, "Weight")
+	_fit_slider = _slider(bv, "Fitness")
+	_heavy_slider.value_changed.connect(func(v: float): sim.set_body(v, sim.body_fit))
+	_fit_slider.value_changed.connect(func(v: float): sim.set_body(sim.body_heavy, v))
+	_sleeve_buttons = _choice_row(bv, "Sleeves", ["Short", "Long"], func(i: int): sim.set_outfit(i == 1, sim.shorts))
+	_leg_buttons = _choice_row(bv, "Legs", ["Trousers", "Shorts"], func(i: int): sim.set_outfit(sim.long_sleeves, i == 1))
+	_sync_body()
 
 	# Right: appearance.
 	var look := PanelContainer.new()
@@ -220,6 +242,8 @@ func _build() -> void:
 		av.add_child(b)
 		_aspiration_buttons[a] = b
 	_pick_aspiration(sim.aspiration)
+	# Stack the aspiration panel under the appearance panel once both have a size.
+	get_tree().process_frame.connect(func(): asp.position.y = look.position.y + look.size.y + 12, CONNECT_ONE_SHOT)
 
 	# Bottom centre: turn the Sim.
 	var turn := HBoxContainer.new()
@@ -288,6 +312,7 @@ func edit(s: Sim) -> void:
 	_pick_hair(s.hair_style)
 	_pick_age(s.age_stage)
 	_pick_aspiration(s.aspiration)
+	_sync_body()
 	_sync_swatches()
 	_refresh()
 
@@ -319,6 +344,64 @@ func _sync_swatches() -> void:
 	for part in _swatches:
 		for pair in _swatches[part]:
 			(pair[0] as Button).set_pressed_no_signal((pair[1] as Color).is_equal_approx(current[part]))
+
+
+func _slider(parent: Control, label: String) -> HSlider:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	parent.add_child(row)
+	var l := Label.new()
+	l.text = label
+	l.custom_minimum_size = Vector2(70, 0)
+	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+	row.add_child(l)
+	var s := HSlider.new()
+	s.min_value = 0.0
+	s.max_value = 1.0
+	s.step = 0.01
+	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	s.focus_mode = Control.FOCUS_NONE
+	row.add_child(s)
+	return s
+
+
+## A labelled row of toggle buttons where exactly one is pressed.
+func _choice_row(parent: Control, label: String, options: Array, on_pick: Callable) -> Array[Button]:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	parent.add_child(row)
+	var l := Label.new()
+	l.text = label
+	l.custom_minimum_size = Vector2(70, 0)
+	l.add_theme_font_size_override("font_size", 14)
+	l.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+	row.add_child(l)
+	var buttons: Array[Button] = []
+	for i in options.size():
+		var b := Button.new()
+		b.text = options[i]
+		b.toggle_mode = true
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_stylebox_override("pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		b.add_theme_stylebox_override("hover_pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		b.pressed.connect(func():
+			for k in buttons.size():
+				buttons[k].set_pressed_no_signal(k == i)
+			on_pick.call(i))
+		row.add_child(b)
+		buttons.append(b)
+	return buttons
+
+
+## Puts the body sliders and outfit buttons in line with the Sim being edited.
+func _sync_body() -> void:
+	_heavy_slider.set_value_no_signal(sim.body_heavy)
+	_fit_slider.set_value_no_signal(sim.body_fit)
+	for k in 2:
+		_sleeve_buttons[k].set_pressed_no_signal((k == 1) == sim.long_sleeves)
+		_leg_buttons[k].set_pressed_no_signal((k == 1) == sim.shorts)
 
 
 func _pick_age(stage: String) -> void:
@@ -393,6 +476,9 @@ func randomize_sim() -> void:
 	sim.set_traits(_picked)
 	_pick_aspiration(Aspirations.ORDER[_rng.randi() % Aspirations.ORDER.size()])
 	_pick_hair(Sim.HAIR_STYLES[_rng.randi() % Sim.HAIR_STYLES.size()])
+	sim.set_body(_rng.randf() * 0.7, _rng.randf() * 0.7)
+	sim.set_outfit(_rng.randf() < 0.4, _rng.randf() < 0.3)
+	_sync_body()
 	_sync_swatches()
 	_refresh()
 
