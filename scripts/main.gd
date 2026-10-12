@@ -1053,7 +1053,10 @@ func _lot_dict() -> Dictionary:
 	var pool_rects: Array = []
 	for r in lot.pools:
 		pool_rects.append([r.position.x, r.position.y, r.size.x, r.size.y])
-	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "upper": _level_dict(upper)}
+	var fences: Array = []
+	for e in lot.fences:
+		fences.append([e.x, e.y, e.z, lot.gates.has(e)])
+	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "fences": fences, "upper": _level_dict(upper)}
 
 
 ## Walls, floors and objects of an upper level.
@@ -1110,6 +1113,11 @@ func _apply_lot_dict(d: Dictionary) -> void:
 		for f in d["floors"]:
 			lot.floor_tiles[Vector2i(int(f[0]), int(f[1]))] = int(f[2])
 		lot.add_floor(Rect2i(), 0)
+	for fe in d.get("fences", []):
+		var fe_e := Vector3i(int(fe[0]), int(fe[1]), int(fe[2]))
+		lot.add_fence(fe_e)
+		if fe[3]:
+			lot.add_gate(fe_e)
 	for p in d.get("pools", []):
 		lot.add_pool(Rect2i(int(p[0]), int(p[1]), int(p[2]), int(p[3])))
 	for o in d.get("objects", []):
@@ -1729,6 +1737,16 @@ func _run_scenario(scenario: String, path: String) -> void:
 			Clock.set_speed(1)
 			rig.frame(lot.cell_to_world(Vector2i(15, 13)), deg_to_rad(20.0), deg_to_rad(-38.0), 14.0)
 			await get_tree().create_timer(5.0).timeout
+		"fence":
+			for r in [[Vector2i(1, 15), Vector2i(23, 15)], [Vector2i(1, 15), Vector2i(1, 19)], [Vector2i(23, 15), Vector2i(23, 19)]]:
+				for e in Lot.wall_run(r[0], r[1]):
+					lot.add_fence(e)
+			lot.add_gate(Vector3i(10, 15, 0))
+			sim.global_position = lot.cell_to_world(Vector2i(10, 17))
+			sim.move_to(lot.cell_to_world(Vector2i(10, 13)))
+			Clock.set_speed(1)
+			rig.frame(lot.cell_to_world(Vector2i(10, 15)), deg_to_rad(25.0), deg_to_rad(-35.0), 13.0)
+			await get_tree().create_timer(1.6).timeout
 		"upstairs", "twostorey":
 			upper.add_floor(Rect2i(3, 2, 15, 10), 2)
 			for r in [[Vector2i(3, 2), Vector2i(18, 2)], [Vector2i(3, 12), Vector2i(18, 12)], [Vector2i(3, 2), Vector2i(3, 12)], [Vector2i(18, 2), Vector2i(18, 12)]]:

@@ -34,6 +34,7 @@ func _ready() -> void:
 	_test_outfits()
 	_test_more_traits()
 	_test_swatches()
+	_test_fences()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -620,3 +621,19 @@ func _test_kids() -> void:
 	toys.free()
 	desk.free()
 	kid.free()
+
+
+func _test_fences() -> void:
+	var lot := _make_lot()
+	for e in Lot.wall_run(Vector2i(0, 4), Vector2i(lot.size.x, 4)):
+		lot.add_fence(e)
+	_check(lot.fences.size() == lot.size.x, "a fence runs the width of the lot")
+	_check(not lot.can_step(Vector2i(2, 3), Vector2i(2, 4)), "fences block walking")
+	_check(lot.find_path(lot.cell_to_world(Vector2i(2, 2)), lot.cell_to_world(Vector2i(2, 6))).is_empty(), "no way round a full fence")
+	_check(not lot.add_wall(Vector3i(5, 4, 0)), "no wall on top of a fence")
+	lot.add_gate(Vector3i(5, 4, 0))
+	_check(lot.can_step(Vector2i(5, 3), Vector2i(5, 4)), "gates let Sims through")
+	_check(not lot.find_path(lot.cell_to_world(Vector2i(2, 2)), lot.cell_to_world(Vector2i(2, 6))).is_empty(), "the path goes through the gate")
+	_check(not lot.is_indoors(Vector2i(2, 2)), "fenced yards are not rooms")
+	lot.remove_fence(Vector3i(3, 4, 0))
+	_check(lot.can_step(Vector2i(3, 3), Vector2i(3, 4)), "a removed fence no longer blocks")

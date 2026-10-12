@@ -9,7 +9,7 @@ signal entered
 ## An object was put down (main uses this to cut stairwells).
 signal placed(f: Furniture)
 
-enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL }
+enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL, FENCE }
 
 var lot: Lot
 var sim: Sim
@@ -131,7 +131,7 @@ func handle_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
 				_on_press(p, mb.position)
-			elif tool == Tool.WALL and _wall_start != null:
+			elif (tool == Tool.WALL or tool == Tool.FENCE) and _wall_start != null:
 				_finish_wall()
 			elif tool == Tool.FLOOR and _floor_start != null:
 				_finish_floor()
@@ -169,13 +169,16 @@ func _on_press(p: Variant, screen_pos: Vector2) -> void:
 				var f := _furniture_under(screen_pos)
 				if f != null:
 					_pick_up(f, false)
-		Tool.WALL:
+		Tool.WALL, Tool.FENCE:
 			_wall_start = _vertex(pt)
 			_wall_end = _wall_start
 		Tool.DOOR:
 			var e := lot.edge_near(pt)
-			if not lot.walls.has(e):
-				notice.emit("Doors go on walls.")
+			if lot.fences.has(e):
+				if not lot.gates.has(e) and _spend(Catalog.GATE_PRICE):
+					lot.add_gate(e)
+			elif not lot.walls.has(e):
+				notice.emit("Doors go on walls (or fences, as gates).")
 			elif lot.doors.has(e):
 				pass
 			elif _spend(Catalog.DOOR_PRICE):
@@ -215,11 +218,26 @@ func _on_press(p: Variant, screen_pos: Vector2) -> void:
 				if lot.walls.has(e):
 					earn(Catalog.WALL_PRICE + (Catalog.DOOR_PRICE if lot.doors.has(e) else 0) + (Finishes.WINDOW_PRICE if lot.windows.has(e) else 0))
 					lot.remove_wall(e)
+				elif lot.fences.has(e):
+					earn(Catalog.FENCE_PRICE + (Catalog.GATE_PRICE if lot.gates.has(e) else 0))
+					lot.remove_fence(e)
 	_refresh_overlays(p)
 
 
 func _finish_wall() -> void:
 	var built := 0
+	if tool == Tool.FENCE:
+		for e in Lot.wall_run(_wall_start, _wall_end):
+			if lot.fences.has(e) or lot.walls.has(e) or not lot.edge_in_bounds(e):
+				continue
+			if funds < Catalog.FENCE_PRICE:
+				notice.emit("Out of funds.")
+				break
+			if lot.add_fence(e):
+				_spend(Catalog.FENCE_PRICE)
+		_wall_start = null
+		_wall_preview.visible = false
+		return
 	for e in Lot.wall_run(_wall_start, _wall_end):
 		if lot.walls.has(e) or not lot.edge_in_bounds(e):
 			continue
@@ -419,7 +437,7 @@ func _refresh_overlays(p: Variant) -> void:
 		return
 	var at: Vector3 = p
 	match tool:
-		Tool.WALL:
+		Tool.WALL, Tool.FENCE:
 			if _wall_start != null:
 				_wall_end = _vertex(at)
 				var run := Lot.wall_run(_wall_start, _wall_end)
@@ -428,9 +446,10 @@ func _refresh_overlays(p: Variant) -> void:
 					var b := lot.edge_center(run[run.size() - 1])
 					var horizontal := run[0].z == 0
 					var length := run.size() * Lot.CELL
-					_wall_preview.position = (a + b) * 0.5 + Vector3(0, Lot.WALL_HEIGHT * 0.5, 0)
-					_wall_preview.scale = Vector3(length + Lot.WALL_THICKNESS, Lot.WALL_HEIGHT, Lot.WALL_THICKNESS) if horizontal \
-						else Vector3(Lot.WALL_THICKNESS, Lot.WALL_HEIGHT, length + Lot.WALL_THICKNESS)
+					var h := Lot.FENCE_HEIGHT if tool == Tool.FENCE else Lot.WALL_HEIGHT
+					_wall_preview.position = (a + b) * 0.5 + Vector3(0, h * 0.5, 0)
+					_wall_preview.scale = Vector3(length + Lot.WALL_THICKNESS, h, Lot.WALL_THICKNESS) if horizontal \
+						else Vector3(Lot.WALL_THICKNESS, h, length + Lot.WALL_THICKNESS)
 					_wall_preview.visible = true
 			else:
 				_show_vertex(_vertex(at))
@@ -448,7 +467,7 @@ func _refresh_overlays(p: Variant) -> void:
 				_edge_marker.visible = true
 		Tool.DOOR, Tool.DELETE, Tool.WINDOW, Tool.PAINT:
 			var e := lot.edge_near(at)
-			if lot.walls.has(e):
+			if lot.walls.has(e) or (lot.fences.has(e) and tool in [Tool.DOOR, Tool.DELETE]):
 				var c := lot.edge_center(e)
 				_edge_marker.position = c + Vector3(0, 0.05, 0)
 				_edge_marker.scale = Vector3(1.0, 0.08, 0.3) if e.z == 0 else Vector3(0.3, 0.08, 1.0)
@@ -547,7 +566,7 @@ func _build_ui() -> void:
 	tools_pill.add_theme_stylebox_override("panel", UiTheme.panel_style(28, 6))
 	tools_pill.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	tools_pill.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	tools_pill.position = Vector2(-190, 14)
+	tools_pill.position = Vector2(-216, 14)
 	root.add_child(tools_pill)
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 6)
@@ -555,12 +574,13 @@ func _build_ui() -> void:
 	var tool_defs := [
 		[Tool.MOVE, "move", "Move objects: click to pick up, click to put down. R rotates, Delete sells."],
 		[Tool.WALL, "wall", "Wall tool: drag along the grid (§%d per segment)" % Catalog.WALL_PRICE],
-		[Tool.DOOR, "door", "Door tool: click a wall to add a door (§%d)" % Catalog.DOOR_PRICE],
+		[Tool.FENCE, "fence", "Fence tool: drag a picket fence along the grid (§%d per segment)" % Catalog.FENCE_PRICE],
+		[Tool.DOOR, "door", "Door tool: click a wall to add a door (§%d), or a fence for a gate (§%d)" % [Catalog.DOOR_PRICE, Catalog.GATE_PRICE]],
 		[Tool.WINDOW, "window", "Window tool: click a wall to add a window (§%d)" % Finishes.WINDOW_PRICE],
 		[Tool.PAINT, "paint", "Wall paint: pick a finish below, click a wall (Shift: every wall)"],
 		[Tool.FLOOR, "floor", "Floor tool: pick a finish below, drag over tiles"],
 		[Tool.POOL, "pool", "Pool tool: drag out a swimming pool (§60 per tile)"],
-		[Tool.DELETE, "sell", "Sledgehammer: click an object or wall to sell it"],
+		[Tool.DELETE, "sell", "Sledgehammer: click an object, wall or fence to sell it"],
 	]
 	for d in tool_defs:
 		var b := IconButton.make(d[1], 46, d[2])

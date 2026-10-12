@@ -113,6 +113,8 @@ const DESCRIPTIONS := {
 }
 const WALL_PRICE := 14
 const DOOR_PRICE := 150
+const FENCE_PRICE := 12
+const GATE_PRICE := 40
 
 const WHITE := Color(0.93, 0.93, 0.9)
 const WOOD := Color(0.55, 0.38, 0.24)
@@ -628,6 +630,7 @@ static func _use_model(f: Furniture, kind: String) -> void:
 	var shade := model.find_child("Shade", true, false) as MeshInstance3D
 	if shade != null:
 		shade.get_parent().remove_child(shade)
+		shade.owner = null
 		shade.name = "Shade"
 		var m := StandardMaterial3D.new()
 		m.albedo_color = Color(0.97, 0.9, 0.76)

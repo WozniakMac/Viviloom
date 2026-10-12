@@ -36,6 +36,10 @@ var doors := {}
 var windows := {}
 ## Vector3i edge -> Finishes.WALLS index (missing = the default paint).
 var wall_styles := {}
+## Edge -> picket fence node; gates are fence edges Sims can walk through.
+var fences := {}
+var gates := {}
+const FENCE_HEIGHT := 0.9
 ## Vector2i tile -> Finishes.FLOORS index.
 var floor_tiles := {}
 var _floor_mesh: MeshInstance3D
@@ -150,7 +154,7 @@ func edge_center(e: Vector3i) -> Vector3:
 
 
 func edge_blocks(e: Vector3i) -> bool:
-	return walls.has(e) and not doors.has(e)
+	return (walls.has(e) and not doors.has(e)) or (fences.has(e) and not gates.has(e))
 
 
 ## The tile edge closest to a ground point.
@@ -209,7 +213,7 @@ func crosses_wall(a: Vector3, b: Vector3) -> bool:
 
 
 func add_wall(e: Vector3i) -> bool:
-	if walls.has(e) or not edge_in_bounds(e) or _edge_inside_furniture(e):
+	if walls.has(e) or fences.has(e) or not edge_in_bounds(e) or _edge_inside_furniture(e):
 		return false
 	walls[e] = _make_wall_visual(e, false)
 	_dirty = true
@@ -232,6 +236,76 @@ func remove_wall(e: Vector3i) -> bool:
 	_dirty = true
 	_rooms_dirty = true
 	return true
+
+
+## A low white picket fence along an edge (not on walls). Fences block walking but
+## don't count as room walls and are never cut away.
+func add_fence(e: Vector3i) -> bool:
+	if fences.has(e) or walls.has(e) or not edge_in_bounds(e):
+		return false
+	fences[e] = _make_fence_visual(e, false)
+	_dirty = true
+	return true
+
+
+func remove_fence(e: Vector3i) -> bool:
+	if not fences.has(e):
+		return false
+	(fences[e] as Node3D).queue_free()
+	fences.erase(e)
+	gates.erase(e)
+	_dirty = true
+	return true
+
+
+## Turns a fence segment into a swinging gate.
+func add_gate(e: Vector3i) -> bool:
+	if not fences.has(e) or gates.has(e):
+		return false
+	gates[e] = true
+	(fences[e] as Node3D).queue_free()
+	fences[e] = _make_fence_visual(e, true)
+	_dirty = true
+	return true
+
+
+func _make_fence_visual(e: Vector3i, gate: bool) -> Node3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.97, 0.97, 0.95)
+	mat.roughness = 0.7
+	var n := Node3D.new()
+	n.name = "Fence"
+	n.position = edge_center(e)
+	if e.z == 1:
+		n.rotation.y = PI * 0.5
+	# Corner posts with little caps.
+	for px in [-0.5, 0.5]:
+		_wall_box(n, Vector3(0.1, FENCE_HEIGHT + 0.08, 0.1), Vector3(px, (FENCE_HEIGHT + 0.08) * 0.5, 0), mat)
+		_wall_box(n, Vector3(0.13, 0.04, 0.13), Vector3(px, FENCE_HEIGHT + 0.1, 0), mat)
+	var holder := n
+	if gate:
+		var hinge := Node3D.new()
+		hinge.name = "GateHinge"
+		hinge.position = Vector3(-0.45, 0, 0)
+		n.add_child(hinge)
+		n.set_meta("hinge", hinge)
+		holder = hinge
+	var ox := 0.45 if gate else 0.0
+	# Two rails and pointed pickets.
+	for ry in [0.25, FENCE_HEIGHT - 0.2]:
+		_wall_box(holder, Vector3(0.9, 0.06, 0.03), Vector3(ox, ry, 0.03), mat)
+	for k in 6:
+		var x := -0.375 + k * 0.15
+		_wall_box(holder, Vector3(0.08, FENCE_HEIGHT - 0.05, 0.025), Vector3(ox + x, (FENCE_HEIGHT - 0.05) * 0.5, 0), mat)
+		var tip := MeshInstance3D.new()
+		var pr := PrismMesh.new()
+		pr.size = Vector3(0.08, 0.07, 0.025)
+		tip.mesh = pr
+		tip.position = Vector3(ox + x, FENCE_HEIGHT - 0.015, 0)
+		tip.material_override = mat
+		holder.add_child(tip)
+	add_child(n)
+	return n
 
 
 func add_door(e: Vector3i) -> bool:
@@ -559,6 +633,14 @@ func update_doors(people: Array[Vector3], delta: float) -> void:
 			if Vector2(p.x - c.x, p.z - c.z).length() < 1.1:
 				open = true
 		hinge.rotation.y = lerpf(hinge.rotation.y, 1.5 if open else 0.0, 1.0 - exp(-8.0 * delta))
+	for e in gates:
+		var gh: Node3D = (fences[e] as Node3D).get_meta("hinge")
+		var gc := edge_center(e)
+		var gate_open := false
+		for p in people:
+			if Vector2(p.x - gc.x, p.z - gc.z).length() < 0.9:
+				gate_open = true
+		gh.rotation.y = lerpf(gh.rotation.y, 1.4 if gate_open else 0.0, 1.0 - exp(-8.0 * delta))
 
 
 # --- Pathfinding ------------------------------------------------------------
@@ -751,6 +833,8 @@ func clear_build() -> void:
 		f.queue_free()
 	for e in walls.keys():
 		remove_wall(e)
+	for e in fences.keys():
+		remove_fence(e)
 	floor_tiles.clear()
 	_rebuild_floor()
 	pools.clear()

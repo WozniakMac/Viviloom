@@ -100,6 +100,12 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 				var tip: Vector2 = c + d * s
 				var side := Vector2(-d.y, d.x) * s * 0.3
 				ci.draw_colored_polygon(PackedVector2Array([tip + d * s * 0.1, tip - d * s * 0.35 + side, tip - d * s * 0.35 - side]), col)
+		"fence":
+			for k in 4:
+				var x := c.x - s * 0.75 + k * s * 0.5
+				ci.draw_colored_polygon(PackedVector2Array([Vector2(x - s * 0.16, c.y + s * 0.9), Vector2(x - s * 0.16, c.y - s * 0.5), Vector2(x, c.y - s * 0.85), Vector2(x + s * 0.16, c.y - s * 0.5), Vector2(x + s * 0.16, c.y + s * 0.9)]), col)
+			for ry in [-0.2, 0.5]:
+				ci.draw_rect(Rect2(Vector2(c.x - s, c.y + s * ry - s * 0.08), Vector2(s * 2, s * 0.16)), col)
 		"wall":
 			ci.draw_rect(Rect2(c - Vector2(s, s * 0.8), Vector2(s * 2, s * 1.6)), col)
 			for row in 3:
