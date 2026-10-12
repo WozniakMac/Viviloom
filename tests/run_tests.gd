@@ -38,6 +38,7 @@ func _ready() -> void:
 	_test_romance()
 	_test_room_and_roof()
 	_test_new_skills()
+	_test_lot_traits()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -735,3 +736,22 @@ func _test_new_skills() -> void:
 	pond.free()
 	a.free()
 	b.free()
+
+
+func _test_lot_traits() -> void:
+	var t := ["chefs_kitchen", "gremlins"]
+	_check(LotTraits.skill_mult(t, "cooking") == 1.5 and LotTraits.skill_mult(t, "logic") == 1.0, "Chef's Kitchen speeds up cooking only")
+	_check(LotTraits.break_mult(t) > 1.0 and LotTraits.break_mult([]) == 1.0, "Gremlins break things more")
+	_check(LotTraits.moodlets(["natural_light"], 12.0).size() == 1 and LotTraits.moodlets(["natural_light"], 22.0).is_empty(), "Natural Light only shines by day")
+	var lot := _make_lot()
+	add_child(lot)
+	var s := Sim.new()
+	s.lot = lot
+	var cook := Interaction.new("Cook", {}, 60.0).practices("cooking", 60.0)
+	var plain := s.skill_gain(cook, 60.0)
+	lot.lot_traits = ["chefs_kitchen"]
+	_check(is_equal_approx(s.skill_gain(cook, 60.0), plain * 1.5), "Sims learn faster on a lot with the right trait")
+	lot.clear_build()
+	_check(lot.lot_traits.is_empty(), "a cleared lot has no traits")
+	s.free()
+	lot.queue_free()

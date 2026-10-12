@@ -199,6 +199,13 @@ static func draw_icon(ci: CanvasItem, id: String, c: Vector2, s: float, col: Col
 			ci.draw_rect(Rect2(c - Vector2(s * 0.55, s), Vector2(s * 1.1, s * 2)), col)
 			ci.draw_rect(Rect2(c - Vector2(s * 0.4, s * 0.75), Vector2(s * 0.8, s * 1.35)), Color.WHITE)
 			ci.draw_circle(c + Vector2(0, s * 0.8), s * 0.12, Color.WHITE)
+		"lot_traits":
+			var hex := PackedVector2Array()
+			for k in 7:
+				var ang := PI / 6.0 + k * TAU / 6.0
+				hex.append(c + Vector2(cos(ang), sin(ang)) * s)
+			ci.draw_polyline(hex, col, 2.5, true)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-s * 0.45, s * 0.4), c + Vector2(-s * 0.45, -s * 0.05), c + Vector2(0, -s * 0.45), c + Vector2(s * 0.45, -s * 0.05), c + Vector2(s * 0.45, s * 0.4)]), col)
 		"room":
 			ci.draw_rect(Rect2(c - Vector2(s * 0.8, s * 0.8), Vector2(s * 1.6, s * 1.6)), col, false, 3.0)
 			for d in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:

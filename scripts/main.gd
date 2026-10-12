@@ -114,6 +114,9 @@ func _ready() -> void:
 			if idx >= 0:
 				owner.inventory.remove_at(idx)
 				owner.inventory_changed.emit())
+	build.lot_traits_changed.connect(func(t: Array):
+		for l in levels:
+			(l as Lot).lot_traits = t.duplicate())
 	build.roof_changed.connect(func(style: int, color: int):
 		for l in levels:
 			(l as Lot).set_roof(style, color))
@@ -882,6 +885,11 @@ func _update_mess() -> void:
 	if Clock.total_minutes < _mess_check:
 		return
 	_mess_check = Clock.total_minutes + 2.0
+	# Lot traits keep their moodlets topped up for everyone on the lot.
+	var hour := fmod(Clock.total_minutes / 60.0, 24.0)
+	for m in LotTraits.moodlets(lot.lot_traits, hour):
+		for s in lot.sims + upper.sims:
+			(s as Sim).emotions.add(m[0], m[1], m[2], m[3], m[4], 10.0)
 	if _pizza_due >= 0.0 and Clock.total_minutes >= _pizza_due and location == "home":
 		_pizza_due = -1.0
 		lot.add_mess("pizza", lot.cell_to_world(Vector2i(10, 13)))
@@ -1068,7 +1076,7 @@ func _lot_dict() -> Dictionary:
 	var fences: Array = []
 	for e in lot.fences:
 		fences.append([e.x, e.y, e.z, lot.gates.has(e)])
-	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "fences": fences, "roof": [lot.roof_style, lot.roof_color], "upper": _level_dict(upper)}
+	return {"home": home_id, "walls": walls, "floors": floors, "objects": objects, "pools": pool_rects, "fences": fences, "roof": [lot.roof_style, lot.roof_color], "lot_traits": lot.lot_traits.duplicate(), "upper": _level_dict(upper)}
 
 
 ## Walls, floors and objects of an upper level.
@@ -1128,6 +1136,7 @@ func _apply_lot_dict(d: Dictionary) -> void:
 	var roof: Array = d.get("roof", [0, 0])
 	for l in levels:
 		(l as Lot).set_roof(int(roof[0]), int(roof[1]))
+		(l as Lot).lot_traits = d.get("lot_traits", []).duplicate()
 	for fe in d.get("fences", []):
 		var fe_e := Vector3i(int(fe[0]), int(fe[1]), int(fe[2]))
 		lot.add_fence(fe_e)
@@ -1775,6 +1784,10 @@ func _run_scenario(scenario: String, path: String) -> void:
 			lot.wall_view = Lot.WallView.CUTAWAY
 			rig.frame(pn.global_position, deg_to_rad(25.0), deg_to_rad(-35.0), 8.0)
 			await get_tree().create_timer(4.0).timeout
+		"lottraits":
+			build.enter()
+			build.open_lot_traits()
+			await get_tree().create_timer(1.0).timeout
 		"rooftool":
 			build.enter()
 			build.set_tool(BuildMode.Tool.ROOF)

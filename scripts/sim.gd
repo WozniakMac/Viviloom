@@ -1259,6 +1259,8 @@ func skill_gain(interaction: Interaction, minutes: float) -> float:
 	var gain := interaction.skill_rate * minutes / 60.0 * Traits.skill_mult(traits, interaction.skill)
 	if perks.has("fast_learner"):
 		gain *= 1.25
+	if lot != null:
+		gain *= LotTraits.skill_mult(lot.lot_traits, interaction.skill)
 	if emotions.mood() == Skills.boosting_emotion(interaction.skill):
 		gain *= Skills.EMOTION_BONUS
 	return gain
@@ -1330,7 +1332,7 @@ func _end_perform(a: SimAction, finished := false) -> void:
 	if finished and a.interaction.fixes:
 		a.furniture.set_broken(false)
 		announced.emit("%s repaired the %s." % [sim_name, a.furniture.display_name])
-	elif finished and lot != null and Catalog.BREAKABLE.has(a.furniture.kind) and _rng.randf() < Catalog.BREAK_CHANCE:
+	elif finished and lot != null and Catalog.BREAKABLE.has(a.furniture.kind) and _rng.randf() < Catalog.BREAK_CHANCE * LotTraits.break_mult(lot.lot_traits):
 		a.furniture.set_broken(true)
 		Sfx.play("demolish", -6.0)
 		announced.emit("Oh no, the %s broke! Click it to repair it." % a.furniture.display_name)

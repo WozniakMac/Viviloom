@@ -38,6 +38,8 @@ var windows := {}
 var wall_styles := {}
 ## Edge -> picket fence node; gates are fence edges Sims can walk through.
 var fences := {}
+## Lot traits (see LotTraits) for the home; community lots have none.
+var lot_traits: Array = []
 var gates := {}
 const FENCE_HEIGHT := 0.9
 ## Vector2i tile -> Finishes.FLOORS index.
@@ -900,6 +902,7 @@ func clear_build() -> void:
 		remove_fence(e)
 	roof_style = RoofStyle.GABLE
 	roof_color = 0
+	lot_traits = []
 	floor_tiles.clear()
 	_rebuild_floor()
 	pools.clear()

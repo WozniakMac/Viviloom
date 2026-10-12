@@ -10,6 +10,8 @@ signal entered
 signal placed(f: Furniture)
 ## The roof style or colour was changed (applies to every storey).
 signal roof_changed(style: int, color: int)
+## Lot traits were picked (applies to every storey).
+signal lot_traits_changed(traits: Array)
 
 enum Tool { MOVE, WALL, DOOR, DELETE, PLACE, WINDOW, PAINT, FLOOR, POOL, FENCE, ROOM, ROOF }
 
@@ -599,7 +601,7 @@ func _build_ui() -> void:
 	tools_pill.add_theme_stylebox_override("panel", UiTheme.panel_style(28, 6))
 	tools_pill.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	tools_pill.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	tools_pill.position = Vector2(-268, 14)
+	tools_pill.position = Vector2(-294, 14)
 	root.add_child(tools_pill)
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 6)
@@ -623,6 +625,10 @@ func _build_ui() -> void:
 		b.pressed.connect(set_tool.bind(d[0]))
 		tools.add_child(b)
 		_tool_buttons[d[0]] = b
+	var traits_btn := IconButton.make("lot_traits", 46, "Lot Traits: give this home up to %d traits" % LotTraits.MAX)
+	traits_btn.pressed.connect(open_lot_traits)
+	tools.add_child(traits_btn)
+	_ui_root = root
 
 	# Catalogue along the bottom: sections on the left, object tiles to the right.
 	var panel := PanelContainer.new()
@@ -887,3 +893,65 @@ class RoofShape:
 				draw_colored_polygon(PackedVector2Array([c + Vector2(-w, -6), c + Vector2(-w * 0.35, -26), c + Vector2(w * 0.35, -26), c + Vector2(w, -6)]), color)
 			Lot.RoofStyle.FLAT:
 				draw_rect(Rect2(c + Vector2(-w * 0.9, -12), Vector2(w * 1.8, 6)), color.lerp(Color(0.75, 0.75, 0.75), 0.55))
+
+
+var _ui_root: Control
+var _traits_panel: PanelContainer
+
+## The Lot Traits picker: toggle up to three, free of charge.
+func open_lot_traits() -> void:
+	if _traits_panel != null:
+		_traits_panel.queue_free()
+		_traits_panel = null
+		return
+	_traits_panel = PanelContainer.new()
+	_traits_panel.add_theme_stylebox_override("panel", UiTheme.panel_style(18, 14))
+	_traits_panel.custom_minimum_size = Vector2(560, 0)
+	_ui_root.add_child(_traits_panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	_traits_panel.add_child(v)
+	var t := UiTheme.title(Label.new(), 22)
+	t.text = "Lot Traits"
+	v.add_child(t)
+	var sub := Label.new()
+	sub.text = "Pick up to %d. They shape life in this home." % LotTraits.MAX
+	sub.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+	v.add_child(sub)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	v.add_child(grid)
+	for id in LotTraits.ORDER:
+		var info: Dictionary = LotTraits.INFO[id]
+		var b := Button.new()
+		b.toggle_mode = true
+		b.focus_mode = Control.FOCUS_NONE
+		b.button_pressed = lot.lot_traits.has(id)
+		b.text = info["label"]
+		b.tooltip_text = info["description"]
+		b.custom_minimum_size = Vector2(170, 44)
+		b.add_theme_stylebox_override("pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK, 22))
+		b.add_theme_color_override("font_pressed_color", Color.WHITE)
+		b.toggled.connect(func(on: bool):
+			var next: Array = lot.lot_traits.duplicate()
+			if on and not next.has(id):
+				if next.size() >= LotTraits.MAX:
+					notice.emit("A lot can have up to %d traits. Remove one first." % LotTraits.MAX)
+					b.set_pressed_no_signal(false)
+					return
+				next.append(id)
+			elif not on:
+				next.erase(id)
+			lot_traits_changed.emit(next))
+		grid.add_child(b)
+	var close := Button.new()
+	close.text = "Done"
+	close.focus_mode = Control.FOCUS_NONE
+	close.custom_minimum_size = Vector2(120, 40)
+	close.pressed.connect(open_lot_traits)
+	v.add_child(close)
+	await get_tree().process_frame
+	if _traits_panel != null:
+		_traits_panel.position = (_ui_root.size - _traits_panel.size) * 0.5
