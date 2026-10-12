@@ -1,0 +1,45 @@
+{
+  "crewneck-blue-ai.png": {
+    "tool": "built-in imagegen",
+    "mode": "precise-object-edit",
+    "source": "../makehuman/system-assets/clothes/male_casualsuit02/male_casualsuit02_diffuse.png",
+    "source_license": "CC0",
+    "prompt": "crewneck-blue-ai.prompt.txt",
+    "use": "Sweater only; original denim texture retained on trousers"
+  },
+  "hair-detail-ai-v1.png": {
+    "path": "../../sim/hair-detail-ai-v1.png",
+    "tool": "built-in imagegen",
+    "mode": "precise-object-edit",
+    "source": "../makehuman/hair01/hair/culturalibre_hair_01/diffuse_black.png",
+    "source_license": "CC0",
+    "prompt": "hair-detail-ai-v1.prompt.txt",
+    "use": "Supplemental RGB clump luminance for native Long hair only. The original atlas alone controls alpha, UV layout, hairline and cutout. AI output did not preserve exact island placement; its color contributes only where its alpha is present. The new system-pack Bob does not use this atlas.",
+    "dimensions": [
+      1254,
+      1254
+    ]
+  },
+  "female-tee-blue-ai.png": {
+    "tool": "built-in imagegen",
+    "mode": "precise-object-edit",
+    "source": "../makehuman/system-assets/clothes/female_casualsuit01/female_casualsuit01_diffuse.png",
+    "source_license": "CC0",
+    "prompt": "female-tee-blue-ai.prompt.txt",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "use": "Plain tee only; original CC0 jeans atlas retained on trousers. AI UV silhouettes approximate the source and require rendered fit verification."
+  },
+  "hair-flow-prototype-ai.png": {
+    "tool": "built-in imagegen",
+    "mode": "text-to-image",
+    "provenance": "hair-flow-prototype-ai.provenance.json",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "use": "Original solid-lock texture prototype; not used in runtime after visual review."
+  }
+}

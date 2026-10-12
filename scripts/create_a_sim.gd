@@ -5,6 +5,7 @@ extends CanvasLayer
 ## appearance swatches on the right, rotate arrows below the Sim and a green tick to
 ## finish. Edits apply to the Sim immediately.
 
+signal view_requested(close_up: bool)
 signal finished
 signal member_selected(sim: Sim)
 signal add_requested
@@ -32,13 +33,17 @@ var _aspiration_pick: OptionButton
 var _walk_pick: OptionButton
 var _hair_buttons := {}
 var _age_buttons := {}
+var _frame_buttons := {}
 var _outfit_buttons := {}
 var _heavy_slider: HSlider
 var _fit_slider: HSlider
+var _face_sliders := {}
 var _sleeve_buttons: Array[Button] = []
 var _leg_buttons: Array[Button] = []
 var _rng := RandomNumberGenerator.new()
 var _household_row: HBoxContainer
+var _sculpt: CharacterSculpt
+var _turn_tween: Tween
 
 
 func setup(p_sim: Sim) -> void:
@@ -55,6 +60,13 @@ func _build() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
+	_sculpt = CharacterSculpt.new()
+	root.add_child(_sculpt)
+	_sculpt.select(sim)
+	_sculpt.changed.connect(_sync_body)
+	_sculpt.gesture_started.connect(_stop_turn)
+	_sculpt.zoom_requested.connect(func(close_up: bool): view_requested.emit(close_up))
+	view_requested.connect(_sculpt.set_view)
 
 	# Top-left: name and trait slots.
 	var left := VBoxContainer.new()
@@ -158,10 +170,37 @@ func _build() -> void:
 	bv.add_child(bt)
 	_heavy_slider = _slider(bv, "Weight")
 	_fit_slider = _slider(bv, "Fitness")
-	_heavy_slider.value_changed.connect(func(v: float): sim.set_body(v, sim.body_fit))
-	_fit_slider.value_changed.connect(func(v: float): sim.set_body(sim.body_heavy, v))
+	_heavy_slider.value_changed.connect(func(v: float):
+		_sculpt.clear_history()
+		sim.set_body(v, sim.body_fit))
+	_fit_slider.value_changed.connect(func(v: float):
+		_sculpt.clear_history()
+		sim.set_body(sim.body_heavy, v))
 	_sleeve_buttons = _choice_row(bv, "Sleeves", ["Short", "Long"], func(i: int): sim.set_outfit(i == 1, sim.shorts))
 	_leg_buttons = _choice_row(bv, "Legs", ["Trousers", "Shorts", "Skirt"], func(i: int): sim.set_legs(["trousers", "shorts", "skirt"][i]))
+	var face_panel := PanelContainer.new()
+	face_panel.visible = false
+	face_panel.custom_minimum_size = Vector2(380, 0)
+	left.add_child(face_panel)
+	var face_controls := VBoxContainer.new()
+	face_controls.add_theme_constant_override("separation", 8)
+	face_panel.add_child(face_controls)
+	view_requested.connect(func(close_up: bool):
+		body.visible = not close_up
+		face_panel.visible = close_up)
+	var face_title := UiTheme.title(Label.new(), 18)
+	face_title.text = "Face"
+	face_controls.add_child(face_title)
+	for feature in sim.face_features:
+		var labels := {"NoseWidth": "Nose", "JawWidth": "Jaw", "EyeSpacing": "Eyes", "LipFullness": "Lips"}
+		var slider := _slider(face_controls, labels[feature])
+		slider.min_value = -1.0
+		slider.value = 0.0
+		slider.value_changed.connect(func(value: float):
+			_sculpt.clear_history()
+			sim.set_face_feature(feature, value))
+		slider.drag_started.connect(func(): view_requested.emit(true))
+		_face_sliders[feature] = slider
 	_sync_body()
 
 	# Right: appearance.
@@ -171,11 +210,30 @@ func _build() -> void:
 	look.position = Vector2(-24, 20)
 	root.add_child(look)
 	var lv := VBoxContainer.new()
-	lv.add_theme_constant_override("separation", 10)
+	lv.add_theme_constant_override("separation", 6)
 	look.add_child(lv)
 	var lt := UiTheme.title(Label.new(), 18)
 	lt.text = "Appearance"
 	lv.add_child(lt)
+	var frame_label := Label.new()
+	frame_label.text = "Body frame"
+	frame_label.add_theme_font_size_override("font_size", 14)
+	frame_label.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
+	lv.add_child(frame_label)
+	var frame_row := HBoxContainer.new()
+	lv.add_child(frame_row)
+	for frame in Sim.BODY_FRAMES:
+		var button := Button.new()
+		button.text = Sim.BODY_FRAME_LABELS[frame]
+		button.toggle_mode = true
+		button.focus_mode = Control.FOCUS_NONE
+		button.add_theme_font_size_override("font_size", 12)
+		button.add_theme_stylebox_override("pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		button.add_theme_stylebox_override("hover_pressed", UiTheme.pill(UiTheme.GREEN, UiTheme.GREEN_DARK))
+		button.pressed.connect(_pick_frame.bind(frame))
+		frame_row.add_child(button)
+		_frame_buttons[frame] = button
+	_pick_frame(sim.body_frame)
 	var al := Label.new()
 	al.text = "Age"
 	al.add_theme_font_size_override("font_size", 14)
@@ -186,7 +244,7 @@ func _build() -> void:
 	arow.add_theme_constant_override("v_separation", 4)
 	arow.custom_minimum_size = Vector2(250, 0)
 	lv.add_child(arow)
-	for stage in ["child", "teen", "young_adult", "adult", "elder"]:
+	for stage in Ages.ORDER:
 		var ab := Button.new()
 		ab.text = Ages.label(stage)
 		ab.toggle_mode = true
@@ -231,7 +289,7 @@ func _build() -> void:
 	lv.add_child(hrow)
 	for style in Sim.HAIR_STYLES:
 		var hb := Button.new()
-		hb.text = style.capitalize()
+		hb.text = "Tousled" if style == "curly" else style.capitalize()
 		hb.toggle_mode = true
 		hb.focus_mode = Control.FOCUS_NONE
 		hb.custom_minimum_size = Vector2(0, 28)
@@ -264,6 +322,39 @@ func _build() -> void:
 			sw.pressed.connect(_on_swatch.bind(part, c))
 			row.add_child(sw)
 			_swatches[part].append([sw, c])
+
+	var view_row := HBoxContainer.new()
+	lv.add_child(view_row)
+	for close_up in [true, false]:
+		var view := Button.new()
+		view.text = "Face view" if close_up else "Full body"
+		view.pressed.connect(func(): view_requested.emit(close_up))
+		view_row.add_child(view)
+
+	var history := HBoxContainer.new()
+	history.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	history.position = Vector2(-94,-122)
+	history.add_theme_constant_override("separation",8)
+	root.add_child(history)
+	var undo := Button.new()
+	undo.text = "Undo"
+	undo.tooltip_text = "Undo the last drag (Ctrl+Z)"
+	undo.focus_mode = Control.FOCUS_NONE
+	undo.disabled = true
+	undo.custom_minimum_size = Vector2(90,30)
+	undo.pressed.connect(_sculpt.undo)
+	history.add_child(undo)
+	var redo := Button.new()
+	redo.text = "Redo"
+	redo.tooltip_text = "Redo the last drag (Ctrl+Shift+Z)"
+	redo.focus_mode = Control.FOCUS_NONE
+	redo.disabled = true
+	redo.custom_minimum_size = Vector2(90,30)
+	redo.pressed.connect(_sculpt.redo)
+	history.add_child(redo)
+	_sculpt.history_changed.connect(func(can_undo: bool,can_redo: bool):
+		undo.disabled = not can_undo
+		redo.disabled = not can_redo)
 
 	# Bottom centre: turn the Sim.
 	var turn := HBoxContainer.new()
@@ -326,9 +417,12 @@ func set_household(members: Array, max_size: int) -> void:
 
 ## Switches the panels to another household member.
 func edit(s: Sim) -> void:
+	_stop_turn()
+	_sculpt.select(s)
 	sim = s
 	_picked = s.traits.duplicate()
 	_name_edit.text = s.sim_name
+	_pick_frame(s.body_frame)
 	_pick_hair(s.hair_style)
 	_sync_walk()
 	_pick_age(s.age_stage)
@@ -365,7 +459,7 @@ func _sync_swatches() -> void:
 	var current := {"skin": sim.skin_color, "hair": sim.hair_color, "eyes": sim.eye_color, "shirt": sim.shirt_color, "pants": sim.pants_color}
 	for part in _swatches:
 		for pair in _swatches[part]:
-			(pair[0] as Button).set_pressed_no_signal((pair[1] as Color).is_equal_approx(current[part]))
+			(pair[0] as Button).set_pressed_no_signal((pair[1] as Color).to_html() == (current[part] as Color).to_html())
 
 
 func _slider(parent: Control, label: String) -> HSlider:
@@ -421,6 +515,8 @@ func _choice_row(parent: Control, label: String, options: Array, on_pick: Callab
 func _sync_body() -> void:
 	_heavy_slider.set_value_no_signal(sim.body_heavy)
 	_fit_slider.set_value_no_signal(sim.body_fit)
+	for feature in _face_sliders:
+		(_face_sliders[feature] as HSlider).set_value_no_signal(sim.face_features[feature])
 	for k in 2:
 		_sleeve_buttons[k].set_pressed_no_signal((k == 1) == sim.long_sleeves)
 	var leg := 2 if sim.skirt else (1 if sim.shorts else 0)
@@ -437,11 +533,24 @@ func _pick_outfit(cat: String) -> void:
 	_sync_body()
 
 
+func _pick_frame(frame: String) -> void:
+	_sculpt.cancel_drag()
+	_sculpt.clear_history()
+	sim.set_body_frame(frame)
+	for key in _frame_buttons:
+		(_frame_buttons[key] as Button).button_pressed = key == sim.body_frame
+	if not _hair_buttons.is_empty():_pick_hair(sim.hair_style)
+	view_requested.emit(_sculpt.close_up)
+
+
 func _pick_age(stage: String) -> void:
-	sim.age_days = 0
+	_sculpt.cancel_drag()
+	_sculpt.clear_history()
+	if stage != sim.age_stage:sim.age_days = 0
 	sim.set_age(stage)
 	for k in _age_buttons:
 		(_age_buttons[k] as Button).button_pressed = k == stage
+	view_requested.emit(_sculpt.close_up)
 
 
 func _pick_hair(style: String) -> void:
@@ -461,9 +570,14 @@ func _pick_aspiration(a: String) -> void:
 	_aspiration_pick.tooltip_text = Aspirations.INFO[a]["description"]
 
 
+func _stop_turn() -> void:
+	if _turn_tween != null and _turn_tween.is_valid(): _turn_tween.kill()
+
 func _turn(amount: float) -> void:
-	var tw := create_tween()
-	tw.tween_property(sim, "rotation:y", sim.rotation.y + amount, 0.25).set_trans(Tween.TRANS_SINE)
+	_stop_turn()
+	_sculpt.clear_history()
+	_turn_tween = create_tween()
+	_turn_tween.tween_property(sim, "rotation:y", sim.rotation.y + amount, 0.25).set_trans(Tween.TRANS_SINE)
 
 
 func _on_trait_clicked(t: String) -> void:
@@ -500,6 +614,7 @@ func _refresh() -> void:
 
 
 func randomize_sim() -> void:
+	_pick_frame(Sim.BODY_FRAMES[_rng.randi() % Sim.BODY_FRAMES.size()])
 	sim.sim_name = RANDOM_NAMES[_rng.randi() % RANDOM_NAMES.size()]
 	_name_edit.text = sim.sim_name
 	for part in PALETTES:
@@ -525,6 +640,8 @@ func randomize_sim() -> void:
 
 
 func _finish() -> void:
+	_stop_turn()
+	_sculpt.cancel_drag()
 	if _done.disabled:
 		return
 	finished.emit()
@@ -566,18 +683,35 @@ void fragment() {
 	var floor_mesh := PlaneMesh.new()
 	floor_mesh.size = Vector2(30, 30)
 	var floor := MeshInstance3D.new()
+	floor.layers = 16
 	floor.mesh = floor_mesh
-	var fm := StandardMaterial3D.new()
-	fm.albedo_color = Color(0.36, 0.55, 0.66)
-	fm.roughness = 1.0
+	var fm := ShaderMaterial.new()
+	fm.shader = preload("res://shaders/studio_floor.gdshader")
+	floor.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	floor.material_override = fm
 	studio.add_child(floor)
 	# Soft key light from the front so the face isn't in shadow.
 	var key := OmniLight3D.new()
 	key.position = Vector3(1.2, 2.4, 3.2)
 	key.omni_range = 9.0
-	key.light_energy = 1.6
+	key.light_energy = 0.85
+	key.shadow_enabled = true
+	key.light_cull_mask = 8 | 16
+	key.shadow_caster_mask = 8
 	key.light_color = Color(1.0, 0.97, 0.92)
 	studio.add_child(key)
+	var fill := OmniLight3D.new()
+	fill.position = Vector3(-2.0, 1.7, 2.0)
+	fill.omni_range = 7.0
+	fill.light_energy = 0.28
+	fill.light_color = Color(0.84, 0.9, 1.0)
+	fill.light_cull_mask = 8
+	studio.add_child(fill)
+	var rim := OmniLight3D.new()
+	rim.position = Vector3(0.5, 2.1, -1.5)
+	rim.omni_range = 5.0
+	rim.light_energy = 0.28
+	rim.light_cull_mask = 8
+	studio.add_child(rim)
 	studio.position = at
 	return studio

@@ -2,10 +2,10 @@
 
 Run:  blender --background --python tools/make_sim.py
 
-Everything is generated: a smooth body grown from a skeleton line with the Skin and
-Subdivision modifiers, a head with simple features, three hairstyles, an armature
-with automatic weights, and a handful of looping animations. Material names (Skin,
-Shirt, Pants, Shoes, Hair, EyeWhite, Pupil, Lips) let the game recolour each part.
+Native Anny/MakeHuman anatomy and CC0 garments are fitted to the game skeleton,
+with region-aware skin weights, native body morphs, facial actions and textured
+hair. AI-generated clothing detail and the editable Blender source are retained.
+Material names let each Sim have independent palette colors.
 
 Blender is Z-up with the character facing +Y; the glTF exporter turns that into
 Y-up facing -Z, which is the game's "forward".
@@ -13,9 +13,14 @@ Y-up facing -Z, which is the game's "forward".
 import math
 import os
 import sys
+from pathlib import Path
 
 import bpy
 import bmesh
+
+if "--trace-build" in sys.argv:
+    import faulthandler
+    faulthandler.dump_traceback_later(30,repeat=True)
 from mathutils import Vector
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "sim", "sim.glb")
@@ -49,7 +54,7 @@ for side, sx in (("L", 1), ("R", -1)):
     J["shoulder." + side] = (0.205 * sx, 0, 1.4)
     J["elbow." + side] = (0.245 * sx, -0.01, 1.12)
     J["wrist." + side] = (0.265 * sx, 0.01, 0.86)
-    J["hand." + side] = (0.27 * sx, 0.015, 0.77)
+    J["hand." + side] = (0.267 * sx, 0.015, 0.81)
 
 # (from, to, radius at from, radius at to) for the skin modifier body.
 LINKS = [
@@ -85,7 +90,7 @@ def build_body():
     bpy.context.view_layer.objects.active = obj
     skin = obj.modifiers.new("Skin", "SKIN")
     sub = obj.modifiers.new("Subsurf", "SUBSURF")
-    sub.levels = 2
+    sub.levels = 3
     radii = {}
     for a, b, ra, rb in LINKS:
         radii[a] = max(radii.get(a, 0), ra)
@@ -101,7 +106,18 @@ def build_body():
     mesh.skin_vertices[0].data[index["pelvis"]].use_root = True
     bpy.ops.object.modifier_apply(modifier="Skin")
     bpy.ops.object.modifier_apply(modifier="Subsurf")
-    bpy.ops.object.shade_smooth()
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    # Cut horizontal clothing seams into topology before shape keys and rigging.
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    for height in (0.12, 0.5, 0.93, 1.12, 1.445):
+        bmesh.ops.bisect_plane(bm, geom=list(bm.verts)+list(bm.edges)+list(bm.faces),
+                              plane_co=(0,0,height), plane_no=(0,0,1), dist=0.00001)
+    bm.to_mesh(obj.data)
+    bm.free()
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
     return obj
 
 
@@ -139,6 +155,8 @@ def assign_body_materials(obj, mats):
         obj.data.materials.append(mats[m])
     order = {"Skin": 0, "Shirt": 1, "Pants": 2, "Shoes": 3, "Sleeve": 4, "Shin": 5}
     names = {g.index: g.name for g in obj.vertex_groups}
+    arms=[item.value for item in obj.data.attributes['AnatomicalArm'].data]
+    hands=[item.value for item in obj.data.attributes['AnatomicalHand'].data]
     for poly in obj.data.polygons:
         weights = {}
         for vi in poly.vertices:
@@ -147,22 +165,27 @@ def assign_body_materials(obj, mats):
                 weights[n] = weights.get(n, 0.0) + g.weight
         bone = max(weights, key=weights.get) if weights else "spine"
         c = obj.matrix_world @ poly.center
-        if bone.startswith("foot") or c.z < 0.12:
+        arm=sum(arms[i] for i in poly.vertices)/len(poly.vertices)
+        hand=sum(hands[i] for i in poly.vertices)/len(poly.vertices)
+        if hand>.25:
+            slot='Skin'
+        elif 'female' in os.environ.get('ANNY_PRESET','') and arm>.18:
+            slot='Skin'
+        elif arm>.5:
+            # The fitted female tee has shorter sleeves than the male sweater.
+            # Keep its underlying arm opaque; only fabric occludes the skin.
+            female='female' in os.environ.get('ANNY_PRESET','')
+            slot='Skin' if female or c.z<.86 else 'Sleeve' if c.z<1.12 else 'Shirt'
+        elif c.z < 0.12:
             slot = "Shoes"
-        elif bone.startswith("shin"):
+        elif c.z < 0.5 and abs(c.x) < 0.2:
             slot = "Shin"
-        elif bone.startswith("thigh"):
-            slot = ("Shin" if c.z < 0.5 else "Pants") if c.z < 0.93 else "Shirt"
-        elif bone.startswith("hand"):
-            slot = "Skin"
-        elif bone.startswith("forearm"):
-            slot = "Sleeve" if c.z > 0.83 else "Skin"
-        elif bone.startswith("upperarm"):
-            slot = "Sleeve" if c.z < 1.27 else "Shirt"
-        elif bone in ("neck", "head"):
-            slot = "Skin" if c.z > 1.44 else "Shirt"
-        elif c.z < 0.93:
+        elif c.z < 0.93 and abs(c.x) < 0.2:
             slot = "Pants"
+        elif abs(c.x) > 0.19 and c.z < 1.12:
+            slot = "Sleeve" if c.z > 0.86 else "Skin"
+        elif c.z > 1.51 or (c.z > 1.445 and abs(c.x) < .09):
+            slot = "Skin"
         else:
             slot = "Shirt"
         poly.material_index = order[slot]
@@ -371,6 +394,9 @@ def build_armature():
             bone.use_connect = False
         # Consistent rolls so +X rotation bends limbs the same way on both sides.
         bone.roll = 0.0
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from anatomical_fingers import add_finger_bones
+    add_finger_bones(eb,J)
     bpy.ops.object.mode_set(mode="OBJECT")
     return rig
 
@@ -380,7 +406,22 @@ def skin_to_rig(rig, body, rigid):
     body.select_set(True)
     rig.select_set(True)
     bpy.context.view_layer.objects.active = rig
-    bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+    bpy.ops.object.parent_set(type="ARMATURE_NAME")
+    from anatomical_weights import bind_body
+    bind_body(body, rig)
+    # The shared neck boundary must follow exactly the same bone as the head.
+    head_group = body.vertex_groups.get('head') or body.vertex_groups.new(name='head')
+    for vertex in body.data.vertices:
+        if vertex.co.z <= 1.49:
+            continue
+        blend = min(1.0, (vertex.co.z - 1.49) / .045)
+        previous = {group.group: group.weight for group in vertex.groups}
+        for index in previous:
+            body.vertex_groups[index].remove([vertex.index])
+        for index, weight in previous.items():
+            if index != head_group.index and weight * (1-blend) > 0:
+                body.vertex_groups[index].add([vertex.index], weight * (1-blend), 'REPLACE')
+        head_group.add([vertex.index], blend + previous.get(head_group.index, 0) * (1-blend), 'REPLACE')
     # Head and hair follow the head bone only; the skirt follows the hips.
     for o in rigid:
         bone = "hips" if o.name == "Skirt" else "head"
@@ -407,7 +448,13 @@ def make_action(rig, name, frames, poses):
         pb.rotation_mode = "XYZ"
     for frame, pose in sorted(poses.items()):
         for pb in rig.pose.bones:
-            r = pose.get(pb.name, (0, 0, 0))
+            default=(0,0,0)
+            if pb.name.startswith('finger'):
+                digit=int(pb.name[6]);segment=int(pb.name[8])
+                relaxed=[6,12,7] if digit==1 else [7+digit*1.5,13+digit,8]
+                if name=='wave' or name=='talk':relaxed=[v*.25 for v in relaxed]
+                default=(-relaxed[segment-1],0,0)
+            r = pose.get(pb.name, default)
             # Poses are written with +X meaning "bend forward"; with these bone rolls
             # that is a negative rotation, so X is flipped here.
             pb.rotation_euler = (deg(-r[0]), deg(r[1]), deg(r[2]))
@@ -592,33 +639,106 @@ def animations(rig):
     mood_walk("walk_angry", {"chest": (6, 0, 0), "head": (8, 0, 0), "forearm.L": (-80, 0, 0), "forearm.R": (-80, 0, 0)}, 0.035, 1.2)
 
 
-def main():
-    clear_scene()
+def build_frame(rig,label):
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from character_details import build_head, build_hair, build_expressions
+    from anatomical_body import build_anatomical_body
+    existing=set(bpy.data.objects)
     mats = {
-        "Skin": material("Skin", (0.87, 0.69, 0.55), 0.6),
+        "Skin": material("Skin", (0.57, 0.34, 0.22), 0.6),
         "Shirt": material("Shirt", (0.22, 0.47, 0.82)),
         "Pants": material("Pants", (0.18, 0.2, 0.28)),
         "Shoes": material("Shoes", (0.12, 0.1, 0.1), 0.5),
-        "Sleeve": material("Sleeve", (0.87, 0.69, 0.55), 0.6),
+        "Sleeve": material("Sleeve", (0.57, 0.34, 0.22), 0.6),
         "Shin": material("Shin", (0.18, 0.2, 0.28)),
-        "Hair": material("Hair", (0.25, 0.16, 0.1), 0.55),
+        "Hair": material("Hair", (0.08, 0.035, 0.015), 0.82),
         "EyeWhite": material("EyeWhite", (0.97, 0.97, 0.95), 0.3),
         "Pupil": material("Pupil", (0.1, 0.07, 0.05), 0.2),
         "Lips": material("Lips", (0.72, 0.38, 0.38), 0.5),
     }
-    body = build_body()
-    add_shape_keys(body)
+    mats['Iris'] = material('Iris', (0.22, 0.37, 0.40), 0.28)
+    mats['Nostril'] = material('Nostril', (0.23, 0.11, 0.08), 0.8)
+    mats['Lips'].node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.55, 0.27, 0.22, 1)
+    # Preserve the anatomical mesh's UV layout and its CC0 skin detail.
+    sex='female' if label=='Feminine' else 'male'
+    skin_path = Path(__file__).resolve().parent.parent / ('assets/source/makehuman/system-assets/skins/young_asian_'+sex+'/young_lightskinned_'+sex+'_diffuse3.png')
+    if skin_path.exists():
+        for name in ['Skin', 'Sleeve', 'Shin']:
+            skin = mats[name]
+            texture = skin.node_tree.nodes.new('ShaderNodeTexImage')
+            texture.image = bpy.data.images.load(str(skin_path), check_existing=True)
+            skin.node_tree.links.new(texture.outputs['Color'], skin.node_tree.nodes['Principled BSDF'].inputs['Base Color'])
+    print("BUILD FRAME",label,"anatomy",flush=True)
+    body = build_anatomical_body(J)
+    from anatomical_shapes import add_body_shapes
+    add_body_shapes(body)
     head = build_head(mats)
     hairs = build_hair(mats)
+    from native_hair import build_native_hair
+    hairs = build_native_hair(hairs)
     faces = build_expressions(mats)
+    from facial_shapes import add_face_shapes
+    for part in [head]+[part for part in faces if part.name.startswith('Brows_')]:
+        add_face_shapes(part)
+    from facial_shapes import add_native_actions
+    add_native_actions(head)
+    from head_body_shapes import add_head_body_shapes
+    add_head_body_shapes(head)
+    for hair in hairs:add_head_body_shapes(hair,skin_only=False)
     faces.append(build_skirt(mats))
-    rig = build_armature()
+    print("BUILD FRAME",label,"binding",flush=True)
     skin_to_rig(rig, body, [head] + hairs + faces)
     assign_body_materials(body, mats)
+    from native_clothing import build_clothing
+    print("BUILD FRAME",label,"clothing",flush=True)
+    build_clothing(J, rig)
+    from age_shapes import AgeShapes
+    ages=AgeShapes(J,rig,BONES)
+    for part in [obj for obj in bpy.data.objects if obj not in existing and obj.type=='MESH']:ages.add(part)
+    ages.save(label)
+    frame=bpy.data.objects.new('Frame_'+label,None)
+    bpy.context.collection.objects.link(frame);frame.parent=rig
+    for part in [obj for obj in bpy.data.objects if obj not in existing and obj.type=='MESH']:
+        part.parent=frame
+        part.name=label+'_'+part.name
+
+
+def main():
+    clear_scene()
+    rig=build_armature()
+    male_joints=dict(J)
+    for label,preset in [('Masculine','adult-male'),('Feminine','adult-female')]:
+        J.update(male_joints)
+        if label=='Feminine':
+            for side,sx in [('L',1),('R',-1)]:
+                for name,width in [('shoulder',.180),('elbow',.220),('wrist',.240),('hand',.242)]:
+                    p=J[name+'.'+side];J[name+'.'+side]=(width*sx,p[1],p[2])
+        os.environ['ANNY_PRESET']=preset
+        build_frame(rig,label)
+    os.environ['ANNY_PRESET']='adult-male'
+    J.update(male_joints)
     animations(rig)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    # Texture-ready UVs also let Godot generate tangents without import errors.
+    for obj in [o for o in bpy.context.scene.objects if o.type == 'MESH']:
+        if obj.data.uv_layers:
+            continue
+        bpy.ops.object.select_all(action='DESELECT')
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.uv.smart_project(angle_limit=1.1519, island_margin=0.01)
+        bpy.ops.object.mode_set(mode='OBJECT')
+    source_dir=os.path.abspath(os.path.join(os.path.dirname(__file__), 'model_source'))
+    for image in bpy.data.images:
+        if image.filepath and image.source == 'FILE':
+            image.filepath='//'+os.path.relpath(bpy.path.abspath(image.filepath),source_dir).replace(os.sep,'/')
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(source_dir,'character.blend'),compress=True)
     bpy.ops.export_scene.gltf(filepath=os.path.abspath(OUT), export_format="GLB", export_animations=True,
                               export_animation_mode="NLA_TRACKS", export_apply=False, export_yup=True)
+    from gltf_textures import externalize_image
+    externalize_image(os.path.abspath(OUT),'bob01_diffuse','bob01-diffuse.png')
     print("WROTE", os.path.abspath(OUT))
 
 
