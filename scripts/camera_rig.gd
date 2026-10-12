@@ -36,7 +36,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_WHEEL_DOWN:
 				if mb.pressed:
 					_target_distance = minf(max_distance, _target_distance * 1.12)
-			MOUSE_BUTTON_MIDDLE:
+			MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT:
 				_rotating = mb.pressed
 	elif event is InputEventMouseMotion and _rotating:
 		var mm := event as InputEventMouseMotion

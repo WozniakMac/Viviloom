@@ -666,6 +666,10 @@ func _build_sim_cluster() -> void:
 	_portrait_rect.position = Vector2(56, 70)
 	_portrait_rect.size = Vector2(170, 170)
 	_portrait_rect.mouse_filter = Control.MOUSE_FILTER_STOP
+	_portrait_rect.tooltip_text = "Click to centre the camera on this Sim"
+	_portrait_rect.gui_input.connect(func(e: InputEvent):
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and sim != null:
+			sim_selected.emit(sim))
 	c.add_child(_portrait_rect)
 	_away_label = UiTheme.title(Label.new(), 16)
 	_away_label.text = "At Work"

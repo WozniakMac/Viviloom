@@ -298,6 +298,49 @@ func select_sim(s: Sim, pan := true) -> void:
 		_pan.tween_property(rig, "position", Vector3(s.global_position.x, s.lot.base_y(), s.global_position.z), 0.4).set_trans(Tween.TRANS_SINE)
 
 
+var _hovered: Node3D
+static var _hover_mat: ShaderMaterial
+
+
+## Highlights the object or Sim under the mouse with a soft glowing rim, and
+## shows a pointing hand, like the reference game.
+func _hover(at: Vector2) -> void:
+	var picked: Object = _pick_at(at)
+	var target: Node3D = null
+	if picked is Furniture and not (picked as Furniture).available_interactions().is_empty():
+		target = picked
+	elif picked is Sim and picked != sim:
+		target = picked
+	if target == _hovered:
+		return
+	if _hovered != null and is_instance_valid(_hovered):
+		_set_overlay(_hovered, null)
+	_hovered = target
+	if target != null:
+		if _hover_mat == null:
+			_hover_mat = ShaderMaterial.new()
+			var sh := Shader.new()
+			sh.code = """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_back;
+void fragment() {
+	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.0);
+	ALBEDO = vec3(0.35, 0.75, 1.0) * (0.22 + rim * 1.2);
+}
+"""
+			_hover_mat.shader = sh
+		_set_overlay(target, _hover_mat)
+	Input.set_default_cursor_shape(Input.CURSOR_POINTING_HAND if target != null else Input.CURSOR_ARROW)
+
+
+func _set_overlay(n: Node3D, m: Material) -> void:
+	for c in n.find_children("*", "MeshInstance3D", true, false):
+		var mi := c as MeshInstance3D
+		if mi.name == "Plumbob" or mi.get_parent().name == "Plumbob":
+			continue
+		mi.material_overlay = m
+
+
 ## Cancels a camera pan so a menu or Create a Sim can hold the camera.
 func _stop_pan() -> void:
 	if _pan != null and _pan.is_valid():
@@ -342,6 +385,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				Clock.set_speed(2)
 			KEY_3, KEY_KP_3:
 				Clock.set_speed(3)
+	if event is InputEventMouseMotion:
+		_hover((event as InputEventMouseMotion).position)
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
@@ -1522,6 +1567,9 @@ func _run_scenario(scenario: String, path: String) -> void:
 			Clock.set_speed(3)
 			await get_tree().create_timer(4.0).timeout
 			print("MOVEIN household=%d spouse=%s jules_visitor=%s" % [household.size(), sim.spouse.sim_name if sim.spouse else "-", jules.is_visitor])
+		"hover":
+			_hover(rig.camera.unproject_position(find_furniture("sofa").global_position + Vector3(0, 0.4, 0)))
+			await get_tree().create_timer(0.6).timeout
 		"store":
 			aspirations.satisfaction = 2300
 			hud._show_page(5)
