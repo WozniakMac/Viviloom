@@ -17,6 +17,10 @@ from pathlib import Path
 
 import bpy
 import bmesh
+
+if "--trace-build" in sys.argv:
+    import faulthandler
+    faulthandler.dump_traceback_later(30,repeat=True)
 from mathutils import Vector
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "sim", "sim.glb")
@@ -385,6 +389,9 @@ def build_armature():
             bone.use_connect = False
         # Consistent rolls so +X rotation bends limbs the same way on both sides.
         bone.roll = 0.0
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from anatomical_fingers import add_finger_bones
+    add_finger_bones(eb,J)
     bpy.ops.object.mode_set(mode="OBJECT")
     return rig
 
@@ -404,8 +411,8 @@ def skin_to_rig(rig, body, rigid):
             continue
         blend = min(1.0, (vertex.co.z - 1.49) / .045)
         previous = {group.group: group.weight for group in vertex.groups}
-        for group in body.vertex_groups:
-            group.remove([vertex.index])
+        for index in previous:
+            body.vertex_groups[index].remove([vertex.index])
         for index, weight in previous.items():
             if index != head_group.index and weight * (1-blend) > 0:
                 body.vertex_groups[index].add([vertex.index], weight * (1-blend), 'REPLACE')
@@ -436,7 +443,13 @@ def make_action(rig, name, frames, poses):
         pb.rotation_mode = "XYZ"
     for frame, pose in sorted(poses.items()):
         for pb in rig.pose.bones:
-            r = pose.get(pb.name, (0, 0, 0))
+            default=(0,0,0)
+            if pb.name.startswith('finger'):
+                digit=int(pb.name[6]);segment=int(pb.name[8])
+                relaxed=[6,12,7] if digit==1 else [7+digit*1.5,13+digit,8]
+                if name=='wave' or name=='talk':relaxed=[v*.25 for v in relaxed]
+                default=(-relaxed[segment-1],0,0)
+            r = pose.get(pb.name, default)
             # Poses are written with +X meaning "bend forward"; with these bone rolls
             # that is a negative rotation, so X is flipped here.
             pb.rotation_euler = (deg(-r[0]), deg(r[1]), deg(r[2]))
@@ -650,6 +663,7 @@ def build_frame(rig,label):
             texture = skin.node_tree.nodes.new('ShaderNodeTexImage')
             texture.image = bpy.data.images.load(str(skin_path), check_existing=True)
             skin.node_tree.links.new(texture.outputs['Color'], skin.node_tree.nodes['Principled BSDF'].inputs['Base Color'])
+    print("BUILD FRAME",label,"anatomy",flush=True)
     body = build_anatomical_body(J)
     from anatomical_shapes import add_body_shapes
     add_body_shapes(body)
@@ -664,9 +678,11 @@ def build_frame(rig,label):
     from facial_shapes import add_native_actions
     add_native_actions(head)
     faces.append(build_skirt(mats))
+    print("BUILD FRAME",label,"binding",flush=True)
     skin_to_rig(rig, body, [head] + hairs + faces)
     assign_body_materials(body, mats)
     from native_clothing import build_clothing
+    print("BUILD FRAME",label,"clothing",flush=True)
     build_clothing(J, rig)
     frame=bpy.data.objects.new('Frame_'+label,None)
     bpy.context.collection.objects.link(frame);frame.parent=rig

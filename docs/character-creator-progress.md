@@ -6,7 +6,9 @@ Worktree: character-creator. Goal active; the full Sims 4 quality and interactio
 
 - Native Anny 0.6.1 MakeHuman topology supplies separate adult male and female anatomy, including the original fingers, thumbs, feet and face. All 19,158 source indices and UVs are retained before subdivision.
 - Body weight and muscle sliders now use actual Anny heavy, fit and combined heavy/fit presets. A corrective morph keeps combined settings coherent. Fitted sweater, jeans and sneakers share those native variations.
-- Hands retain a rigid wrist-to-palm transform; smooth arm masks prevent fingers receiving leg weights. All hand faces keep visible skin materials. The previous missing thumb was a clothing-mask defect.
+- Hands retain a rigid wrist-to-palm transform; smooth arm masks prevent fingers receiving leg weights. Native Anny finger weights survive subdivision and cuts. Thirty finger joints provide independent deformation and a gently curled resting pose on both frames; talking and waving relax the fingers further. All hand faces keep visible skin materials. The previous missing thumb was a clothing-mask defect.
+- A Godot skeleton modifier blends right-hand book, cup and fishing-rod grips after body animation. Objects are anchored from the native middle knuckle and rotate with the wrist. Grip changes and release blend smoothly, including after switching frames. The cup has a tapered round mesh, rim and liquid surface.
+- Exposed forearm and shin skin now uses opaque rendering; this removes the material seam around the wrist caused by visible skin using transparency.
 - Shoulder coverage and neck binding corrected. Garment membership survives sleeve/leg cuts: connected sweater and trouser pieces get their own materials, including the sweater hem.
 - CC0 MakeHuman casual outfit and shoes are fitted through their native barycentric bindings. Jeans preserve original seam/pocket/wear detail. Fabric shader preserves folds while supporting the game palette.
 - Built-in imagegen edited the sweater UV texture into a plain blue crewneck. Source and prompt are retained in assets/source/generated; original source images remain intact. The generated texture is used only on the sweater.
@@ -28,13 +30,16 @@ Worktree: character-creator. Goal active; the full Sims 4 quality and interactio
 - Both-frame frame switching/identity, props, studio layers and save checks: output/female-final-frame-check.log, zero failures. Native face and clothing checks: output/female-final-face-check.log and output/female-final-morph-check.log, zero failures. Hand binding: output/female-final-binding.log, 37,344 female and 37,410 male vertices, zero errors. Game suite: output/female-final-tests.log, TESTS PASSED (0 failures), with existing out-of-tree transform and resource-cleanup diagnostics.
 - Female AI concept and exact prompt: assets/references/female-character-concept.png and female-character-concept.prompt.txt, generated with built-in imagegen; design reference, not an in-game render.
 - Current female game views: output/female-final-face.png, output/female-final-body.png; body extremes: output/female-final-heavy.png and output/female-final-fit.png; animation poses and hairstyles: output/female-final-poses.png and output/female-final-hair.png.
+- Native finger deformation across both frames and base/heavy/fit/combined extremes: output/hands-extremes-deformation.log, 80 independent digit checks, zero failures. No unrelated anatomy moves. Native hand binding: output/fingers-binding-check.log, zero errors.
+- Real Godot AnimationMixer/modifier ordering, grip changes, wrist-relative props, release and rebuilt skeletons: output/hands-runtime-check.log, zero failures. Frame identity/save, face and body/clothing morph checks: output/hands-frame-check.log, output/hands-face-check.log and output/hands-morph-check.log, zero failures. Game suite: output/hands-game-tests.log, TESTS PASSED (0 failures); existing transform/cleanup diagnostics remain.
+- Latest game hand renders: output/hands-final.png, output/hands-female-heavy-fit.png and output/hands-final-cas-palm.png. Female creator after the hand pass: output/hands-final-female-body.png. Visual inspection confirms the wrist seam is removed and the finger bends remain bounded; authored prop contact still needs refinement.
 - Latest torso/creator: output/garment-region-torso.png and output/character-current.png. Hand closeup: output/final-palm.png. Soft face detail: output/soft-face-detail.png. Tests alone do not establish the visual quality target.
 
 ## Remaining goal work
 
 - Native age anatomy and further face diversity; current age controls still scale the selected adult model.
 - More clothing and hairstyle choices, skin variants and original styling; refine card-hair styles, the skirt and remaining joint silhouettes.
-- Finger articulation for natural resting hands and gripping props; fingers currently follow the hand bone together.
+- Further hand contact refinement: thumb opposition, object-specific finger placement, grip transitions during reaching and reading, and prop detail. Current grips use authored profiles rather than contact constraints.
 - Direct face/body manipulation and catalog thumbnails; interface still relies on swatches and sliders.
 - More complete facial animation, teeth, speech and expression blending.
 - Live quality comparison with the Sims 4 reference across body extremes, animation, lighting and customizations.

@@ -171,6 +171,7 @@ var _model: Node3D
 var _anim: AnimationPlayer
 ## The right hand, for holding props (fishing rods, books, drinks).
 var _hand: BoneAttachment3D
+var _hand_pose: HandPose
 var _prop_kind := ""
 var _prop: Node3D
 ## Hair style name -> its mesh in the model.
@@ -398,7 +399,7 @@ func _apply_outfit() -> void:
 				continue
 			var material: BaseMaterial3D = _materials[part]
 			var hidden: bool = part in ["shirt", "shoes"] or part == "pants" or (part == "sleeve" and long_sleeves) or (part == "shin" and not shorts and not skirt)
-			material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if hidden else BaseMaterial3D.TRANSPARENCY_DISABLED
 			var tint := _skin_tint()
 			tint.a = 0.0 if hidden else 1.0
 			material.albedo_color = tint
@@ -988,6 +989,8 @@ func _process(real_delta: float) -> void:
 ## Puts `kind` in the Sim's right hand ("" to empty it).
 func _set_prop(kind: String) -> void:
 	_prop_kind = kind
+	if is_instance_valid(_hand_pose):
+		_hand_pose.held_kind = kind
 	if _prop != null:
 		_prop.queue_free()
 		_prop = null
@@ -995,7 +998,16 @@ func _set_prop(kind: String) -> void:
 		return
 	_prop = Node3D.new()
 	_prop.name = "Prop"
+	# Locate the grip from the native knuckle, rather than guessing from the wrist.
 	_hand.add_child(_prop)
+	var skeleton := _hand.get_parent() as Skeleton3D
+	var wrist := skeleton.find_bone(_hand.bone_name)
+	var middle := skeleton.find_bone("finger3-1.R")
+	if wrist >= 0 and middle >= 0:
+		var knuckle := skeleton.get_bone_global_rest(middle)
+		var palm_depth := 0.009 if kind == "book" else 0.040 if kind == "drink" else 0.022
+		var grip := knuckle.origin + knuckle.basis.y * 0.010 + knuckle.basis.z * palm_depth
+		_prop.position = skeleton.get_bone_global_rest(wrist).affine_inverse() * grip
 	var add := func(sz: Vector3, pos: Vector3, col: Color) -> MeshInstance3D:
 		var m := MeshInstance3D.new()
 		var b := BoxMesh.new()
@@ -1014,15 +1026,46 @@ func _set_prop(kind: String) -> void:
 	match kind:
 		"rod":
 			# Gripped in the fist, reaching forward and up over the water.
-			var pole: MeshInstance3D = add.call(Vector3(0.025, 0.025, 1.6), Vector3(0, 0.05, -0.75), Color(0.35, 0.22, 0.12))
-			add.call(Vector3(0.06, 0.06, 0.08), Vector3(0, 0.05, 0.02), Color(0.2, 0.2, 0.22))
+			var pole: MeshInstance3D = add.call(Vector3(0.025, 0.025, 1.6), Vector3(0, 0, -0.70), Color(0.35, 0.22, 0.12))
+			add.call(Vector3(0.035, 0.040, 0.050), Vector3(0, 0, -0.140), Color(0.2, 0.2, 0.22))
 			var line: MeshInstance3D = add.call(Vector3(0.008, 1.0, 0.008), Vector3.ZERO, Color(0.95, 0.95, 0.95))
 			line.name = "Line"
 		"book":
-			add.call(Vector3(0.16, 0.03, 0.22), Vector3(0, 0.06, -0.04), Color(0.7, 0.2, 0.2))
-			add.call(Vector3(0.15, 0.032, 0.2), Vector3(0.008, 0.06, -0.04), Color(0.96, 0.94, 0.88))
+			add.call(Vector3(0.12, 0.18, 0.026), Vector3(0, 0.075, 0), Color(0.7, 0.2, 0.2))
+			add.call(Vector3(0.108, 0.166, 0.028), Vector3(0.007, 0.075, 0), Color(0.96, 0.94, 0.88))
 		"drink":
-			add.call(Vector3(0.06, 0.12, 0.06), Vector3(0, 0.06, -0.03), Color(0.85, 0.5, 0.65, 1.0))
+			var cup: MeshInstance3D = add.call(Vector3.ONE, Vector3(0, 0, 0), Color(0.85, 0.5, 0.65))
+			var cylinder := CylinderMesh.new()
+			cylinder.top_radius = 0.028
+			cylinder.bottom_radius = 0.022
+			cylinder.height = 0.105
+			cylinder.radial_segments = 32
+			cup.mesh = cylinder
+			var liquid: MeshInstance3D = add.call(Vector3.ONE, Vector3(0, 0.050, 0), Color(0.18, 0.07, 0.025))
+			var surface := CylinderMesh.new()
+			surface.top_radius = 0.025
+			surface.bottom_radius = 0.025
+			surface.height = 0.002
+			liquid.mesh = surface
+			var rim: MeshInstance3D = add.call(Vector3.ONE, Vector3(0, 0.052, 0), Color(0.92, 0.72, 0.80))
+			var ring := TorusMesh.new()
+			ring.inner_radius = 0.025
+			ring.outer_radius = 0.029
+			rim.mesh = ring
+	_orient_prop()
+
+
+## Carry the object with the wrist, including arm motion and lying poses.
+func _orient_prop() -> void:
+	if _prop == null or _hand == null:
+		return
+	var skeleton := _hand.get_parent() as Skeleton3D
+	var wrist := skeleton.find_bone(_hand.bone_name)
+	if wrist < 0:
+		return
+	var direction := (Vector3.FORWARD * 0.85 + Vector3.UP * 0.45).normalized() if _prop_kind == "rod" else Vector3.FORWARD
+	var rest_basis := skeleton.get_bone_global_rest(wrist).basis
+	_prop.basis = rest_basis.inverse() * Basis.looking_at(direction, Vector3.UP)
 
 
 ## Walks up or down the staircase, then carries on from the other level.
@@ -1635,15 +1678,10 @@ func _animate(delta: float, moving: bool, cur: SimAction) -> void:
 	if want_prop != _prop_kind:
 		_set_prop(want_prop)
 	if _prop != null:
-		# Props keep a steady world orientation: the rod reaches out over the water,
-		# books and drinks stay upright, whatever the hand bone is doing.
-		var fwd := global_basis.z * -1.0
-		var dir := (fwd * 0.85 + Vector3.UP * 0.45).normalized() if _prop_kind == "rod" else fwd
-		_prop.global_basis = Basis.looking_at(dir, Vector3.UP)
 		var line := _prop.get_node_or_null("Line") as MeshInstance3D
 		if line != null:
 			# The line hangs straight down from the rod tip into the water.
-			var tip := _prop.to_global(Vector3(0, 0.05, -1.55))
+			var tip := _prop.to_global(Vector3(0, 0, -1.50))
 			var drop := maxf(tip.y - 0.12 - global_position.y, 0.05)
 			line.global_basis = Basis.IDENTITY
 			line.scale = Vector3(1, drop, 1)
@@ -1677,6 +1715,7 @@ func _build_model() -> void:
 	if is_instance_valid(_model):
 		_model.free()
 	_hand = null
+	_hand_pose = null
 	_prop = null
 	_prop_kind = ""
 	_head_mesh = null
@@ -1695,6 +1734,10 @@ func _build_model() -> void:
 	_anim = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	var skel := model.find_child("Skeleton3D", true, false) as Skeleton3D
 	if skel != null:
+		_hand_pose = HandPose.new()
+		_hand_pose.name = "HandPose"
+		_hand_pose.influence = 0.0
+		skel.add_child(_hand_pose)
 		for bone_name in ["hand.R", "hand_R"]:
 			if skel.find_bone(bone_name) >= 0:
 				_hand = BoneAttachment3D.new()

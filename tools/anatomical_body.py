@@ -91,6 +91,8 @@ def build_anatomical_body(target_joints):
         attribute=data.attributes.new(name='Anny'+name+'Delta',type='FLOAT_VECTOR',domain='POINT')
         for index,original in enumerate(used):
             attribute.data[index].vector=variant_transform(variant_points[original])-transform(points[original])
+    from anatomical_fingers import add_finger_attributes
+    add_finger_attributes(data,used)
     arm_mask=data.attributes.new(name='AnatomicalArm',type='FLOAT',domain='POINT')
     for index,original in enumerate(used):
         p=points[original]

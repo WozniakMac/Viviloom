@@ -367,5 +367,6 @@
     }
   },
   "data_license": "CC0",
-  "code_license": "Apache-2.0"
+  "code_license": "Apache-2.0",
+  "native_hand_weights": "native-hand-weights.npz"
 }

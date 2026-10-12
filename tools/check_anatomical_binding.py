@@ -13,13 +13,13 @@ def check_body(body):
         if any(name.endswith(opposite) for name in weights):
             errors.append(('opposite limb',vertex.index))
         value=region.data[vertex.index].value
-        non_arm=sum(weight for name,weight in weights.items() if not name.startswith(('upperarm.','forearm.','hand.')))
+        non_arm=sum(weight for name,weight in weights.items() if not name.startswith(('upperarm.','forearm.','hand.','finger')))
         if value>=.5 and non_arm > 1-value+.001:
             errors.append(('arm bound to torso/leg',vertex.index))
         hand=body.data.attributes['AnatomicalHand'].data[vertex.index].value
-        if hand>=.999 and sum(weight for name,weight in weights.items() if not name.startswith('hand.')) > 1-hand+.001:
+        if hand>=.999 and sum(weight for name,weight in weights.items() if not name.startswith(('hand.','finger'))) > 1-hand+.001:
             errors.append(('hand bound outside hand bone',vertex.index))
-        if value<=.001 and vertex.co.z<.7 and any(name.startswith(('upperarm.','forearm.','hand.')) for name in weights):
+        if value<=.001 and vertex.co.z<.7 and any(name.startswith(('upperarm.','forearm.','hand.','finger')) for name in weights):
             errors.append(('leg bound to arm',vertex.index))
     for polygon in body.data.polygons:
         hand=sum(body.data.attributes['AnatomicalHand'].data[i].value for i in polygon.vertices)/len(polygon.vertices)

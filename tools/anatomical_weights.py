@@ -16,6 +16,10 @@ def bind_body(body, rig):
     arm_values=[item.value for item in mask.data] if mask else [0.0]*len(body.data.vertices)
     hand_mask=body.data.attributes.get('AnatomicalHand')
     hand_values=[item.value for item in hand_mask.data] if hand_mask else [0.]*len(body.data.vertices)
+    finger_values={attribute.name.removeprefix('NativeFinger_'):[item.value for item in attribute.data] for attribute in body.data.attributes if attribute.name.startswith('NativeFinger_')}
+    vertex_ids=list(range(len(body.data.vertices)))
+    for group in body.vertex_groups:
+        group.remove(vertex_ids)
     for vertex in body.data.vertices:
         p = vertex.co
         side = 'L' if p.x >= 0 else 'R'
@@ -38,11 +42,13 @@ def bind_body(body, rig):
             weights[name]=weight/arm_total*arm_blend
         hand_blend=hand_values[vertex.index]
         weights={name:weight*(1-hand_blend) for name,weight in weights.items()}
-        weights['hand.'+side]=weights.get('hand.'+side,0.)+hand_blend
+        fingers={name:values[vertex.index] for name,values in finger_values.items() if name.endswith('.'+side) and values[vertex.index]>0.000001}
+        total_finger=min(1.,sum(fingers.values()))
+        weights['hand.'+side]=weights.get('hand.'+side,0.)+hand_blend*(1-total_finger)
+        for name,weight in fingers.items():
+            weights[name]=hand_blend*weight
         weights=dict(sorted(weights.items(),key=lambda item:item[1],reverse=True)[:4])
         total = sum(weights.values())
-        for group in body.vertex_groups:
-            group.remove([vertex.index])
         for name, weight in weights.items():
             if weight > 0:
                 groups[name].add([vertex.index],weight/total,'REPLACE')
