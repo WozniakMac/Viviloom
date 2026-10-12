@@ -924,10 +924,16 @@ func _refresh_inventory() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		var l := Label.new()
-		l.text = "%s Painting  ·  §%d" % [Catalog.PAINTING_QUALITY[item.get("quality", 0)], item.get("value", 0)]
+		if item.get("kind") == "homework":
+			l.text = "Homework  (do it at a desk or table)"
+		else:
+			l.text = "%s Painting  ·  §%d" % [Catalog.PAINTING_QUALITY[item.get("quality", 0)], item.get("value", 0)]
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		l.add_theme_font_size_override("font_size", 14)
 		row.add_child(l)
+		if item.get("kind") == "homework":
+			_inventory_box.add_child(row)
+			continue
 		var sell := Button.new()
 		sell.text = "Sell"
 		sell.focus_mode = Control.FOCUS_NONE

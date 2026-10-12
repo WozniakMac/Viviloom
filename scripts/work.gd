@@ -164,7 +164,10 @@ func _finish_shift() -> void:
 	elif gain < 12.0:
 		sim.emotions.add("work_day", "tense", 1, "Rough Day at Work", "Work was hard going in that mood.", 240.0)
 	if Careers.is_school(career):
-		notice.emit("%s is home from school. Current grade: %s." % [sim.sim_name, Careers.grade(performance)], Careers.label(career))
+		if not sim.inventory.any(func(it): return it.get("kind") == "homework"):
+			sim.inventory.append({"kind": "homework", "value": 0})
+			sim.inventory_changed.emit()
+		notice.emit("%s is home from school with homework. Current grade: %s." % [sim.sim_name, Careers.grade(performance)], Careers.label(career))
 		return
 	paid.emit(pay)
 	notice.emit("%s is back from work and earned §%d. Performance %d%%." % [sim.sim_name, pay, int(performance)], Careers.title(career, level))

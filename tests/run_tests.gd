@@ -36,6 +36,7 @@ func _ready() -> void:
 	_test_swatches()
 	_test_paintings()
 	_test_cooking()
+	_test_kids()
 	print("TESTS %s (%d failures)" % ["PASSED" if _failures == 0 else "FAILED", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
 
@@ -600,3 +601,22 @@ func _test_cooking() -> void:
 	bad.free()
 	stove.free()
 	a.free()
+
+
+func _test_kids() -> void:
+	var kid := Sim.new()
+	kid.age_stage = "child"
+	var desk := Catalog.create("desk")
+	var hw: Interaction = desk.interactions.filter(func(i): return i.name == "Do Homework")[0]
+	_check(not Ages.allows_for(kid, hw), "no homework, nothing to do")
+	kid.inventory.append({"kind": "homework"})
+	_check(Ages.allows_for(kid, hw), "kids with homework can do it at a desk")
+	var done: Array = []
+	kid.homework_done.connect(func(): done.append(1))
+	kid._reward(hw, 999.0, true)
+	_check(kid.inventory.is_empty() and done.size() == 1, "finishing homework uses it up and raises the grade")
+	var toys := Catalog.create("toybox")
+	_check(Ages.allows("toddler", toys.interactions[0]), "toddlers can play with toys")
+	toys.free()
+	desk.free()
+	kid.free()

@@ -99,6 +99,8 @@ var spouse: Sim
 ## Things the Sim carries: paintings and the like (dictionaries with a "kind").
 var inventory: Array = []
 signal inventory_changed
+## Raises the school grade (main tells Work).
+signal homework_done
 ## Life stage (see Ages) and days lived in it; days of pregnancy (-1 = not expecting).
 var age_stage := "young_adult"
 var age_days := 0
@@ -1119,6 +1121,13 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 	if not i.moodlet.is_empty():
 		var m := i.moodlet
 		emotions.add(m[0], m[1], m[2] + lvl / 4, m[3], m[4], m[5])
+	if finished and i.needs_item == "homework":
+		for k in inventory.size():
+			if inventory[k].get("kind") == "homework":
+				inventory.remove_at(k)
+				break
+		inventory_changed.emit()
+		homework_done.emit()
 	if finished and i.recipe != "" and lot != null:
 		_serve_meal(i, lvl)
 	if finished and i.creates == "painting":

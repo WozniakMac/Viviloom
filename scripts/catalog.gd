@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -57,6 +57,7 @@ const INFO := {
 	"stairs": ["Staircase", 800],
 	"bar": ["Bar Counter", 1400],
 	"stereo": ["Stereo", 350],
+	"toybox": ["Toy Box", 120],
 	"car": ["Car", 0],
 	"pizza": ["Pizza", 0],
 	"dishes": ["Dirty Dishes", 0],
@@ -75,7 +76,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -105,6 +106,7 @@ const DESCRIPTIONS := {
 	"treadmill": "Run for miles without leaving the room.",
 	"mirror": "Practise speeches until you believe them.",
 	"guitar": "Strum, practise, maybe even get good.",
+	"toybox": "Blocks, dolls and a squeaky duck. Little ones love it.",
 	"stereo": "Turn it up and dance the night away.",
 	"bar": "A bar with stools. Drinks cost a few Simoleons each.",
 	"stairs": "Leads up to the next floor. The top step needs floor upstairs to land on.",
@@ -229,6 +231,7 @@ static func create(kind: String) -> Furniture:
 			f.use_facing = Vector3(0, 0, -1)
 			f.interactions = [
 				_find_job(),
+				_homework(),
 				Interaction.new("Chat Online", {"social": 25.0, "fun": 8.0}, 180.0, "social", "sit", true),
 				Interaction.new("Write a Book", {"fun": 10.0}, 240.0, "", "sit", true).practices("writing", 55.0).pays(40, 35).grants("author", "confident", 1, "Published Author", "Their words are out in the world.", 240.0),
 				Interaction.new("Play Games", {"fun": 45.0, "energy": -6.0}, 180.0, "fun", "sit", true).practices("gaming", 60.0).grants("gamer_high", "playful", 1, "Game On", "That was a great match.", 120.0),
@@ -326,6 +329,7 @@ static func create(kind: String) -> Furniture:
 			f.use_position = Vector3(0, 0, 0.55)
 			f.use_facing = Vector3(0, 0, -1)
 			f.interactions = [
+				_homework(),
 				_dishes(Interaction.new("Have a Proper Meal", {"hunger": 80.0, "social": 4.0}, 45.0, "hunger", "sit", true).grants("good_meal", "happy", 1, "Nice Dinner", "Eating at the table makes all the difference.", 180.0)),
 			]
 		"chair":
@@ -451,6 +455,17 @@ static func create(kind: String) -> Furniture:
 			var drink := Interaction.new("Order a Drink", {"fun": 30.0, "social": 15.0}, 30.0, "", "stand", true).grants("bubbly", "playful", 1, "Bubbly", "That drink hit the spot.", 120.0)
 			drink.cost = 12
 			f.interactions = [drink, Interaction.new("Chat with the Bartender", {"social": 70.0}, 30.0, "social", "stand", true)]
+		"toybox":
+			f.display_name = "Toy Box"
+			f.height = 0.55
+			f.add_box(Vector3(0.8, 0.45, 0.5), Vector3(0, 0.23, -0.1), Color(0.95, 0.75, 0.3))
+			f.add_box(Vector3(0.84, 0.05, 0.54), Vector3(0, 0.48, -0.1), Color(0.3, 0.55, 0.85))
+			for k in 4:
+				f.add_box(Vector3(0.12, 0.12, 0.12), Vector3(-0.25 + k * 0.17, 0.06, 0.32), [Color(0.9, 0.3, 0.3), Color(0.3, 0.7, 0.4), Color(0.3, 0.5, 0.9), Color(0.95, 0.8, 0.2)][k])
+			f.spots = [Vector3(0, 0, 0.9)]
+			f.interactions = [
+				Interaction.new("Play with Toys", {"fun": 60.0, "social": 5.0}, 60.0, "fun", "stand", true).grants("playtime", "playful", 1, "Playtime!", "Toys are the best.", 120.0),
+			]
 		"stereo":
 			f.display_name = "Stereo"
 			f.height = 0.7
@@ -696,3 +711,11 @@ static func make_meal(recipe_name: String, quality: int) -> Furniture:
 		3:
 			serve.moodlet = ["great_food", "happy", 2, "Delicious Meal", "Best meal in ages!", 240.0]
 	return f
+
+
+## Doing homework raises the school grade; it needs homework in the inventory.
+static func _homework() -> Interaction:
+	var i := Interaction.new("Do Homework", {"fun": -10.0}, 60.0, "", "sit", true).practices("logic", 30.0) \
+		.grants("homework_done", "confident", 1, "Homework Done", "Free at last!", 180.0)
+	i.needs_item = "homework"
+	return i

@@ -82,6 +82,8 @@ func pays(base: int, per_level: int) -> Interaction:
 
 ## An item put in the Sim's inventory when this finishes ("painting").
 var creates := ""
+## Needs this item in the Sim's inventory (and uses it up): "homework".
+var needs_item := ""
 ## Pie menu group this sits in ("Cook..."); "" for the top level.
 var menu := ""
 ## For cooking: the recipe made (see Catalog.RECIPES) and the Cooking level needed.

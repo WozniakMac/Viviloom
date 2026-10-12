@@ -212,6 +212,9 @@ func add_to_household(s: Sim) -> void:
 	add_child(w)
 	w.paid.connect(build.earn)
 	w.carpool = carpool
+	s.homework_done.connect(func():
+		w.performance = minf(100.0, w.performance + 15.0)
+		w.changed.emit())
 	hud.watch_work(w)
 	works[s] = w
 	var t := AspirationTracker.new()
@@ -669,6 +672,7 @@ func _place_house(layout := "cottage") -> void:
 	_place("mirror", Vector2i(9, 10))
 	_place("guitar", Vector2i(13, 10))
 	_place("stereo", Vector2i(14, 5))
+	_place("toybox", Vector2i(6, 6))
 
 
 ## Hedges and the floor finish of a home; walls and objects come separately so a

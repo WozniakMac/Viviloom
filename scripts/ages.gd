@@ -13,7 +13,7 @@ const INFO := {
 	"elder": {"label": "Elder", "days": 10, "scale": 0.97, "speed": 0.8},
 }
 ## What a toddler can do on their own (everything else is too grown-up).
-const TODDLER_CAN: Array[String] = ["Nap", "Sleep", "Sit", "Grab a Snack", "Use Toilet", "Take a Shower", "Watch TV", "Chat", "Hug", "Tell a Joke", "Have a Proper Meal"]
+const TODDLER_CAN: Array[String] = ["Nap", "Sleep", "Sit", "Grab a Snack", "Use Toilet", "Take a Shower", "Watch TV", "Chat", "Hug", "Tell a Joke", "Have a Proper Meal", "Play with Toys", "Grab a Serving"]
 ## School for children and teens: [label, start hour, end hour].
 const SCHOOL := {"child": ["Grade School", 8, 15], "teen": ["High School", 8, 15]}
 
@@ -36,6 +36,8 @@ static func allows_for(sim: Sim, interaction: Interaction) -> bool:
 	if interaction.requires_mood != "" and sim.emotions.mood() != interaction.requires_mood:
 		return false
 	if interaction.min_skill > 0 and sim.skills.level(interaction.skill) < interaction.min_skill:
+		return false
+	if interaction.needs_item != "" and not sim.inventory.any(func(it): return it.get("kind") == interaction.needs_item):
 		return false
 	return allows(sim.age_stage, interaction)
 
