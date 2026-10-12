@@ -22,6 +22,7 @@ const DEFAULTS := {
 	"aging_unplayed": true,
 	"lifespan": 1,
 	"show_wants": true,
+	"allow_burglars": true,
 	"autosave": 0,
 	"edge_scrolling": true,
 	"sims3_camera": false,

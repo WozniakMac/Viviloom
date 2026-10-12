@@ -28,6 +28,7 @@ const TABS := [
 			["aging_unplayed", "Auto Aging (Unplayed Households)", "check", []],
 			["lifespan", "Sim Lifespan", "choice", ["Short", "Normal", "Long"]],
 			["show_wants", "Show Wants", "check", []],
+			["allow_burglars", "Allow Burglar Visits", "check", []],
 		]],
 	]],
 	["Save Settings", [

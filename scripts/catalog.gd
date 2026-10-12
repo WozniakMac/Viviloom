@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter", "dresser", "pine", "flower_shrub", "flower_bed"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter", "dresser", "burglar_alarm", "pine", "flower_shrub", "flower_bed"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -116,6 +116,7 @@ const INFO := {
 	"flower_bed": ["Flower Bed", 95],
 	"planter": ["Garden Planter", 150],
 	"dresser": ["Dresser", 300],
+	"burglar_alarm": ["Burglar Alarm", 375],
 	"piano": ["Upright Piano", 1200],
 	"telescope": ["Telescope", 700],
 	"pond": ["Fishing Pond", 500],
@@ -137,7 +138,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "pine": "outdoor", "flower_shrub": "outdoor", "flower_bed": "outdoor", "planter": "outdoor", "dresser": "bedroom",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "pine": "outdoor", "flower_shrub": "outdoor", "flower_bed": "outdoor", "planter": "outdoor", "dresser": "bedroom", "burglar_alarm": "living",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -178,6 +179,7 @@ const DESCRIPTIONS := {
 	"dollhouse": "Endless make-believe. Builds a toddler's Imagination.",
 	"activity_table": "Crayons and blocks for little hands.",
 	"rug": "Ties the room together. Sims can walk on it.",
+	"burglar_alarm": "Hangs on a wall. Calls the police the moment a burglar sets foot inside.",
 	"dresser": "Drawers full of clothes. Change into any outfit here.",
 	"planter": "Plant seeds, water them every day and harvest fresh produce to sell.",
 	"column": "A full-height column to frame porches and open-plan rooms.",
@@ -663,6 +665,16 @@ static func create(kind: String) -> Furniture:
 			f.add_box(Vector3(1.5, 0.017, 1.5), Vector3(0, 0.009, 0), Color(0.92, 0.82, 0.65))
 			f.add_box(Vector3(0.9, 0.019, 0.9), Vector3(0, 0.01, 0), Color(0.3, 0.45, 0.6))
 			f.decor = 2
+		"burglar_alarm":
+			f.display_name = "Burglar Alarm"
+			f.wall_mounted = true
+			f.blocks = false
+			f.height = 0.3
+			f.add_box(Vector3(0.24, 0.3, 0.06), Vector3(0, 0, 0), Color(0.92, 0.92, 0.9))
+			f.add_box(Vector3(0.16, 0.08, 0.01), Vector3(0, 0.06, 0.035), Color(0.15, 0.3, 0.2))
+			for k in 9:
+				f.add_box(Vector3(0.035, 0.03, 0.01), Vector3(-0.045 + (k % 3) * 0.045, -0.04 - (k / 3) * 0.035, 0.035), Color(0.6, 0.62, 0.66))
+			f.add_box(Vector3(0.025, 0.025, 0.01), Vector3(0.08, 0.11, 0.035), Color(0.9, 0.15, 0.15))
 		"dresser":
 			f.display_name = "Dresser"
 			f.footprint = Vector2i(2, 1)

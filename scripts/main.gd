@@ -38,6 +38,8 @@ var _home_snapshot := {}
 var other_households: Array = []
 var _ui_hidden := false
 var social_event: SocialEvent
+## Decided at midnight; the burglar comes between 2 and 4 AM.
+var _burglar_tonight := false
 var _event_tick := 0.0
 static var _open_manage_next := false
 var _autosave_timer := 0.0
@@ -157,6 +159,7 @@ func _ready() -> void:
 		for f in lot.furniture:
 			if f.kind == "planter":
 				f.grow_garden(day)
+		_burglar_tonight = location == "home" and Settings.get_value("allow_burglars") and _story_rng.randf() < Burglar.CHANCE
 		var news := Story.advance_day(other_households, day, _story_rng)
 		news.append_array(visitors.new_day(_story_rng))
 		for n in news:
@@ -750,6 +753,9 @@ func _furniture_at(screen_pos: Vector2) -> Furniture:
 
 func _process(delta: float) -> void:
 	_autosave(delta)
+	if _burglar_tonight and location == "home" and Clock.hour() >= 2 and Clock.hour() < 4:
+		_burglar_tonight = false
+		send_burglar()
 	_event_tick += delta
 	if social_event != null and social_event.active and _event_tick > 0.5:
 		_event_tick = 0.0
@@ -1409,6 +1415,19 @@ func _update_window_glow() -> void:
 		g.emission = Color(1.0, 0.78, 0.45)
 		g.emission_energy_multiplier = 1.6
 		g.albedo_color = Color(1.0, 0.85, 0.6, 0.85) if on else Color(0.7, 0.85, 0.95, 0.3)
+
+
+func send_burglar() -> Burglar:
+	var b := Burglar.start(self, lot, household, _story_rng)
+	if b == null:
+		return null
+	Sfx.play("notice", -6.0)
+	b.finished.connect(func(text: String, stolen: Furniture):
+		if stolen != null and is_instance_valid(stolen):
+			lot.remove_furniture(stolen)
+			stolen.queue_free()
+		hud.show_notice(text, "Burglar"))
+	return b
 
 
 ## Saves on the Autosave interval from Game Options while playing at home.
@@ -2250,6 +2269,16 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"burglar":
+			Clock.total_minutes = 2 * 60.0 + 30.0
+			sim.global_position = lot.cell_to_world(Vector2i(4, 4))
+			sim.visible = false
+			lot.wall_view = Lot.WallView.CUTAWAY
+			var target := Burglar.pick_target(lot)
+			var b := send_burglar()
+			rig.frame(lot.cell_to_world(Vector2i(11, 13)), deg_to_rad(10.0), deg_to_rad(-45.0), 16.0)
+			await get_tree().create_timer(3.0).timeout
+			print("BURGLAR target=%s" % target.display_name)
 		"party":
 			hud.phone_service.emit("event:house_party")
 			for k in 5:
