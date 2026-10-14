@@ -79,6 +79,7 @@ func _ready() -> void:
 	_test_extreme_emotions()
 	_test_more_careers()
 	_test_career_branches()
+	_test_ten_levels()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1553,3 +1554,10 @@ func _test_career_branches() -> void:
 	_check(w.to_dict()["branch"] == 1, "the branch is saved")
 	w.free()
 	s.free()
+
+
+func _test_ten_levels() -> void:
+	for c in Careers.ORDER:
+		_check(Careers.max_level(c) == 9, "%s has ten levels" % c)
+	_check(Careers.title("culinary", 9, 1) == "Master Mixologist" and Careers.hourly("culinary", 9, 0) > Careers.hourly("culinary", 5), "the top of each branch pays best")
+	_check(Careers.skill_for_promotion(8) == 9, "promotions need the skill to keep pace")

@@ -1,6 +1,6 @@
 class_name Careers
 extends RefCounted
-## Career tracks: five levels each with a title and hourly pay, a work schedule
+## Career tracks: ten levels each (six shared, four on a branch) with a title and hourly pay, a work schedule
 ## (Monday to Friday) and the skill needed for promotions.
 
 const INFO := {
@@ -8,77 +8,77 @@ const INFO := {
 		"label": "Culinary",
 		"skill": "cooking",
 		"start": 12, "end": 20,
-		"levels": [["Dishwasher", 14], ["Line Cook", 20], ["Sous Chef", 30], ["Chef", 45], ["Head Chef", 65]],
+		"levels": [["Dishwasher", 14], ["Prep Cook", 18], ["Line Cook", 23], ["Sous Chef", 30], ["Chef", 38], ["Executive Sous Chef", 46]],
 		"description": "From scrubbing pots to running the kitchen. Cooking helps you rise.",
 	},
 	"tech": {
 		"label": "Tech Guru",
 		"skill": "programming",
 		"start": 9, "end": 17,
-		"levels": [["Tech Support", 16], ["Junior Developer", 24], ["Developer", 36], ["Senior Developer", 55], ["Chief Technologist", 80]],
+		"levels": [["Tech Support", 16], ["Junior Developer", 21], ["Developer", 28], ["Senior Developer", 36], ["Lead Developer", 45], ["Technical Architect", 55]],
 		"description": "Fix printers today, design systems tomorrow. Logic helps you rise.",
 	},
 	"painter": {
 		"label": "Painter",
 		"skill": "painting",
 		"start": 10, "end": 16,
-		"levels": [["Canvas Stretcher", 12], ["Gallery Assistant", 18], ["Artist", 28], ["Acclaimed Artist", 42], ["Master Painter", 60]],
+		"levels": [["Canvas Stretcher", 12], ["Gallery Assistant", 16], ["Painter", 21], ["Artist", 28], ["Acclaimed Artist", 36], ["Exhibited Artist", 44]],
 		"description": "Make a name in the art world. Painting helps you rise.",
 	},
 	"business": {
 		"label": "Business",
 		"skill": "charisma",
 		"start": 9, "end": 17,
-		"levels": [["Mailroom Clerk", 15], ["Office Assistant", 22], ["Account Manager", 34], ["Regional Director", 52], ["CEO", 85]],
+		"levels": [["Mailroom Clerk", 15], ["Office Assistant", 20], ["Account Manager", 27], ["Department Manager", 35], ["Regional Director", 44], ["Vice President", 54]],
 		"description": "Climb the corporate ladder. Charisma helps you rise.",
 	},
 	"athlete": {
 		"label": "Athlete",
 		"skill": "fitness",
 		"start": 7, "end": 13,
-		"levels": [["Waterboy", 13], ["Minor Leaguer", 20], ["Rookie", 32], ["Pro Athlete", 50], ["Hall of Famer", 75]],
+		"levels": [["Waterboy", 13], ["Minor Leaguer", 18], ["Rookie", 24], ["Starter", 31], ["Veteran", 39], ["Team Captain", 48]],
 		"description": "Train hard, play harder. Fitness helps you rise.",
 	},
 	"entertainer": {
 		"label": "Entertainer",
 		"skill": "guitar",
 		"start": 14, "end": 22,
-		"levels": [["Street Performer", 11], ["Opening Act", 19], ["Headliner", 30], ["Star", 48], ["Legend", 72]],
+		"levels": [["Street Performer", 11], ["Open Mic Hopeful", 15], ["Opening Act", 20], ["Featured Act", 27], ["Headliner", 35], ["Star", 44]],
 		"description": "From busking to sold-out shows. Guitar helps you rise.",
 	},
 	"writer": {
 		"label": "Writer",
 		"skill": "writing",
 		"start": 10, "end": 16,
-		"levels": [["Copy Editor", 14], ["Blogger", 21], ["Author", 31], ["Bestselling Author", 47], ["Literary Legend", 68]],
+		"levels": [["Copy Editor", 14], ["Blogger", 18], ["Freelancer", 23], ["Staff Writer", 29], ["Published Writer", 37], ["Acclaimed Writer", 46]],
 		"description": "Words on paper, money in the bank. Writing helps you rise.",
 	},
 	"astronaut": {
 		"label": "Astronaut",
 		"skill": "logic",
 		"start": 8, "end": 16,
-		"levels": [["Space Cadet", 16], ["Flight Engineer", 25], ["Mission Specialist", 38], ["Commander", 58], ["Space Ranger", 90]],
+		"levels": [["Space Cadet", 16], ["Flight Trainee", 21], ["Flight Engineer", 28], ["Mission Specialist", 36], ["Pilot", 45], ["Station Commander", 56]],
 		"description": "Reach for the stars. Logic helps you rise.",
 	},
 	"criminal": {
 		"label": "Criminal",
 		"skill": "mischief",
 		"start": 20, "end": 3,
-		"levels": [["Lookout", 15], ["Getaway Driver", 24], ["Safecracker", 36], ["Cat Burglar", 54], ["Criminal Mastermind", 85]],
+		"levels": [["Lookout", 15], ["Pickpocket", 19], ["Getaway Driver", 25], ["Safecracker", 32], ["Con Artist", 40], ["Cat Burglar", 50]],
 		"description": "Work the night shift on the wrong side of the law. Mischief helps you rise.",
 	},
 	"secret_agent": {
 		"label": "Secret Agent",
 		"skill": "charisma",
 		"start": 9, "end": 17,
-		"levels": [["Training Agent", 17], ["Field Analyst", 26], ["Field Agent", 39], ["Double Agent", 58], ["Super Agent", 88]],
+		"levels": [["Training Agent", 17], ["Desk Agent", 22], ["Field Analyst", 29], ["Field Agent", 37], ["Undercover Agent", 46], ["Senior Agent", 56]],
 		"description": "License to charm. Charisma and Logic help you rise.",
 	},
 	"style_influencer": {
 		"label": "Style Influencer",
 		"skill": "writing",
 		"start": 10, "end": 17,
-		"levels": [["Style Novice", 14], ["Fashion Blogger", 22], ["Trendsetter", 34], ["Style Icon", 52], ["Fashion Mogul", 82]],
+		"levels": [["Style Novice", 14], ["Style Assistant", 18], ["Fashion Blogger", 24], ["Rising Star", 31], ["Style Expert", 39], ["Fashion Insider", 48]],
 		"description": "Set the trends everyone follows. Writing and Charisma help you rise.",
 	},
 	"school": {
@@ -173,19 +173,19 @@ static func label(c: String) -> String:
 ## Career branches, as in the reference: from level BRANCH_AT the Sim follows one
 ## of two paths, each with its own titles and pay for the top two levels.
 ## career -> [[branch label, [[title, pay], [title, pay]]], [...]]
-const BRANCH_AT := 3
+const BRANCH_AT := 6
 const BRANCHES := {
-	"culinary": [["Chef", [["Chef de Cuisine", 50], ["Celebrity Chef", 72]]], ["Mixologist", [["Head Bartender", 46], ["Master Mixologist", 66]]]],
-	"tech": [["Start-up Entrepreneur", [["Start-up Founder", 60], ["Tech Mogul", 90]]], ["eSport Gamer", [["Pro Gamer", 52], ["eSport Legend", 80]]]],
-	"painter": [["Master of the Real", [["Gallery Painter", 48], ["Master Painter", 72]]], ["Patron of the Arts", [["Art Dealer", 52], ["Patron of the Arts", 78]]]],
-	"business": [["Management", [["Executive", 58], ["Business Tycoon", 92]]], ["Investor", [["Investor", 55], ["Angel Investor", 88]]]],
-	"athlete": [["Bodybuilder", [["Fitness Champion", 54], ["Mr. or Ms. Galaxy", 78]]], ["Professional Athlete", [["All-Star", 60], ["Hall of Famer", 92]]]],
-	"entertainer": [["Comedian", [["Headliner", 50], ["Comedy Legend", 78]]], ["Musician", [["Virtuoso", 52], ["Musical Superstar", 82]]]],
-	"writer": [["Author", [["Bestselling Author", 54], ["Literary Legend", 85]]], ["Journalist", [["Columnist", 48], ["Editor-in-Chief", 76]]]],
-	"astronaut": [["Space Ranger", [["Commander", 58], ["Space Ranger", 90]]], ["Interstellar Smuggler", [["Space Pirate", 56], ["Interstellar Smuggler", 88]]]],
-	"criminal": [["Boss", [["Underboss", 56], ["Criminal Mastermind", 85]]], ["Oracle", [["Hacker", 58], ["Oracle", 90]]]],
-	"secret_agent": [["Diamond Agent", [["Double-O Agent", 60], ["Diamond Agent", 92]]], ["Villain", [["Henchman", 50], ["Supervillain", 86]]]],
-	"style_influencer": [["Stylist", [["Celebrity Stylist", 52], ["Style Icon", 80]]], ["Trend Setter", [["Trendsetter", 54], ["Fashion Mogul", 82]]]],
+	"culinary": [["Chef", [["Head Chef", 56], ["Chef de Cuisine", 66], ["Restaurateur", 78], ["Celebrity Chef", 92]]], ["Mixologist", [["Bartender", 52], ["Head Bartender", 62], ["Cocktail Artist", 74], ["Master Mixologist", 88]]]],
+	"tech": [["Start-up Entrepreneur", [["Start-up Founder", 66], ["Funded Founder", 80], ["Tech Visionary", 96], ["Tech Mogul", 115]]], ["eSport Gamer", [["Pro Gamer", 60], ["Team Player", 72], ["eSport Champion", 88], ["eSport Legend", 105]]]],
+	"painter": [["Master of the Real", [["Gallery Painter", 54], ["Portraitist", 64], ["Renowned Realist", 78], ["Master Painter", 94]]], ["Patron of the Arts", [["Art Dealer", 56], ["Curator", 68], ["Gallery Owner", 82], ["Patron of the Arts", 100]]]],
+	"business": [["Management", [["Executive", 66], ["Senior Executive", 80], ["COO", 98], ["Business Tycoon", 120]]], ["Investor", [["Investor", 64], ["Venture Capitalist", 78], ["Fund Manager", 95], ["Angel Investor", 116]]]],
+	"athlete": [["Bodybuilder", [["Fitness Model", 58], ["Fitness Champion", 70], ["Pro Bodybuilder", 84], ["Mr. or Ms. Galaxy", 100]]], ["Professional Athlete", [["All-Star", 62], ["MVP", 76], ["Living Legend", 94], ["Hall of Famer", 115]]]],
+	"entertainer": [["Comedian", [["Comic", 54], ["Comedy Headliner", 66], ["Comedy Star", 82], ["Comedy Legend", 100]]], ["Musician", [["Session Musician", 56], ["Virtuoso", 68], ["Rock Star", 85], ["Musical Superstar", 104]]]],
+	"writer": [["Author", [["Novelist", 56], ["Bestselling Author", 70], ["Prize Winner", 86], ["Literary Legend", 105]]], ["Journalist", [["Reporter", 54], ["Columnist", 66], ["Senior Editor", 80], ["Editor-in-Chief", 98]]]],
+	"astronaut": [["Space Ranger", [["Commander", 66], ["Space Explorer", 80], ["Galactic Pioneer", 98], ["Space Ranger", 120]]], ["Interstellar Smuggler", [["Space Hustler", 62], ["Space Pirate", 76], ["Smuggler Captain", 94], ["Interstellar Smuggler", 115]]]],
+	"criminal": [["Boss", [["Henchman", 60], ["Underboss", 74], ["Crime Boss", 92], ["Criminal Mastermind", 112]]], ["Oracle", [["Hacker", 62], ["Cyber Thief", 76], ["Digital Ghost", 94], ["Oracle", 115]]]],
+	"secret_agent": [["Diamond Agent", [["Double-O Agent", 66], ["Elite Agent", 80], ["Super Agent", 98], ["Diamond Agent", 120]]], ["Villain", [["Henchman", 56], ["Evil Lieutenant", 70], ["Villainous Mastermind", 88], ["Supervillain", 110]]]],
+	"style_influencer": [["Stylist", [["Personal Stylist", 56], ["Celebrity Stylist", 68], ["Style Guru", 84], ["Style Icon", 102]]], ["Trend Setter", [["Influencer", 58], ["Trendsetter", 70], ["Fashion Authority", 86], ["Fashion Mogul", 105]]]],
 }
 
 
@@ -213,6 +213,8 @@ static func hourly(c: String, level: int, branch := 0) -> int:
 
 
 static func max_level(c: String) -> int:
+	if BRANCHES.has(c):
+		return BRANCH_AT + (BRANCHES[c][0][1] as Array).size() - 1
 	return INFO[c]["levels"].size() - 1
 
 
@@ -228,8 +230,9 @@ static func on_shift(c: String, h: int) -> bool:
 
 
 ## Skill level needed to be promoted from `level` to the next one.
+## Ten levels, as in the reference: the career skill must keep pace with the job.
 static func skill_for_promotion(level: int) -> int:
-	return (level + 1) * 2
+	return clampi(level + 1, 1, 10)
 
 
 static func is_work_day(day: int) -> bool:
