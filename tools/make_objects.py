@@ -704,6 +704,184 @@ def cactus(M):
     sphere((0.035, 0.07, 0.035), (-0.07, 0.45, 0), green)
 
 
+def join_as(parts, name):
+    """Joins parts into one object (e.g. several flames into one glowing "Shade")."""
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in parts:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = parts[0]
+    if len(parts) > 1:
+        bpy.ops.object.join()
+    parts[0].name = name
+    return parts[0]
+
+
+def spun(o, y_rad):
+    """Turns a part about the game's vertical axis."""
+    o.rotation_euler = (0, 0, y_rad)
+    bpy.ops.object.select_all(action="DESELECT")
+    o.select_set(True)
+    bpy.context.view_layer.objects.active = o
+    bpy.ops.object.transform_apply(rotation=True)
+    return o
+
+
+def rug(M):
+    LIFT = 0.022  # floor tiles sit at y=0.021
+    border = mat("RugBorder", (0.45, 0.12, 0.1), 0.95)
+    field = mat("RugField", (0.8, 0.66, 0.45), 0.95)
+    centre = mat("RugCentre", (0.1, 0.2, 0.36), 0.95)
+    box((1.9, 0.012, 1.9), (0, 0.006 + LIFT, 0), border, 0.004)
+    box((1.6, 0.014, 1.6), (0, 0.007 + LIFT, 0), field, 0.004)
+    box((1.0, 0.016, 1.0), (0, 0.008 + LIFT, 0), centre, 0.004)
+    spun(box((0.4, 0.017, 0.4), (0, 0.009 + LIFT, 0), field, 0.003), math.radians(45))
+    for k in range(4):
+        a = math.radians(45 + 90 * k)
+        spun(box((0.12, 0.017, 0.12), (math.cos(a) * 0.62, 0.009 + LIFT, math.sin(a) * 0.62), border, 0.003), math.radians(45))
+    for x in (-0.97, 0.97):
+        for k in range(14):
+            box((0.05, 0.004, 0.025), (x, 0.002 + LIFT, -0.88 + k * 0.135), field, 0.0)
+
+
+def burglar_alarm(M):
+    box((0.24, 0.3, 0.06), (0, 0, 0), M["white"], 0.02)
+    box((0.16, 0.08, 0.01), (0, 0.06, 0.032), mat("AlarmLcd", (0.08, 0.2, 0.12), 0.2), 0.003)
+    for k in range(9):
+        box((0.035, 0.03, 0.012), (-0.045 + (k % 3) * 0.045, -0.04 - (k // 3) * 0.035, 0.034), M["metal"], 0.004)
+    cylinder(0.012, 0.01, (0.08, 0.11, 0.033), mat("AlarmLed", (0.8, 0.05, 0.05), 0.3), 12, None, "Part", "z")
+
+
+def wall_mirror(M):
+    gold = mat("Gilt", (0.6, 0.42, 0.12), 0.3, 0.8)
+    mirror_glass = mat("MirrorGlass", (0.78, 0.86, 0.9), 0.08, 0.35)
+    box((0.62, 0.92, 0.04), (0, 0, -0.02), gold, 0.015)
+    box((0.52, 0.82, 0.01), (0, 0, 0.002), mirror_glass, 0.0)
+    cylinder(0.05, 0.03, (0, 0.47, -0.01), gold, 16, None, "Part", "z")
+
+
+def table_lamp(M):
+    cylinder(0.075, 0.03, (0, 0.015, 0), M["dark"], 24)
+    sphere((0.07, 0.09, 0.07), (0, 0.11, 0), M["ceramic"])
+    cylinder(0.012, 0.12, (0, 0.24, 0), M["metal"], 10)
+    cylinder(0.12, 0.16, (0, 0.34, 0), M["shade"], 28, 0.08, "Shade")
+
+
+def nightstand(M):
+    box((0.48, 0.48, 0.42), (0, 0.27, 0), M["wood"], 0.02)
+    for x in (-0.2, 0.2):
+        for z in (-0.17, 0.17):
+            cylinder(0.02, 0.04, (x, 0.02, z), M["wood_dark"], 10)
+    box((0.42, 0.16, 0.02), (0, 0.38, 0.21), M["wood_light"], 0.008)
+    box((0.42, 0.12, 0.02), (0, 0.18, 0.21), M["wood_light"], 0.008)
+    for y in (0.38, 0.18):
+        sphere((0.018, 0.018, 0.018), (0, y, 0.235), M["metal"])
+    cylinder(0.05, 0.02, (-0.1, 0.52, 0), M["dark"], 20)
+    cylinder(0.01, 0.16, (-0.1, 0.61, 0), M["metal"], 10)
+    cylinder(0.1, 0.14, (-0.1, 0.76, 0), M["shade"], 24, 0.07, "Shade")
+
+
+def wall_lamp(M):
+    box((0.12, 0.16, 0.03), (0, 0.3, -0.015), M["metal"], 0.008)
+    cylinder(0.01, 0.12, (0, 0.32, 0.05), M["metal"], 8, None, "Part", "z")
+    cylinder(0.1, 0.18, (0, 0.38, 0.1), M["shade"], 24, 0.06, "Shade")
+
+
+def vase_flowers(M):
+    vase_glass = mat("VaseGlass", (0.55, 0.75, 0.85), 0.05, 0.0, 0.5)
+    cylinder(0.05, 0.2, (0, 0.1, 0), vase_glass, 20, 0.035)
+    stem = M["leaf"]
+    petals = [mat("PetalPink", (0.85, 0.2, 0.35), 0.6), mat("PetalYellow", (0.9, 0.75, 0.15), 0.6), M["white"]]
+    for k in range(7):
+        a = k * 0.9
+        r = 0.05 + 0.015 * (k % 2)
+        top = (math.cos(a) * r, 0.33 + 0.03 * (k % 3), math.sin(a) * r)
+        tilted(cylinder(0.004, 0.18, (top[0] * 0.5, 0.25, top[2] * 0.5), stem, 6), math.degrees(-top[2] * 3), math.degrees(top[0] * 3))
+        sphere((0.03, 0.022, 0.03), top, petals[k % 3])
+        sphere((0.01, 0.01, 0.01), (top[0], top[1] + 0.016, top[2]), M["yellow"])
+
+
+def book_stack(M):
+    covers = [M["red"], M["blue"], M["green"], M["yellow"]]
+    pages = mat("Pages", (0.95, 0.93, 0.85), 0.8)
+    for k in range(4):
+        y = 0.023 + k * 0.047
+        w, d = 0.24 - k * 0.02, 0.17
+        spun(box((w, 0.045, d), (0, y, 0), covers[k], 0.006), k * 0.18)
+        spun(box((w - 0.012, 0.037, d - 0.01), (0, y, 0.0), pages, 0.0), k * 0.18)
+        spun(box((w - 0.01, 0.047, 0.02), (0, y, -d * 0.5), covers[k], 0.006), k * 0.18)
+
+
+def desk_clock(M):
+    cylinder(0.08, 0.06, (0, 0.1, 0), M["wood"], 32, None, "Part", "z")
+    box((0.18, 0.02, 0.08), (0, 0.01, 0), M["wood_dark"], 0.006)
+    cylinder(0.065, 0.005, (0, 0.1, 0.031), M["canvas"], 32, None, "Part", "z")
+    for k in range(12):
+        a = math.radians(k * 30)
+        box((0.006, 0.006, 0.003) if k % 3 else (0.008, 0.016, 0.003), (math.sin(a) * 0.055, 0.1 + math.cos(a) * 0.055, 0.035), M["dark"], 0.0)
+    box((0.005, 0.045, 0.003), (0, 0.12, 0.037), M["dark"], 0.0)
+    box((0.032, 0.005, 0.003), (0.016, 0.1, 0.037), M["dark"], 0.0)
+    cylinder(0.006, 0.006, (0, 0.1, 0.038), M["metal"], 10, None, "Part", "z")
+
+
+def candles(M):
+    wax = mat("Wax", (0.95, 0.9, 0.78), 0.6)
+    flame = mat("Flame", (1.0, 0.45, 0.08), 0.5)
+    flames = []
+    for k in range(3):
+        h = 0.08 + 0.05 * k
+        x = -0.07 + k * 0.07
+        cylinder(0.025, h, (x, h * 0.5 + 0.006, 0), wax, 20)
+        cylinder(0.002, 0.015, (x, h + 0.013, 0), M["dark"], 6)
+        flames.append(sphere((0.008, 0.02, 0.008), (x, h + 0.034, 0), flame))
+    cylinder(0.13, 0.012, (0, 0.006, 0), M["metal"], 32)
+    join_as(flames, "Shade")
+
+
+def fruit_bowl(M):
+    cylinder(0.08, 0.07, (0, 0.035, 0), M["wood_light"], 32, 0.14)
+    fruits = [mat("Apple", (0.7, 0.08, 0.06), 0.4), mat("Lemon", (0.9, 0.75, 0.1), 0.5), mat("Orange", (0.9, 0.4, 0.06), 0.55), mat("Lime", (0.3, 0.6, 0.12), 0.5), mat("Plum", (0.35, 0.08, 0.3), 0.35)]
+    for k in range(5):
+        a = k * 1.26
+        sphere((0.035, 0.035, 0.035), (math.cos(a) * 0.06, 0.09 + (k % 2) * 0.02, math.sin(a) * 0.06), fruits[k])
+    for k in range(3):
+        tilted(cylinder(0.014, 0.16, (0.0, 0.13 + k * 0.012, -0.01 + k * 0.012), M["yellow"], 10, 0.009, "Part", "x"), 0, 15 - k * 6)
+
+
+def stairs(M):
+    steps, height, depth = 12, 2.8, 3.0
+    rise, run = height / steps, depth / steps
+    for k in range(steps):
+        h = rise * (k + 1)
+        z = 1.5 - run * (k + 0.5)
+        box((0.94, h - 0.03, run), (0, (h - 0.03) * 0.5, z), M["white"], 0.004)
+        box((0.98, 0.035, run + 0.03), (0, h - 0.0175, z + 0.015), M["wood"], 0.008)
+    ang = math.degrees(math.atan2(height, depth))
+    length = math.hypot(height, depth)
+    for x in (-0.46, 0.46):
+        for k in range(0, steps, 2):
+            h = rise * (k + 1)
+            cylinder(0.012, 0.9, (x, h + 0.45, 1.5 - run * (k + 0.5)), M["white"], 8)
+        rail = cylinder(0.025, length, (0, 0, 0), M["wood_dark"], 12, None, "Part", "z")
+        tilted(rail, ang)
+        rail.location = to_blender((x, height * 0.5 + 0.9, 0.0))
+        cylinder(0.04, 1.0, (x, 0.5 + rise, 1.5 - run * 0.5), M["wood_dark"], 12)
+
+
+def monkey_bars(M):
+    frame = mat("PlayBlue", (0.05, 0.3, 0.7), 0.4, 0.3)
+    rung = mat("PlayYellow", (0.9, 0.55, 0.05), 0.4, 0.3)
+    for x in (-0.85, 0.85):
+        for z in (-0.35, 0.35):
+            cylinder(0.035, 1.8, (x, 0.9, z), frame, 12)
+            cylinder(0.07, 0.04, (x, 0.02, z), M["dark"], 12)
+        for k in range(4):
+            cylinder(0.022, 0.7, (x, 0.35 + k * 0.4, 0), rung, 10, None, "Part", "z")
+    for k in range(7):
+        cylinder(0.02, 0.74, (-0.72 + k * 0.24, 1.78, 0), rung, 10, None, "Part", "z")
+    for z in (-0.35, 0.35):
+        cylinder(0.03, 1.78, (0, 1.8, z), frame, 12, None, "Part", "x")
+
+
 def grill(M):
     for x in (-0.25, 0.25):
         for z in (-0.18, 0.18):
@@ -810,6 +988,10 @@ OBJECTS = {
     "end_table": end_table, "dollhouse": dollhouse, "activity_table": activity_table, "sculpture": sculpture,
     "column": column, "bathroom_sink": bathroom_sink, "basketball_hoop": basketball_hoop, "trash_can": trash_can,
     "planter": planter, "pond": pond,
+    "rug": rug, "burglar_alarm": burglar_alarm, "wall_mirror": wall_mirror, "table_lamp": table_lamp,
+    "nightstand": nightstand, "wall_lamp": wall_lamp, "vase_flowers": vase_flowers, "book_stack": book_stack,
+    "desk_clock": desk_clock, "candles": candles, "fruit_bowl": fruit_bowl, "stairs": stairs,
+    "monkey_bars": monkey_bars,
     "grill": grill, "picnic_table": picnic_table, "fountain": fountain,
     "treadmill": treadmill, "mirror": mirror, "guitar": guitar, "bar": bar, "pizza": pizza, "stereo": stereo, "car": car,
 }

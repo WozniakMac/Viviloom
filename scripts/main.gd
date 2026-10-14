@@ -2445,6 +2445,31 @@ func _run_scenario(scenario: String, path: String) -> void:
 			var mw := find_furniture("microwave")
 			rig.frame(mw.global_position, deg_to_rad(15.0), deg_to_rad(-35.0), 5.0)
 			await get_tree().create_timer(1.0).timeout
+		"showroom6":
+			lot.add_floor(Rect2i(2, 13, 18, 3), 3)
+			for e in Lot.wall_run(Vector2i(2, 13), Vector2i(20, 13)):
+				lot.add_wall(e)
+			_place("wall_mirror", Vector2i(3, 13), 0)
+			_place("burglar_alarm", Vector2i(5, 13), 0)
+			_place("wall_lamp", Vector2i(7, 13), 0)
+			_place("nightstand", Vector2i(9, 13))
+			var x := 11
+			for k in ["table_lamp", "vase_flowers", "book_stack", "desk_clock", "candles", "fruit_bowl"]:
+				_place("end_table", Vector2i(x, 13))
+				var d := Catalog.create(k)
+				if lot.can_place(d, Vector2i(x, 13), 0):
+					lot.place_furniture(d, Vector2i(x, 13), 0)
+				else:
+					push_warning("cannot place " + k)
+					d.free()
+				x += 1
+			_place("rug", Vector2i(3, 14))
+			_place("stairs", Vector2i(17, 14), 1)
+			_place("monkey_bars", Vector2i(7, 14))
+			Clock.total_minutes = 21 * 60.0
+			lot.wall_view = Lot.WallView.UP
+			rig.frame(lot.cell_to_world(Vector2i(8, 14)), deg_to_rad(10.0), deg_to_rad(-45.0), 12.0)
+			await get_tree().create_timer(1.2).timeout
 		"showroom2":
 			lot.add_floor(Rect2i(2, 15, 18, 4), 3)
 			for e in Lot.wall_run(Vector2i(2, 15), Vector2i(20, 15)):

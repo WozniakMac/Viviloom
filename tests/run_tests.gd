@@ -85,6 +85,7 @@ func _ready() -> void:
 	_test_career_events()
 	_test_branch_events()
 	_test_object_batch_four()
+	_test_every_object_modelled()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1629,3 +1630,21 @@ func _test_object_batch_four() -> void:
 	var ls := Catalog.create("loveseat")
 	_check(ls.capacity() == 2, "two can share a loveseat")
 	ls.free()
+
+
+func _test_every_object_modelled() -> void:
+	for kind in Catalog.KINDS:
+		_check(ResourceLoader.exists("res://assets/objects/%s.glb" % kind), "%s has a Blender model" % kind)
+	# The rug lies on top of the floor tiles (y = 0.021), not buried under them.
+	var rug := Catalog.create("rug")
+	var top := -1.0
+	for c in rug.find_children("*", "MeshInstance3D", true, false):
+		var mi := c as MeshInstance3D
+		top = maxf(top, (mi.get_aabb().end.y))
+	_check(top > 0.025, "the rug sits above the floor")
+	rug.free()
+	# A candle model keeps its flame colour when lit.
+	var cn := Catalog.create("candles")
+	var shade := cn.get_node_or_null("Shade") as MeshInstance3D
+	_check(shade != null and (shade.material_override as StandardMaterial3D).albedo_color.r > 0.9 and (shade.material_override as StandardMaterial3D).albedo_color.b < 0.45, "candle flames stay flame-coloured")
+	cn.free()

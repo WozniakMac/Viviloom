@@ -1359,8 +1359,12 @@ static func _use_model(f: Furniture, kind: String) -> void:
 		shade.get_parent().remove_child(shade)
 		shade.owner = null
 		shade.name = "Shade"
+		# Keep the model's own colour (a warm shade, or a candle flame).
+		var src: StandardMaterial3D = null
+		if shade.mesh != null:
+			src = shade.mesh.surface_get_material(0) as StandardMaterial3D
 		var m := StandardMaterial3D.new()
-		m.albedo_color = Color(0.97, 0.9, 0.76)
+		m.albedo_color = src.albedo_color if src != null else Color(0.97, 0.9, 0.76)
 		shade.material_override = m
 		f.add_child(shade)
 
