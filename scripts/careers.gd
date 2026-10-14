@@ -60,6 +60,27 @@ const INFO := {
 		"levels": [["Space Cadet", 16], ["Flight Engineer", 25], ["Mission Specialist", 38], ["Commander", 58], ["Space Ranger", 90]],
 		"description": "Reach for the stars. Logic helps you rise.",
 	},
+	"criminal": {
+		"label": "Criminal",
+		"skill": "mischief",
+		"start": 20, "end": 3,
+		"levels": [["Lookout", 15], ["Getaway Driver", 24], ["Safecracker", 36], ["Cat Burglar", 54], ["Criminal Mastermind", 85]],
+		"description": "Work the night shift on the wrong side of the law. Mischief helps you rise.",
+	},
+	"secret_agent": {
+		"label": "Secret Agent",
+		"skill": "charisma",
+		"start": 9, "end": 17,
+		"levels": [["Training Agent", 17], ["Field Analyst", 26], ["Field Agent", 39], ["Double Agent", 58], ["Super Agent", 88]],
+		"description": "License to charm. Charisma and Logic help you rise.",
+	},
+	"style_influencer": {
+		"label": "Style Influencer",
+		"skill": "writing",
+		"start": 10, "end": 17,
+		"levels": [["Style Novice", 14], ["Fashion Blogger", 22], ["Trendsetter", 34], ["Style Icon", 52], ["Fashion Mogul", 82]],
+		"description": "Set the trends everyone follows. Writing and Charisma help you rise.",
+	},
 	"school": {
 		"label": "Grade School", "skill": "logic", "start": 8, "end": 15,
 		"levels": [["Student", 0]], "description": "Reading, writing and recess.",
@@ -69,7 +90,7 @@ const INFO := {
 		"levels": [["Student", 0]], "description": "Homework, friends and a lot of growing up.",
 	},
 }
-const ORDER: Array[String] = ["culinary", "tech", "painter", "business", "athlete", "entertainer", "writer", "astronaut"]
+const ORDER: Array[String] = ["culinary", "tech", "painter", "business", "athlete", "entertainer", "writer", "astronaut", "criminal", "secret_agent", "style_influencer"]
 ## How hard the Sim works: [label, performance multiplier, moodlet on return].
 const WORK_STYLES := {
 	"hard": ["Work Hard", 1.6, ["work_hard", "tense", 1, "Worked Hard", "Tiring, but it'll pay off.", 240.0]],
@@ -87,6 +108,9 @@ const DAILY_TASKS := {
 	"entertainer": {"text": "Practise Comedy", "skill": "comedy", "xp": 30.0},
 	"writer": {"text": "Practise Writing", "skill": "writing", "xp": 40.0},
 	"astronaut": {"text": "Practise Logic", "skill": "logic", "xp": 40.0},
+	"criminal": {"text": "Pull a prank", "skill": "mischief", "xp": 30.0},
+	"secret_agent": {"text": "Practise Charisma", "skill": "charisma", "xp": 40.0},
+	"style_influencer": {"text": "Write a style post", "skill": "writing", "xp": 40.0},
 }
 const TASK_BONUS := 12.0
 
@@ -159,7 +183,14 @@ static func max_level(c: String) -> int:
 
 
 static func shift_hours(c: String) -> int:
-	return INFO[c]["end"] - INFO[c]["start"]
+	return posmod(INFO[c]["end"] - INFO[c]["start"], 24)
+
+
+## Whether hour `h` is inside the shift (night shifts wrap past midnight).
+static func on_shift(c: String, h: int) -> bool:
+	var s: int = INFO[c]["start"]
+	var e: int = INFO[c]["end"]
+	return (h >= s and h < e) if s < e else (h >= s or h < e)
 
 
 ## Skill level needed to be promoted from `level` to the next one.

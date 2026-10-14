@@ -93,7 +93,7 @@ func _process(_delta: float) -> void:
 	var h := Clock.hour()
 	match state:
 		State.HOME:
-			if Careers.is_work_day(Clock.day()) and h >= info["start"] and h < info["end"] and Clock.day() != _last_shift_day and Clock.day() != day_off:
+			if Careers.is_work_day(Clock.day()) and Careers.on_shift(career, h) and Clock.day() != _last_shift_day and Clock.day() != day_off:
 				_leave_for_work()
 		State.LEAVING:
 			# The walk to the curb is done (or was cancelled): the carpool comes.
@@ -104,10 +104,10 @@ func _process(_delta: float) -> void:
 				else:
 					_arrive_at_work()
 		State.AT_WORK:
-			if _event_hour >= 0 and h >= _event_hour and h < info["end"]:
+			if _event_hour >= 0 and h == _event_hour and Careers.on_shift(career, h):
 				_event_hour = -1
 				_raise_event()
-			if h >= info["end"] or h < info["start"]:
+			if not Careers.on_shift(career, h):
 				if carpool != null:
 					state = State.RETURNING
 					carpool.visit(curb(), _return_home.bind(true))
@@ -138,7 +138,7 @@ func _arrive_at_work() -> void:
 	var info: Dictionary = Careers.INFO[career]
 	_event_hour = -1
 	if not Careers.is_school(career) and _rng.randf() < 0.7:
-		_event_hour = _rng.randi_range(int(info["start"]) + 1, maxi(int(info["start"]) + 1, int(info["end"]) - 2))
+		_event_hour = posmod(int(info["start"]) + _rng.randi_range(1, maxi(1, Careers.shift_hours(career) - 2)), 24)
 	sim.away = true
 	sim.visible = false
 	lot.sims.erase(sim)

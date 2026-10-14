@@ -47,7 +47,7 @@ for the current status, known limitations, source licenses and rebuild instructi
 - **Live mode**: six needs, emotions from moodlets with body language, 16 skills (fishing, piano, comedy, mischief, mixology, programming and more), wants
   and aspiration milestones with a Rewards Store, socials in six categories (Friendly,
   Funny, Romance, Mischief, Mean, Parenting) and relationships (friends, going steady, break-ups,
-  WooHoo, marriage, moving in), toddler skills (talking, walking, potty...) taught by parents, child skills (Creativity, Mental, Motor, Social) and monkey bars, 8 careers with daily tasks and on-the-job choices, plus school, homework, life stages, babies,
+  WooHoo, marriage, moving in), toddler skills (talking, walking, potty...) taught by parents, child skills (Creativity, Mental, Motor, Social) and monkey bars, 11 careers (including Criminal, Secret Agent, Style Influencer) with daily tasks and on-the-job choices, plus school, homework, life stages, babies,
   old age, death and the Grim Reaper, night-time burglars (a burglar alarm calls the police), bills and power cuts, messes, breakdowns and fires,
   cooking recipes and group meals, gardening (plant, water, weed, fertilize, harvest produce of five qualities), sticky outfits (dresser and self-click Change Outfit), held props, inventory with paintings and fish, a phone with Social, Travel, Services (pizza, maid, repairs), Career and Household tabs, social events (House Party, Dinner Party, Date) with goals and medals,
   townies, visitors at the door, day and night, music and ambience.

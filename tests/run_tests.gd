@@ -77,6 +77,7 @@ func _ready() -> void:
 	_test_death_by_laughter()
 	_test_drowning()
 	_test_extreme_emotions()
+	_test_more_careers()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1524,3 +1525,10 @@ func _test_extreme_emotions() -> void:
 	_check(notes.any(func(t): return "Enraged" in t), "Sims are warned about dangerous feelings")
 	s.lot.queue_free()
 	s.queue_free()
+
+
+func _test_more_careers() -> void:
+	_check(Careers.ORDER.size() == 11 and Careers.ORDER.all(func(c): return Careers.INFO.has(c) and Careers.DAILY_TASKS.has(c)), "eleven careers with daily tasks")
+	_check(Careers.shift_hours("criminal") == 7, "the criminal night shift lasts seven hours")
+	_check(Careers.on_shift("criminal", 23) and Careers.on_shift("criminal", 1) and not Careers.on_shift("criminal", 12), "night shifts wrap past midnight")
+	_check(Careers.on_shift("culinary", 13) and not Careers.on_shift("culinary", 21), "day shifts still work")
