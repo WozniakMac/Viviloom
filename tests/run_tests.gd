@@ -74,6 +74,7 @@ func _ready() -> void:
 	_test_family_ties()
 	_test_wider_family()
 	_test_electrocution()
+	_test_death_by_laughter()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1453,3 +1454,28 @@ func _test_electrocution() -> void:
 	_check(deaths == ["electrocution"], "a second shock while shocked is fatal")
 	tv.queue_free()
 	s.queue_free()
+
+
+func _test_death_by_laughter() -> void:
+	var a := Sim.new()
+	var b := Sim.new()
+	add_child(a)
+	add_child(b)
+	for k in 3:
+		a.emotions.add("giggle%d" % k, "playful", 2, "Giggly", "", 300.0)
+	_check(a.emotions.mood() == "playful" and a.emotions.intensity() >= 3, "a Sim can become hysterical")
+	var deaths: Array = []
+	a.died.connect(func(c): deaths.append(c))
+	a._rng.seed = 2
+	for k in 200:
+		var act := Sim.SimAction.new()
+		act.target_sim = b
+		act.interaction = Socials.find("Tell a Joke")
+		act.outcome = true
+		act.elapsed = 999.0
+		a._social_result(act)
+		if not deaths.is_empty():
+			break
+	_check(deaths == ["laughter"], "hysterical Sims can die laughing")
+	a.queue_free()
+	b.queue_free()

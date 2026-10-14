@@ -11,6 +11,7 @@ const CAUSES := {
 	"hunger": "starved to death",
 	"fire": "perished in a fire",
 	"electrocution": "was electrocuted fixing something",
+	"laughter": "laughed themselves to death",
 }
 
 

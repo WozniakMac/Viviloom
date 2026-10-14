@@ -1471,6 +1471,14 @@ func _social_result(a: SimAction) -> void:
 	activity_done.emit(a.interaction.name)
 	if a.interaction.skill != "":
 		learn(a.interaction.skill, skill_gain(a.interaction, a.interaction.max_minutes) * (1.0 if a.outcome else 0.5))
+	# As in the reference: a Hysterical Sim (very playful) can laugh themselves to death at a joke.
+	if a.outcome and s.get("category", "") == "Funny":
+		for who in [self, t]:
+			var w := who as Sim
+			if w.emotions.mood() == "playful" and w.emotions.intensity() >= 3 and _rng.randf() < 0.08:
+				w.announced.emit("%s is laughing uncontrollably..." % w.sim_name)
+				w.died.emit("laughter")
+				break
 	if age_stage == "child":
 		learn("child_social", 25.0 if a.outcome else 10.0)
 	if a.outcome and s.has("target_skill"):
