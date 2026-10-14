@@ -81,6 +81,7 @@ func _ready() -> void:
 	_test_career_branches()
 	_test_ten_levels()
 	_test_branch_skills()
+	_test_uniforms()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1568,3 +1569,11 @@ func _test_ten_levels() -> void:
 func _test_branch_skills() -> void:
 	_check(Careers.skill_for("culinary", 3, -1) == "cooking", "the shared levels use the career skill")
 	_check(Careers.skill_for("culinary", 7, 1) == "mixology" and Careers.skill_for("tech", 7, 1) == "gaming", "branches lean on their own skills")
+
+
+func _test_uniforms() -> void:
+	_check(Careers.ORDER.all(func(c): return Careers.UNIFORMS.has(c)), "every career has a uniform")
+	var s := Sim.new()
+	s.wear_uniform("culinary")
+	_check(s.outfit == "career" and s.shirt_color == Careers.UNIFORMS["culinary"][0], "Sims dress for work")
+	s.free()

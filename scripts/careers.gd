@@ -213,6 +213,22 @@ static func skill_for(c: String, level: int, branch: int) -> String:
 	return INFO[c]["skill"]
 
 
+## Work uniforms, as in the reference: [shirt, trousers, long sleeves].
+const UNIFORMS := {
+	"culinary": [Color(0.97, 0.97, 0.95), Color(0.15, 0.15, 0.17), true],
+	"tech": [Color(0.3, 0.32, 0.36), Color(0.2, 0.25, 0.4), false],
+	"painter": [Color(0.9, 0.82, 0.62), Color(0.35, 0.3, 0.25), true],
+	"business": [Color(0.18, 0.2, 0.3), Color(0.18, 0.2, 0.3), true],
+	"athlete": [Color(0.85, 0.2, 0.2), Color(0.95, 0.95, 0.95), false],
+	"entertainer": [Color(0.55, 0.15, 0.6), Color(0.1, 0.1, 0.12), true],
+	"writer": [Color(0.6, 0.45, 0.32), Color(0.3, 0.28, 0.25), true],
+	"astronaut": [Color(0.92, 0.92, 0.9), Color(0.92, 0.92, 0.9), true],
+	"criminal": [Color(0.1, 0.1, 0.12), Color(0.1, 0.1, 0.12), true],
+	"secret_agent": [Color(0.08, 0.08, 0.1), Color(0.08, 0.08, 0.1), true],
+	"style_influencer": [Color(0.95, 0.5, 0.65), Color(0.95, 0.9, 0.8), false],
+}
+
+
 static func has_branches(c: String) -> bool:
 	return BRANCHES.has(c)
 

@@ -126,7 +126,10 @@ func curb() -> Vector3:
 
 
 func _leave_for_work() -> void:
-	sim.change_outfit("everyday")
+	if Careers.is_school(career):
+		sim.change_outfit("everyday")
+	else:
+		sim.wear_uniform(career)
 	_last_shift_day = Clock.day()
 	_mood_at_start = sim.emotions.mood()
 	sim.clear_queue()

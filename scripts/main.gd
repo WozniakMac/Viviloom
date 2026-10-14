@@ -2371,6 +2371,10 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"uniform":
+			sim.wear_uniform("culinary")
+			rig.frame(sim.global_position, deg_to_rad(20.0), deg_to_rad(-25.0), 4.5)
+			await get_tree().create_timer(1.2).timeout
 		"cake":
 			var cake := Catalog.create("cake")
 			lot.place_furniture(cake, Vector2i(11, 9), 0)

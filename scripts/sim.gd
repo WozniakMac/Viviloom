@@ -322,6 +322,19 @@ func _default_outfits() -> void:
 		outfits["swim"] = {"shirt": Color(0.95, 0.4, 0.35), "pants": Color(0.2, 0.45, 0.85), "long_sleeves": false, "shorts": true}
 
 
+## Puts on the career's uniform (a "career" outfit, as in the reference).
+func wear_uniform(career: String) -> void:
+	if outfits.is_empty():
+		_default_outfits()
+	var u: Array = Careers.UNIFORMS.get(career, [])
+	if u.is_empty():
+		change_outfit("everyday", false)
+		return
+	outfits["career"] = {"shirt": u[0], "pants": u[1], "long_sleeves": u[2], "shorts": false, "skirt": false}
+	outfit = ""
+	change_outfit("career")
+
+
 ## Changes into another outfit category; `spin` plays the quick twirl.
 func change_outfit(category: String, spin := true) -> void:
 	if outfits.is_empty():
