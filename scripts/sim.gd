@@ -1225,6 +1225,18 @@ func _drop_vanished() -> void:
 func _check_limits() -> void:
 	if lot == null or is_visitor:
 		return
+	# Dangerous extreme feelings, as in the reference: a warning, then a growing
+	# risk the longer they last (calm them down, or sleep it off).
+	var em := emotions.mood()
+	if emotions.intensity() >= 3 and Emotions.DEADLY.has(em):
+		if _extreme_minutes == 0.0:
+			announced.emit("%s is %s! Calm them down before it's too late." % [sim_name, Emotions.EXTREMES[em]])
+		_extreme_minutes += Clock.game_delta
+		if _extreme_minutes > 60.0 and _rng.randf() < Clock.game_delta * 0.002:
+			died.emit(Emotions.DEADLY[em])
+			return
+	else:
+		_extreme_minutes = 0.0
 	# A swimmer with no ladder to climb out keeps swimming until exhausted, then drowns.
 	var swim := current_action()
 	if swim != null and swim.performing and swim.interaction != null and swim.interaction.pose == "swim" and swim.furniture != null and not swim.furniture.has_ladders():
@@ -1652,6 +1664,7 @@ func like_mult(skill: String) -> float:
 	return 1.0
 
 
+var _extreme_minutes := 0.0
 const ELECTRONICS := ["tv", "desk", "stereo", "stove", "fridge", "treadmill", "microwave", "coffee_maker"]
 
 

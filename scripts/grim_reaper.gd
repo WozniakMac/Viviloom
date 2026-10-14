@@ -13,6 +13,8 @@ const CAUSES := {
 	"electrocution": "was electrocuted fixing something",
 	"laughter": "laughed themselves to death",
 	"drowning": "drowned, too exhausted to keep swimming",
+	"anger": "died in a fit of rage",
+	"embarrassment": "died of embarrassment",
 }
 
 

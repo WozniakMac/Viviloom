@@ -159,7 +159,15 @@ func intensity() -> int:
 	return 1
 
 
+## The reference's names for the strongest feelings (some are dangerous).
+const EXTREMES := {"playful": "Hysterical", "angry": "Enraged", "embarrassed": "Mortified", "happy": "Ecstatic", "sad": "Depressed", "tense": "Stressed"}
+## Extreme feelings that can kill if they last: emotion -> death cause.
+const DEADLY := {"playful": "laughter", "angry": "anger", "embarrassed": "embarrassment"}
+
+
 func mood_label() -> String:
+	if intensity() >= 3 and EXTREMES.has(mood()):
+		return EXTREMES[mood()]
 	var prefix: String = ["", "", "Very ", "Extremely "][intensity()]
 	return prefix + label(mood())
 

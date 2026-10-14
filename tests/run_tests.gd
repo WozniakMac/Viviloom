@@ -76,6 +76,7 @@ func _ready() -> void:
 	_test_electrocution()
 	_test_death_by_laughter()
 	_test_drowning()
+	_test_extreme_emotions()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1507,3 +1508,19 @@ func _test_drowning() -> void:
 	s._check_limits()
 	_check(deaths == ["drowning"], "and drowns when exhausted")
 	lot.queue_free()
+
+
+func _test_extreme_emotions() -> void:
+	var s := Sim.new()
+	add_child(s)
+	for k in 3:
+		s.emotions.add("rage%d" % k, "angry", 2, "Furious", "", 600.0)
+	_check(s.emotions.mood_label() == "Enraged", "extreme anger is Enraged")
+	var notes: Array = []
+	s.announced.connect(func(t): notes.append(t))
+	s.lot = _make_lot()
+	add_child(s.lot)
+	s._check_limits()
+	_check(notes.any(func(t): return "Enraged" in t), "Sims are warned about dangerous feelings")
+	s.lot.queue_free()
+	s.queue_free()
