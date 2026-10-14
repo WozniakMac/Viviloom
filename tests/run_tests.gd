@@ -68,6 +68,7 @@ func _ready() -> void:
 	_test_more_aspirations()
 	_test_trait_batch_two()
 	_test_likes_dislikes()
+	_test_birthday_cake()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1325,3 +1326,25 @@ func _test_likes_dislikes() -> void:
 	var d := s.to_dict()
 	_check(d["likes"] == s.likes and d["dislikes"] == s.dislikes, "likes and dislikes are saved")
 	s.free()
+
+
+func _test_birthday_cake() -> void:
+	var fridge := Catalog.create("fridge")
+	_check(fridge.interactions.any(func(i): return i.creates == "cake"), "the fridge can bake a birthday cake")
+	fridge.free()
+	var cake := Catalog.create("cake")
+	_check(cake.interactions[0].effect == "age_up", "blowing out the candles ages a Sim up")
+	var s := Sim.new()
+	s.age_stage = "child"
+	add_child(s)
+	var grew: Array = []
+	s.grow_up_requested.connect(func(): grew.append(true))
+	var act := Sim.SimAction.new()
+	act.interaction = cake.interactions[0]
+	act.furniture = cake
+	act.performing = true
+	act.elapsed = 10.0
+	s._end_perform(act, true)
+	_check(grew.size() == 1, "the candles trigger a birthday")
+	cake.free()
+	s.queue_free()

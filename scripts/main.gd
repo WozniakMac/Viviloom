@@ -306,6 +306,7 @@ func add_to_household(s: Sim) -> void:
 		lot.sims.append(s)
 	s.earned.connect(build.earn)
 	s.baby_tried.connect(func(p: Sim): life.try_for_baby(s, p))
+	s.grow_up_requested.connect(func(): life.birthday(s))
 	s.died.connect(func(cause: String): _on_died(s, cause))
 	s.wallet = build
 	s.moving_in.connect(_on_moving_in)
@@ -2354,6 +2355,13 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"cake":
+			var cake := Catalog.create("cake")
+			lot.place_furniture(cake, Vector2i(11, 9), 0)
+			rig.frame(cake.global_position, deg_to_rad(20.0), deg_to_rad(-40.0), 4.0)
+			await get_tree().create_timer(0.5).timeout
+			open_menu(cake, rig.camera.unproject_position(cake.global_position + Vector3(0, 0.2, 0)))
+			await get_tree().create_timer(0.6).timeout
 		"selfmenu":
 			Clock.total_minutes = 22 * 60.0
 			rig.frame(sim.global_position, deg_to_rad(20.0), deg_to_rad(-45.0), 8.0)

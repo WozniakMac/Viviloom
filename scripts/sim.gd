@@ -12,6 +12,8 @@ signal earned(amount: int)
 signal relationships_changed
 ## A "Try for Baby" went well with `partner`.
 signal baby_tried(partner: Sim)
+## Blew out a birthday cake's candles: main ages the Sim up.
+signal grow_up_requested
 ## A Move In or Propose went well; main brings `other` into the household.
 signal moving_in(other: Sim)
 ## The Sim has died; main calls the Grim Reaper.
@@ -1590,6 +1592,10 @@ func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
 			homework_done.emit()
 	if finished and i.recipe != "" and lot != null:
 		_serve_meal(i, lvl)
+	if finished and i.creates == "cake" and lot != null:
+		var cake := Catalog.create("cake")
+		lot.place_furniture(cake, lot.nearest_walkable(lot.world_to_cell(global_position + global_basis * Vector3(0, 0, -1.0))), 0)
+		announced.emit("%s baked a birthday cake! Click it to blow out the candles." % sim_name)
 	if finished and i.creates == "fish":
 		_catch_fish(lvl)
 	if finished and i.creates == "produce" and _last_garden != null and is_instance_valid(_last_garden):
@@ -1648,6 +1654,11 @@ func _end_perform(a: SimAction, finished := false) -> void:
 			_add_part("%s dug an upgrade part out of the trash!" % sim_name)
 		else:
 			announced.emit("%s rummaged through the trash but found nothing useful." % sim_name)
+	if finished and a.interaction.effect == "age_up":
+		if Ages.next(age_stage) == "":
+			announced.emit("%s blew out the candles. Happy birthday!" % sim_name)
+		else:
+			grow_up_requested.emit()
 	if finished and a.interaction.effect == "assign":
 		# This side of the bed is now theirs.
 		var item: Dictionary = a.furniture.get_meta("item", {}).duplicate()

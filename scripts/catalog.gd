@@ -168,6 +168,7 @@ const INFO := {
 	"tombstone": ["Tombstone", 0],
 	"painting": ["Painting", 0],
 	"meal": ["Meal", 0],
+	"cake": ["Birthday Cake", 0],
 }
 ## Build-mode catalogue sections: [id, label]; "all" lists everything.
 const CATEGORIES := [["rooms", "Rooms"], ["all", "All"], ["bedroom", "Bedroom"], ["kitchen", "Kitchen"], ["bathroom", "Bathroom"], ["fun", "Fun"], ["hobby", "Hobbies"], ["living", "Living"], ["outdoor", "Outdoor"]]
@@ -293,6 +294,10 @@ static func create(kind: String) -> Furniture:
 				Interaction.new("Grab a Snack", {"hunger": 90.0}, 15.0, "hunger", "stand", true),
 			]
 			f.interactions.append_array(_recipes(3))
+			var bake := Interaction.new("Bake Birthday Cake", {"fun": 5.0}, 40.0, "", "stand", true).practices("cooking", 40.0)
+			bake.creates = "cake"
+			bake.cost = 20
+			f.interactions.append(bake)
 		"bed":
 			f.display_name = "Double Bed"
 			f.footprint = Vector2i(2, 2)
@@ -1103,6 +1108,23 @@ static func create(kind: String) -> Furniture:
 			for x in [-0.47, 0.47]:
 				var rail := f.add_box(Vector3(0.04, 0.04, 3.4), Vector3(x, Lot.WALL_HEIGHT * 0.5 + 0.9, 0), DARK)
 				rail.rotation.x = atan2(Lot.WALL_HEIGHT, 3.0)
+		"cake":
+			# As in the reference: blow out the candles to grow up on the spot.
+			f.display_name = "Birthday Cake"
+			f.blocks = false
+			f.height = 0.3
+			f.add_box(Vector3(0.36, 0.02, 0.36), Vector3(0, 0.01, 0), WHITE)
+			f.add_box(Vector3(0.28, 0.14, 0.28), Vector3(0, 0.09, 0), Color(0.95, 0.75, 0.85))
+			f.add_box(Vector3(0.3, 0.02, 0.3), Vector3(0, 0.17, 0), Color(0.98, 0.95, 0.9))
+			for k in 4:
+				var a := k * TAU / 4.0
+				f.add_box(Vector3(0.015, 0.07, 0.015), Vector3(cos(a) * 0.08, 0.215, sin(a) * 0.08), Color(0.4, 0.6, 0.95))
+				f.add_box(Vector3(0.012, 0.02, 0.012), Vector3(cos(a) * 0.08, 0.26, sin(a) * 0.08), Color(1.0, 0.75, 0.3))
+			f.spots = [Vector3(0, 0, 0.9)]
+			f.set_meta("servings", 6)
+			var blow := Interaction.new("Blow Out Candles", {"fun": 20.0}, 5.0, "", "stand", true)
+			blow.effect = "age_up"
+			f.interactions = [blow, _dishes(Interaction.new("Grab a Slice", {"hunger": 90.0, "fun": 10.0}, 15.0, "hunger", "stand", true))]
 		"meal":
 			# A serving platter; make_meal() sets the food, servings and quality.
 			f.display_name = "Meal"
