@@ -2371,6 +2371,14 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"showroom5":
+			lot.add_floor(Rect2i(1, 12, 22, 7), 0)
+			var row := [["toybox", Vector2i(1, 12)], ["piano", Vector2i(3, 12)], ["telescope", Vector2i(6, 12)], ["single_bed", Vector2i(8, 12)], ["dollhouse", Vector2i(10, 12)], ["activity_table", Vector2i(12, 12)], ["sculpture", Vector2i(14, 12)], ["column", Vector2i(16, 12)], ["bathroom_sink", Vector2i(18, 12)],
+				["coffee_table", Vector2i(2, 16)], ["end_table", Vector2i(5, 16)], ["trash_can", Vector2i(7, 16)], ["planter", Vector2i(9, 16)], ["pond", Vector2i(11, 16)], ["basketball_hoop", Vector2i(16, 16)]]
+			for k in row:
+				_place(k[0], k[1])
+			rig.frame(lot.cell_to_world(Vector2i(10, 14)), deg_to_rad(5.0), deg_to_rad(-45.0), 16.0)
+			await get_tree().create_timer(1.2).timeout
 		"showroom4":
 			lot.add_floor(Rect2i(2, 13, 20, 6), 0)
 			for k in [["loveseat", Vector2i(2, 13)], ["armchair", Vector2i(5, 13)], ["wardrobe", Vector2i(7, 13)], ["dresser", Vector2i(10, 13)], ["bathtub", Vector2i(13, 13)], ["cactus", Vector2i(16, 13)], ["patio_lounger", Vector2i(3, 16)], ["patio_table", Vector2i(6, 17)], ["counter", Vector2i(9, 17)], ["counter", Vector2i(10, 17)]]:

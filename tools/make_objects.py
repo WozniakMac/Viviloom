@@ -472,6 +472,143 @@ def flower_bed(M):
             k += 1
 
 
+def toybox(M):
+    yellow = mat("ToyYellow", (0.85, 0.5, 0.05), 0.6)
+    lid = mat("ToyBlue", (0.05, 0.2, 0.6), 0.5)
+    box((0.8, 0.45, 0.5), (0, 0.23, -0.1), yellow, 0.04)
+    box((0.84, 0.06, 0.54), (0, 0.48, -0.1), lid, 0.03)
+    cols = [mat("ToyRed", (0.7, 0.05, 0.05), 0.5), mat("ToyGreen", (0.05, 0.45, 0.1), 0.5), lid, yellow]
+    for k in range(4):
+        box((0.12, 0.12, 0.12), (-0.25 + k * 0.17, 0.06, 0.32), cols[k], 0.02)
+
+
+def piano(M):
+    lac = mat("Lacquer", (0.015, 0.01, 0.008), 0.15)
+    box((1.6, 1.25, 0.5), (0, 0.63, -0.22), lac, 0.03)
+    box((1.6, 0.08, 0.34), (0, 0.74, 0.18), lac, 0.02)
+    box((1.4, 0.03, 0.18), (0, 0.79, 0.16), M["ceramic"], 0.005)
+    for k in range(10):
+        if k % 7 not in (2, 6):
+            box((0.05, 0.03, 0.1), (-0.6 + k * 0.135, 0.815, 0.12), M["dark"], 0.003)
+    for x in (-0.72, 0.72):
+        box((0.08, 0.7, 0.36), (x, 0.35, 0.16), lac, 0.02)
+    box((0.9, 0.06, 0.32), (0, 0.45, 0.62), lac, 0.02)
+    for x in (-0.38, 0.38):
+        for z in (0.5, 0.74):
+            cylinder(0.02, 0.42, (x, 0.21, z), lac, 10)
+
+
+def telescope(M):
+    for k in range(3):
+        a = k * 2.094
+        leg = cylinder(0.02, 1.15, (0.17 * math.sin(a), 0.55, 0.17 * math.cos(a)), M["dark"], 8)
+        tilted(leg, x_deg=-10 * math.cos(a), z_deg=10 * math.sin(a))
+    tube = cylinder(0.08, 0.9, (0, 1.2, 0.05), M["white"], 20, 0.06, "Part", "z")
+    tilted(tube, x_deg=35)
+    brass = mat("Brass", (0.6, 0.4, 0.1), 0.3, 0.8)
+    ring = cylinder(0.095, 0.06, (0, 1.45, -0.3), brass, 20, None, "Part", "z")
+    tilted(ring, x_deg=35)
+
+
+def single_bed(M):
+    box((0.95, 0.35, 1.95), (0, 0.18, 0), M["wood"], 0.03)
+    box((0.88, 0.2, 1.85), (0, 0.45, 0.02), M["linen"], 0.05)
+    quilt = mat("Quilt", (0.6, 0.25, 0.05), 0.9)
+    box((0.9, 0.06, 1.25), (0, 0.57, 0.33), quilt, 0.03)
+    box((0.6, 0.12, 0.35), (0, 0.6, -0.7), M["linen"], 0.05)
+    box((1.0, 0.8, 0.1), (0, 0.4, -0.95), M["wood"], 0.03)
+
+
+def coffee_table(M):
+    box((1.4, 0.06, 0.6), (0, 0.42, 0), M["wood"], 0.02)
+    box((1.3, 0.03, 0.5), (0, 0.15, 0), M["wood_dark"], 0.01)
+    for x in (-0.62, 0.62):
+        for z in (-0.24, 0.24):
+            cylinder(0.03, 0.4, (x, 0.2, z), M["wood_dark"], 10)
+
+
+def end_table(M):
+    box((0.5, 0.5, 0.5), (0, 0.25, 0), M["wood"], 0.03)
+    box((0.52, 0.04, 0.52), (0, 0.52, 0), M["wood_light"], 0.015)
+    box((0.42, 0.14, 0.02), (0, 0.36, 0.25), M["wood_light"], 0.01)
+
+
+def dollhouse(M):
+    walls = mat("DollWalls", (0.85, 0.7, 0.5), 0.6)
+    roof = mat("DollRoof", (0.55, 0.08, 0.08), 0.6)
+    box((0.9, 0.7, 0.4), (0, 0.35, -0.1), walls, 0.02)
+    for side in (-1, 1):
+        r = box((0.55, 0.05, 0.46), (0.22 * side, 0.88, -0.1), roof, 0.01)
+        tilted(r, z_deg=-34 * side)
+    for x in (-0.22, 0.22):
+        for y in (0.2, 0.5):
+            box((0.18, 0.16, 0.02), (x, y, 0.11), M["glass"], 0.005)
+
+
+def activity_table(M):
+    top = mat("ActTop", (0.85, 0.5, 0.05), 0.5)
+    leg = mat("ActLeg", (0.05, 0.25, 0.6), 0.5)
+    box((0.9, 0.05, 0.6), (0, 0.5, 0), top, 0.02)
+    for x in (-0.4, 0.4):
+        for z in (-0.25, 0.25):
+            cylinder(0.025, 0.5, (x, 0.25, z), leg, 10)
+    box((0.3, 0.01, 0.22), (-0.15, 0.53, 0.05), M["white"], 0.0)
+    cols = [mat("ToyRed", (0.7, 0.05, 0.05), 0.5), mat("ToyGreen", (0.05, 0.45, 0.1), 0.5), leg]
+    for k in range(3):
+        box((0.1, 0.1, 0.1), (0.18 + k * 0.08, 0.58 + k * 0.1, -0.1), cols[k], 0.01)
+
+
+def sculpture(M):
+    box((0.45, 0.6, 0.45), (0, 0.3, 0), M["ceramic"], 0.02)
+    gold = mat("Gold", (0.7, 0.45, 0.1), 0.3, 0.9)
+    arc = cylinder(0.05, 0.75, (0, 0.95, 0), gold, 16)
+    tilted(arc, z_deg=28)
+    sphere((0.16, 0.16, 0.16), (0.15, 1.25, 0), mat("Cobalt", (0.03, 0.12, 0.45), 0.3))
+
+
+def column(M):
+    cylinder(0.24, 0.14, (0, 0.07, 0), M["ceramic"], 24)
+    cylinder(0.14, 2.52, (0, 1.4, 0), M["white"], 24, 0.12)
+    cylinder(0.24, 0.14, (0, 2.73, 0), M["ceramic"], 24)
+
+
+def bathroom_sink(M):
+    cylinder(0.07, 0.75, (0, 0.38, -0.1), M["ceramic"], 20, 0.1)
+    box((0.55, 0.14, 0.42), (0, 0.8, 0), M["ceramic"], 0.05)
+    cylinder(0.015, 0.16, (0, 0.94, -0.16), M["metal"], 10)
+
+
+def basketball_hoop(M):
+    cylinder(0.06, 2.9, (0, 1.45, -0.3), M["dark"], 12)
+    box((1.1, 0.7, 0.05), (0, 2.75, -0.22), M["white"], 0.02)
+    box((0.4, 0.3, 0.06), (0, 2.6, -0.2), mat("HoopRed", (0.6, 0.05, 0.03), 0.5), 0.01)
+    rim = mat("Rim", (0.7, 0.2, 0.02), 0.4, 0.5)
+    for k in range(10):
+        a = k * 0.628
+        box((0.08, 0.02, 0.02), (math.cos(a) * 0.2, 2.5, 0.05 + math.sin(a) * 0.2), rim, 0.0)
+
+
+def trash_can(M):
+    bin_ = mat("BinGreen", (0.04, 0.15, 0.08), 0.6)
+    cylinder(0.3, 0.95, (0, 0.48, 0), bin_, 20, 0.27)
+    cylinder(0.32, 0.08, (0, 1.0, 0), mat("BinLid", (0.02, 0.09, 0.05), 0.6), 20)
+
+
+def planter(M):
+    box((0.9, 0.3, 0.9), (0, 0.15, 0), M["wood"], 0.03)
+    box((0.8, 0.02, 0.8), (0, 0.31, 0), mat("Soil", (0.08, 0.05, 0.03), 0.95), 0.0)
+
+
+def pond(M):
+    stone = mat("Stone", (0.35, 0.35, 0.33), 0.9)
+    box((2.9, 0.12, 1.9), (0, 0.06, 0), stone, 0.06)
+    water = mat("PondWater", (0.05, 0.25, 0.4), 0.05, 0.0)
+    box((2.6, 0.04, 1.6), (0, 0.11, 0), water, 0.0)
+    pad = mat("LilyPad", (0.08, 0.35, 0.08), 0.6)
+    for (x, z) in ((-1.1, -0.6), (0.9, 0.5), (0.3, -0.4)):
+        cylinder(0.14, 0.01, (x, 0.135, z), pad, 16)
+
+
 def microwave(M):
     box((0.55, 0.32, 0.4), (0, 0.16, -0.05), M["white"], 0.03)
     box((0.36, 0.24, 0.02), (-0.06, 0.16, 0.155), M["screen"], 0.01)
@@ -669,6 +806,10 @@ OBJECTS = {
     "microwave": microwave, "coffee_maker": coffee_maker, "loveseat": loveseat, "armchair": armchair,
     "wardrobe": wardrobe, "dresser": dresser, "bathtub": bathtub, "patio_lounger": patio_lounger,
     "patio_table": patio_table, "cactus": cactus,
+    "toybox": toybox, "piano": piano, "telescope": telescope, "single_bed": single_bed, "coffee_table": coffee_table,
+    "end_table": end_table, "dollhouse": dollhouse, "activity_table": activity_table, "sculpture": sculpture,
+    "column": column, "bathroom_sink": bathroom_sink, "basketball_hoop": basketball_hoop, "trash_can": trash_can,
+    "planter": planter, "pond": pond,
     "grill": grill, "picnic_table": picnic_table, "fountain": fountain,
     "treadmill": treadmill, "mirror": mirror, "guitar": guitar, "bar": bar, "pizza": pizza, "stereo": stereo, "car": car,
 }
