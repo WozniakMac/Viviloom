@@ -69,6 +69,7 @@ func _ready() -> void:
 	_test_trait_batch_two()
 	_test_likes_dislikes()
 	_test_birthday_cake()
+	_test_trait_batch_three()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1348,3 +1349,12 @@ func _test_birthday_cake() -> void:
 	_check(grew.size() == 1, "the candles trigger a birthday")
 	cake.free()
 	s.queue_free()
+
+
+func _test_trait_batch_three() -> void:
+	_check(Traits.ORDER.size() >= 32, "32 traits")
+	var fam: Array[String] = ["family_oriented"]
+	_check(not Traits.can_add(fam, "hates_children"), "Family-Oriented and Hates Children conflict")
+	_check(Traits.liking(fam, "", Socials.find("Teach to Talk")) > 1.0, "family-oriented Sims love parenting")
+	for t in Traits.ORDER:
+		_check(TraitHex.TRAIT_COLORS.has(t), "trait %s has a hex colour" % t)

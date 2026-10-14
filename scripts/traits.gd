@@ -149,6 +149,50 @@ const INFO := {
 		"skill_mult": {"gaming": 1.5, "programming": 1.5},
 		"likes": {"gaming": 2.5, "programming": 1.5, "telescope": 2.0},
 	},
+	"art_lover": {
+		"label": "Art Lover",
+		"description": "Moved by art; viewing paintings and sculptures inspires them.",
+		"periodic": ["inspired", 1, "Artistic Mood", "Beauty is everywhere.", 600.0, 180.0],
+		"likes": {"sculpture": 3.0, "easel": 1.5, "painting": 1.3},
+	},
+	"clumsy": {
+		"label": "Clumsy",
+		"description": "Trips over their own feet, but laughs it off.",
+		"periodic": ["embarrassed", 1, "Clumsy Moment", "Oops! Did anyone see that?", 540.0, 90.0],
+	},
+	"family_oriented": {
+		"label": "Family-Oriented",
+		"description": "Happiest around family and loves teaching little ones.",
+		"likes": {"Parenting": 3.0, "toybox": 1.5},
+		"lasting": ["happy", 1, "Family First", "Family is everything."],
+	},
+	"hates_children": {
+		"label": "Hates Children",
+		"description": "Not a kid person. Avoids parenting if they can.",
+		"likes": {"Parenting": 0.1, "toybox": 0.2},
+	},
+	"jealous": {
+		"label": "Jealous",
+		"description": "Wants their partner all to themselves.",
+		"periodic": ["tense", 1, "Jealous Thoughts", "Who were they talking to?", 720.0, 120.0],
+		"likes": {"romance": 1.5},
+	},
+	"materialistic": {
+		"label": "Materialistic",
+		"description": "Loves buying new things and owning nice stuff.",
+		"periodic": ["playful", 1, "Wants Something New", "Ooh, shiny.", 600.0, 180.0],
+	},
+	"snob": {
+		"label": "Snob",
+		"description": "Refined tastes; loves fine art, good food and clever talk. Learns Charisma faster.",
+		"skill_mult": {"charisma": 1.3},
+		"likes": {"sculpture": 2.0, "bar": 1.5, "Funny": 0.5},
+	},
+	"squeamish": {
+		"label": "Squeamish",
+		"description": "Can't stand grime. Gets grossed out easily and cleans dirty fixtures fast.",
+		"likes": {"clean": 3.0},
+	},
 	"music_lover": {
 		"label": "Music Lover",
 		"description": "Happiest with music playing. Learns Guitar faster.",
@@ -157,9 +201,11 @@ const INFO := {
 	},
 }
 const ORDER: Array[String] = ["cheerful", "gloomy", "creative", "genius", "lazy", "bookworm", "neat", "slob", "active", "romantic", "loner", "hot_headed", "foodie", "music_lover",
-	"ambitious", "childish", "goofball", "self_assured", "glutton", "good", "mean", "outgoing", "perfectionist", "geek"]
+	"ambitious", "childish", "goofball", "self_assured", "glutton", "good", "mean", "outgoing", "perfectionist", "geek",
+	"art_lover", "clumsy", "family_oriented", "hates_children", "jealous", "materialistic", "snob", "squeamish"]
 const CONFLICTS := [["cheerful", "gloomy"], ["neat", "slob"], ["active", "lazy"], ["loner", "romantic"], ["cheerful", "hot_headed"],
-	["good", "mean"], ["outgoing", "loner"], ["ambitious", "lazy"], ["self_assured", "gloomy"], ["goofball", "hot_headed"]]
+	["good", "mean"], ["outgoing", "loner"], ["ambitious", "lazy"], ["self_assured", "gloomy"], ["goofball", "hot_headed"],
+	["family_oriented", "hates_children"], ["squeamish", "slob"], ["snob", "goofball"]]
 
 
 static func label(t: String) -> String:
@@ -221,4 +267,5 @@ static func liking(traits: Array[String], kind: String, interaction: Interaction
 				m *= likes.get("mean", 1.0)
 			if interaction.social.get("category", "") == "Mischief":
 				m *= likes.get("mischief", 1.0)
+			m *= likes.get(interaction.social.get("category", ""), 1.0)
 	return m

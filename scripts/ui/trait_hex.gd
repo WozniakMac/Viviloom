@@ -30,6 +30,14 @@ const TRAIT_COLORS := {
 	"outgoing": Color(0.2, 0.7, 0.75),
 	"perfectionist": Color(0.4, 0.4, 0.75),
 	"geek": Color(0.3, 0.6, 0.45),
+	"art_lover": Color(0.75, 0.4, 0.65),
+	"clumsy": Color(0.7, 0.55, 0.35),
+	"family_oriented": Color(0.9, 0.5, 0.45),
+	"hates_children": Color(0.45, 0.45, 0.5),
+	"jealous": Color(0.4, 0.65, 0.3),
+	"materialistic": Color(0.85, 0.7, 0.25),
+	"snob": Color(0.5, 0.35, 0.6),
+	"squeamish": Color(0.55, 0.75, 0.6),
 }
 
 var trait_id := ""

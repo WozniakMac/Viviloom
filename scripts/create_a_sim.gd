@@ -141,7 +141,12 @@ func _build() -> void:
 	grid.columns = 6
 	grid.add_theme_constant_override("h_separation", 4)
 	grid.add_theme_constant_override("v_separation", 2)
-	pv.add_child(grid)
+	# Scrolls once there are more traits than fit (four rows show at a time).
+	var trait_scroll := ScrollContainer.new()
+	trait_scroll.custom_minimum_size = Vector2(390, 256)
+	trait_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	trait_scroll.add_child(grid)
+	pv.add_child(trait_scroll)
 	for t in Traits.ORDER:
 		var h := TraitHex.new()
 		h.trait_id = t

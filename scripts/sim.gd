@@ -1633,7 +1633,7 @@ func _end_perform(a: SimAction, finished := false) -> void:
 	a.furniture.release(self)
 	if finished and a.interaction.effect != "clean" and Catalog.DIRTIES.has(a.furniture.kind):
 		if a.furniture.is_dirty():
-			emotions.add("grossed_out", "uncomfortable", 1, "Grossed Out", "That %s is filthy!" % a.furniture.display_name.to_lower(), 180.0)
+			emotions.add("grossed_out", "uncomfortable", 2 if traits.has("squeamish") else 1, "Grossed Out", "That %s is filthy!" % a.furniture.display_name.to_lower(), 180.0)
 		a.furniture.add_dirt()
 	if finished and a.interaction.effect == "clean":
 		emotions.add("sparkling", "happy" if traits.has("neat") else "fine", 1 if traits.has("neat") else 0, "Sparkling Clean", "Now that's how it should look.", 120.0)
