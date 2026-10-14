@@ -189,6 +189,30 @@ const BRANCHES := {
 }
 
 
+## The skill each branch leans on, as in the reference (the career's own skill
+## until the branch point). career -> [branch 0 skill, branch 1 skill]
+const BRANCH_SKILLS := {
+	"culinary": ["cooking", "mixology"],
+	"tech": ["programming", "gaming"],
+	"painter": ["painting", "charisma"],
+	"business": ["charisma", "logic"],
+	"athlete": ["fitness", "fitness"],
+	"entertainer": ["comedy", "piano"],
+	"writer": ["writing", "charisma"],
+	"astronaut": ["logic", "fitness"],
+	"criminal": ["mischief", "programming"],
+	"secret_agent": ["charisma", "mischief"],
+	"style_influencer": ["charisma", "writing"],
+}
+
+
+## The skill that counts for promotion to `level` (and for performance there).
+static func skill_for(c: String, level: int, branch: int) -> String:
+	if level >= BRANCH_AT and branch >= 0 and BRANCH_SKILLS.has(c):
+		return BRANCH_SKILLS[c][clampi(branch, 0, 1)]
+	return INFO[c]["skill"]
+
+
 static func has_branches(c: String) -> bool:
 	return BRANCHES.has(c)
 

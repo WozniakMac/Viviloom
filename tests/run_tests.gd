@@ -80,6 +80,7 @@ func _ready() -> void:
 	_test_more_careers()
 	_test_career_branches()
 	_test_ten_levels()
+	_test_branch_skills()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1547,6 +1548,7 @@ func _test_career_branches() -> void:
 	w.level = Careers.BRANCH_AT - 1
 	w.performance = 100.0
 	s.skills.add_xp("mischief", Skills.xp_for_level(10))
+	s.skills.add_xp("programming", Skills.xp_for_level(10))
 	w._try_promotion()
 	_check(asked.size() == 1 and w.level == Careers.BRANCH_AT - 1, "reaching the branch point asks for a path")
 	w.choose_branch(1)
@@ -1561,3 +1563,8 @@ func _test_ten_levels() -> void:
 		_check(Careers.max_level(c) == 9, "%s has ten levels" % c)
 	_check(Careers.title("culinary", 9, 1) == "Master Mixologist" and Careers.hourly("culinary", 9, 0) > Careers.hourly("culinary", 5), "the top of each branch pays best")
 	_check(Careers.skill_for_promotion(8) == 9, "promotions need the skill to keep pace")
+
+
+func _test_branch_skills() -> void:
+	_check(Careers.skill_for("culinary", 3, -1) == "cooking", "the shared levels use the career skill")
+	_check(Careers.skill_for("culinary", 7, 1) == "mixology" and Careers.skill_for("tech", 7, 1) == "gaming", "branches lean on their own skills")

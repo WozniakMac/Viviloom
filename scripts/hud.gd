@@ -1257,7 +1257,7 @@ func _refresh_career() -> void:
 	bar.custom_minimum_size = Vector2(340, 16)
 	_career_box.add_child(bar)
 	if work.level < Careers.max_level(c2):
-		var skill: String = Careers.INFO[c2]["skill"]
+		var skill: String = Careers.skill_for(c2, work.level + 1, work.branch)
 		var next := Label.new()
 		next.text = "Next: %s — needs full performance and %s %d (now %d). Good moods at the start of a shift help." % ["a branch choice" if work.level + 1 == Careers.BRANCH_AT and work.branch < 0 and Careers.has_branches(c2) else Careers.title(c2, work.level + 1, work.branch), Skills.label(skill), Careers.skill_for_promotion(work.level), sim.skills.level(skill)]
 		next.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

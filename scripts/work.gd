@@ -174,7 +174,7 @@ func _finish_shift() -> void:
 	n.add("hygiene", -3.0 * hours)
 	n.set_value("bladder", maxf(n.get_value("bladder"), 60.0))
 	n.set_value("social", maxf(n.get_value("social"), 65.0))
-	var skill: String = Careers.INFO[career]["skill"]
+	var skill: String = Careers.skill_for(career, level, branch)
 	var style: Array = Careers.WORK_STYLES[work_style]
 	var gain: float = Careers.shift_performance(_mood_at_start, sim.skills.level(skill)) * style[1]
 	for t in sim.traits:
@@ -259,7 +259,7 @@ func resolve_event(choice: int) -> void:
 func _try_promotion() -> void:
 	if performance < 100.0 or level >= Careers.max_level(career):
 		return
-	var skill: String = Careers.INFO[career]["skill"]
+	var skill: String = Careers.skill_for(career, level + 1, branch)
 	var need := Careers.skill_for_promotion(level)
 	if sim.skills.level(skill) < need:
 		notice.emit("%s is ready for a promotion but needs %s level %d first." % [sim.sim_name, Skills.label(skill), need], "Career")
