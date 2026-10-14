@@ -170,12 +170,46 @@ static func label(c: String) -> String:
 	return INFO[c]["label"]
 
 
-static func title(c: String, level: int) -> String:
-	return INFO[c]["levels"][level][0]
+## Career branches, as in the reference: from level BRANCH_AT the Sim follows one
+## of two paths, each with its own titles and pay for the top two levels.
+## career -> [[branch label, [[title, pay], [title, pay]]], [...]]
+const BRANCH_AT := 3
+const BRANCHES := {
+	"culinary": [["Chef", [["Chef de Cuisine", 50], ["Celebrity Chef", 72]]], ["Mixologist", [["Head Bartender", 46], ["Master Mixologist", 66]]]],
+	"tech": [["Start-up Entrepreneur", [["Start-up Founder", 60], ["Tech Mogul", 90]]], ["eSport Gamer", [["Pro Gamer", 52], ["eSport Legend", 80]]]],
+	"painter": [["Master of the Real", [["Gallery Painter", 48], ["Master Painter", 72]]], ["Patron of the Arts", [["Art Dealer", 52], ["Patron of the Arts", 78]]]],
+	"business": [["Management", [["Executive", 58], ["Business Tycoon", 92]]], ["Investor", [["Investor", 55], ["Angel Investor", 88]]]],
+	"athlete": [["Bodybuilder", [["Fitness Champion", 54], ["Mr. or Ms. Galaxy", 78]]], ["Professional Athlete", [["All-Star", 60], ["Hall of Famer", 92]]]],
+	"entertainer": [["Comedian", [["Headliner", 50], ["Comedy Legend", 78]]], ["Musician", [["Virtuoso", 52], ["Musical Superstar", 82]]]],
+	"writer": [["Author", [["Bestselling Author", 54], ["Literary Legend", 85]]], ["Journalist", [["Columnist", 48], ["Editor-in-Chief", 76]]]],
+	"astronaut": [["Space Ranger", [["Commander", 58], ["Space Ranger", 90]]], ["Interstellar Smuggler", [["Space Pirate", 56], ["Interstellar Smuggler", 88]]]],
+	"criminal": [["Boss", [["Underboss", 56], ["Criminal Mastermind", 85]]], ["Oracle", [["Hacker", 58], ["Oracle", 90]]]],
+	"secret_agent": [["Diamond Agent", [["Double-O Agent", 60], ["Diamond Agent", 92]]], ["Villain", [["Henchman", 50], ["Supervillain", 86]]]],
+	"style_influencer": [["Stylist", [["Celebrity Stylist", 52], ["Style Icon", 80]]], ["Trend Setter", [["Trendsetter", 54], ["Fashion Mogul", 82]]]],
+}
 
 
-static func hourly(c: String, level: int) -> int:
-	return INFO[c]["levels"][level][1]
+static func has_branches(c: String) -> bool:
+	return BRANCHES.has(c)
+
+
+static func branch_labels(c: String) -> Array:
+	return BRANCHES.get(c, []).map(func(b): return b[0])
+
+
+static func _level_entry(c: String, level: int, branch: int) -> Array:
+	if level >= BRANCH_AT and BRANCHES.has(c):
+		var b: Array = BRANCHES[c][clampi(branch, 0, 1)]
+		return b[1][mini(level - BRANCH_AT, b[1].size() - 1)]
+	return INFO[c]["levels"][level]
+
+
+static func title(c: String, level: int, branch := 0) -> String:
+	return _level_entry(c, level, branch)[0]
+
+
+static func hourly(c: String, level: int, branch := 0) -> int:
+	return _level_entry(c, level, branch)[1]
 
 
 static func max_level(c: String) -> int:

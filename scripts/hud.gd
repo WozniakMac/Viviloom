@@ -1240,11 +1240,11 @@ func _refresh_career() -> void:
 		return
 	var c2 := work.career
 	var head := UiTheme.title(Label.new(), 17)
-	head.text = "%s  ·  Level %d" % [Careers.title(c2, work.level), work.level + 1]
+	head.text = "%s  ·  Level %d" % [Careers.title(c2, work.level, work.branch), work.level + 1]
 	_career_box.add_child(head)
 	var info := Label.new()
 	var status: String = ["At home", "Heading to work", "Waiting for the carpool", "At work", "On the way home"][work.state]
-	info.text = "%s career · §%d/h\n%s\n%s" % [Careers.label(c2), Careers.hourly(c2, work.level), Careers.schedule_text(c2), status]
+	info.text = "%s career · §%d/h\n%s\n%s" % [Careers.label(c2) + ((" · " + Careers.branch_labels(c2)[work.branch]) if work.branch >= 0 and Careers.has_branches(c2) else ""), Careers.hourly(c2, work.level, work.branch), Careers.schedule_text(c2), status]
 	info.add_theme_font_size_override("font_size", 13)
 	info.add_theme_color_override("font_color", UiTheme.TEXT_SOFT)
 	_career_box.add_child(info)
@@ -1259,7 +1259,7 @@ func _refresh_career() -> void:
 	if work.level < Careers.max_level(c2):
 		var skill: String = Careers.INFO[c2]["skill"]
 		var next := Label.new()
-		next.text = "Next: %s — needs full performance and %s %d (now %d). Good moods at the start of a shift help." % [Careers.title(c2, work.level + 1), Skills.label(skill), Careers.skill_for_promotion(work.level), sim.skills.level(skill)]
+		next.text = "Next: %s — needs full performance and %s %d (now %d). Good moods at the start of a shift help." % ["a branch choice" if work.level + 1 == Careers.BRANCH_AT and work.branch < 0 and Careers.has_branches(c2) else Careers.title(c2, work.level + 1, work.branch), Skills.label(skill), Careers.skill_for_promotion(work.level), sim.skills.level(skill)]
 		next.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		next.custom_minimum_size = Vector2(340, 0)
 		next.add_theme_font_size_override("font_size", 12)

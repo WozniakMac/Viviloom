@@ -78,6 +78,7 @@ func _ready() -> void:
 	_test_drowning()
 	_test_extreme_emotions()
 	_test_more_careers()
+	_test_career_branches()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1532,3 +1533,23 @@ func _test_more_careers() -> void:
 	_check(Careers.shift_hours("criminal") == 7, "the criminal night shift lasts seven hours")
 	_check(Careers.on_shift("criminal", 23) and Careers.on_shift("criminal", 1) and not Careers.on_shift("criminal", 12), "night shifts wrap past midnight")
 	_check(Careers.on_shift("culinary", 13) and not Careers.on_shift("culinary", 21), "day shifts still work")
+
+
+func _test_career_branches() -> void:
+	_check(Careers.BRANCHES.size() == 11 and Careers.branch_labels("criminal") == ["Boss", "Oracle"], "every career branches, as in the reference")
+	var s := Sim.new()
+	var w := Work.new()
+	w.sim = s
+	w.join("criminal", true)
+	var asked: Array = []
+	w.branch_choice.connect(func(l): asked.append(l))
+	w.level = Careers.BRANCH_AT - 1
+	w.performance = 100.0
+	s.skills.add_xp("mischief", Skills.xp_for_level(10))
+	w._try_promotion()
+	_check(asked.size() == 1 and w.level == Careers.BRANCH_AT - 1, "reaching the branch point asks for a path")
+	w.choose_branch(1)
+	_check(w.level == Careers.BRANCH_AT and Careers.title("criminal", w.level, w.branch) == "Hacker", "choosing Oracle leads to Hacker")
+	_check(w.to_dict()["branch"] == 1, "the branch is saved")
+	w.free()
+	s.free()

@@ -327,6 +327,14 @@ func add_to_household(s: Sim) -> void:
 	add_child(w)
 	w.paid.connect(build.earn)
 	w.carpool = carpool
+	w.branch_choice.connect(func(labels: Array):
+		if not dialogs_enabled:
+			w.choose_branch(0)
+			return
+		var opts: Array[String] = []
+		opts.assign(labels)
+		var d := EventDialog.ask(self, s, "Career Branch", "%s has reached a turning point in the %s career. Which path will they follow?" % [s.sim_name, Careers.label(w.career)], opts)
+		d.answered.connect(func(i: int, _t: String): w.choose_branch(i)))
 	w.work_event.connect(func(title: String, text: String, choices: Array):
 		if not dialogs_enabled:
 			w.resolve_event(0)

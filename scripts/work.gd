@@ -26,6 +26,10 @@ var state := State.HOME
 var carpool: Carpool
 var _last_shift_day := 0
 var _mood_at_start := "fine"
+## Which branch the career follows from Careers.BRANCH_AT (-1: not chosen yet).
+var branch := -1
+## Asks the player to pick a branch: main shows the choice and calls choose_branch.
+signal branch_choice(labels: Array)
 ## Skill experience when the daily task window opened (after the last shift).
 var task_base_xp := 0.0
 var _event_hour := -1
@@ -34,6 +38,7 @@ var _rng := RandomNumberGenerator.new()
 
 
 func join(c: String, quiet := false) -> void:
+	branch = -1
 	career = c
 	task_base_xp = _task_xp()
 	level = 0
@@ -49,7 +54,7 @@ func join(c: String, quiet := false) -> void:
 func quit() -> void:
 	if career == "":
 		return
-	notice.emit("%s quit their job as a %s." % [sim.sim_name, Careers.title(career, level)], "Career")
+	notice.emit("%s quit their job as a %s." % [sim.sim_name, Careers.title(career, level, branch)], "Career")
 	if state != State.HOME:
 		_return_home(false)
 	career = ""
@@ -57,13 +62,14 @@ func quit() -> void:
 
 
 func to_dict() -> Dictionary:
-	return {"career": career, "level": level, "performance": performance, "last_shift_day": _last_shift_day, "style": work_style, "task_base": task_base_xp}
+	return {"career": career, "level": level, "branch": branch, "performance": performance, "last_shift_day": _last_shift_day, "style": work_style, "task_base": task_base_xp}
 
 
 ## Loading always puts the Sim at home; a shift in progress is simply skipped.
 func from_dict(d: Dictionary) -> void:
 	career = d.get("career", "")
 	level = int(d.get("level", 0))
+	branch = int(d.get("branch", 0 if level >= Careers.BRANCH_AT else -1))
 	performance = d.get("performance", 0.0)
 	_last_shift_day = int(d.get("last_shift_day", 0))
 	work_style = d.get("style", "normal")
@@ -160,7 +166,7 @@ func _return_home(worked: bool) -> void:
 ## Pay, needs after a day out, mood and performance.
 func _finish_shift() -> void:
 	var hours := Careers.shift_hours(career)
-	var pay := Careers.hourly(career, level) * hours
+	var pay := Careers.hourly(career, level, branch) * hours
 	var n := sim.needs
 	n.add("hunger", -6.0 * hours * 0.6)
 	n.add("energy", -4.5 * hours)
@@ -194,7 +200,7 @@ func _finish_shift() -> void:
 		notice.emit("%s is home from school with homework. Current grade: %s." % [sim.sim_name, Careers.grade(performance)], Careers.label(career))
 		return
 	paid.emit(pay)
-	notice.emit("%s is back from work and earned §%d. Performance %d%%.%s" % [sim.sim_name, pay, int(performance), " Daily task done!" if task_done else ""], Careers.title(career, level))
+	notice.emit("%s is back from work and earned §%d. Performance %d%%.%s" % [sim.sim_name, pay, int(performance), " Daily task done!" if task_done else ""], Careers.title(career, level, branch))
 	_try_promotion()
 
 
@@ -258,7 +264,16 @@ func _try_promotion() -> void:
 	if sim.skills.level(skill) < need:
 		notice.emit("%s is ready for a promotion but needs %s level %d first." % [sim.sim_name, Skills.label(skill), need], "Career")
 		return
+	if level + 1 == Careers.BRANCH_AT and Careers.has_branches(career) and branch < 0:
+		# Time to choose a path; the promotion happens once one is picked.
+		branch_choice.emit(Careers.branch_labels(career))
+		return
 	level += 1
 	performance = 30.0
 	sim.emotions.add("promoted", "happy", 3, "Promoted!", "Hard work paid off.", 480.0)
-	notice.emit("%s was promoted to %s! New pay: §%d an hour." % [sim.sim_name, Careers.title(career, level), Careers.hourly(career, level)], "Promotion")
+	notice.emit("%s was promoted to %s! New pay: §%d an hour." % [sim.sim_name, Careers.title(career, level, branch), Careers.hourly(career, level, branch)], "Promotion")
+
+
+func choose_branch(i: int) -> void:
+	branch = clampi(i, 0, 1)
+	_try_promotion()
