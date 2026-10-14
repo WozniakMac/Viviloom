@@ -2371,6 +2371,16 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"showroom4":
+			lot.add_floor(Rect2i(2, 13, 20, 6), 0)
+			for k in [["loveseat", Vector2i(2, 13)], ["armchair", Vector2i(5, 13)], ["wardrobe", Vector2i(7, 13)], ["dresser", Vector2i(10, 13)], ["bathtub", Vector2i(13, 13)], ["cactus", Vector2i(16, 13)], ["patio_lounger", Vector2i(3, 16)], ["patio_table", Vector2i(6, 17)], ["counter", Vector2i(9, 17)], ["counter", Vector2i(10, 17)]]:
+				_place(k[0], k[1])
+			var mw := Catalog.create("microwave")
+			lot.place_furniture(mw, Vector2i(9, 17), 0)
+			var cm := Catalog.create("coffee_maker")
+			lot.place_furniture(cm, Vector2i(10, 17), 0)
+			rig.frame(lot.cell_to_world(Vector2i(9, 15)), deg_to_rad(5.0), deg_to_rad(-42.0), 13.0)
+			await get_tree().create_timer(1.2).timeout
 		"showroom3":
 			lot.add_floor(Rect2i(2, 15, 18, 4), 0)
 			_place("loveseat", Vector2i(3, 16))

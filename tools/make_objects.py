@@ -472,6 +472,101 @@ def flower_bed(M):
             k += 1
 
 
+def microwave(M):
+    box((0.55, 0.32, 0.4), (0, 0.16, -0.05), M["white"], 0.03)
+    box((0.36, 0.24, 0.02), (-0.06, 0.16, 0.155), M["screen"], 0.01)
+    box((0.1, 0.24, 0.02), (0.2, 0.16, 0.155), M["dark"], 0.01)
+    for k in range(3):
+        cylinder(0.012, 0.01, (0.2, 0.24 - k * 0.05, 0.168), M["metal"], 12, None, "Part", "z")
+
+
+def coffee_maker(M):
+    box((0.24, 0.08, 0.26), (0, 0.04, -0.05), M["dark"], 0.02)
+    box((0.1, 0.36, 0.1), (0, 0.18, -0.13), M["dark"], 0.02)
+    box((0.24, 0.07, 0.26), (0, 0.36, -0.05), M["dark"], 0.02)
+    cylinder(0.06, 0.12, (0, 0.14, 0.04), M["glass"], 20, 0.055)
+
+
+def loveseat(M):
+    fab = mat("Rose", (0.42, 0.11, 0.09), 0.9)
+    box((1.6, 0.3, 0.8), (0, 0.24, 0), fab, 0.06)
+    box((1.6, 0.52, 0.2), (0, 0.6, -0.31), fab, 0.08)
+    for x in (-0.74, 0.74):
+        box((0.16, 0.58, 0.8), (x, 0.35, 0), fab, 0.07)
+    for x in (-0.36, 0.36):
+        box((0.64, 0.14, 0.6), (x, 0.46, 0.06), fab, 0.06)
+    for x in (-0.7, 0.7):
+        for z in (-0.32, 0.32):
+            cylinder(0.025, 0.1, (x, 0.05, z), M["wood_dark"], 10)
+
+
+def armchair(M):
+    fab = mat("Sage", (0.16, 0.24, 0.1), 0.9)
+    box((0.85, 0.3, 0.8), (0, 0.24, 0), fab, 0.06)
+    box((0.85, 0.55, 0.2), (0, 0.62, -0.31), fab, 0.08)
+    for x in (-0.37, 0.37):
+        box((0.14, 0.55, 0.8), (x, 0.36, 0), fab, 0.06)
+    box((0.6, 0.12, 0.6), (0, 0.46, 0.06), fab, 0.05)
+    for x in (-0.33, 0.33):
+        for z in (-0.32, 0.32):
+            cylinder(0.025, 0.1, (x, 0.05, z), M["wood_dark"], 10)
+
+
+def wardrobe(M):
+    box((1.4, 1.95, 0.6), (0, 0.98, -0.18), M["wood"], 0.03)
+    for x in (-0.35, 0.35):
+        box((0.66, 1.8, 0.03), (x, 1.0, 0.13), M["wood_light"], 0.015)
+        cylinder(0.015, 0.22, (x * 0.12, 1.05, 0.16), M["metal"], 10)
+    box((1.44, 0.06, 0.64), (0, 1.97, -0.18), M["wood_dark"], 0.02)
+
+
+def dresser(M):
+    box((1.5, 0.85, 0.5), (0, 0.45, -0.18), M["wood"], 0.03)
+    for row in range(3):
+        for col in range(2):
+            box((0.68, 0.22, 0.03), (-0.36 + col * 0.72, 0.22 + row * 0.26, 0.08), M["wood_light"], 0.012)
+            cylinder(0.018, 0.02, (-0.36 + col * 0.72, 0.24 + row * 0.26, 0.105), M["metal"], 12, None, "Part", "z")
+
+
+def bathtub(M):
+    box((1.75, 0.2, 0.8), (0, 0.1, 0), M["ceramic"], 0.04)
+    for side in (-1, 1):
+        box((1.75, 0.4, 0.1), (0, 0.38, 0.35 * side), M["ceramic"], 0.04)
+        box((0.1, 0.4, 0.62), (0.825 * side, 0.38, 0), M["ceramic"], 0.04)
+    water = mat("Water", (0.55, 0.78, 0.92), 0.05, 0.0, 0.6)
+    box((1.55, 0.02, 0.6), (0, 0.44, 0), water, 0.0)
+    cylinder(0.02, 0.25, (-0.8, 0.62, 0), M["metal"], 10)
+
+
+def patio_lounger(M):
+    frame = mat("Chrome", (0.8, 0.8, 0.82), 0.25, 0.8)
+    box((0.7, 0.06, 1.2), (0, 0.32, 0.35), M["white"], 0.02)
+    b = box((0.7, 0.06, 0.75), (0, 0.55, -0.62), M["white"], 0.02)
+    tilted(b, x_deg=-38)
+    cushion = mat("PoolBlue", (0.25, 0.55, 0.72), 0.85)
+    box((0.64, 0.06, 1.15), (0, 0.38, 0.35), cushion, 0.03)
+    for z in (-0.75, 0.85):
+        for x in (-0.3, 0.3):
+            cylinder(0.025, 0.3, (x, 0.15, z), frame, 10)
+
+
+def patio_table(M):
+    box((0.9, 0.05, 0.9), (0, 0.74, 0), M["white"], 0.02)
+    cylinder(0.04, 0.72, (0, 0.36, 0), M["metal"], 12)
+    cylinder(0.2, 0.03, (0, 0.015, 0), M["metal"], 20)
+    cylinder(0.02, 1.6, (0, 1.5, 0), M["white"], 10)
+    canopy = mat("Canopy", (0.6, 0.04, 0.04), 0.8)
+    cylinder(1.1, 0.35, (0, 2.15, 0), canopy, 16, 0.05)
+
+
+def cactus(M):
+    cylinder(0.11, 0.18, (0, 0.09, 0), M["pot"], 20, 0.13)
+    green = mat("Cactus", (0.15, 0.38, 0.15), 0.7)
+    sphere((0.07, 0.2, 0.07), (0, 0.38, 0), green)
+    sphere((0.035, 0.08, 0.035), (0.08, 0.38, 0), green)
+    sphere((0.035, 0.07, 0.035), (-0.07, 0.45, 0), green)
+
+
 def grill(M):
     for x in (-0.25, 0.25):
         for z in (-0.18, 0.18):
@@ -571,6 +666,9 @@ OBJECTS = {
     "dining_table": dining_table, "chair": chair, "counter": counter, "stove": stove,
     "sink": sink, "plant": plant, "mailbox": mailbox, "bench": bench, "tree": tree, "bush": bush,
     "pine": pine, "flower_shrub": flower_shrub, "flower_bed": flower_bed,
+    "microwave": microwave, "coffee_maker": coffee_maker, "loveseat": loveseat, "armchair": armchair,
+    "wardrobe": wardrobe, "dresser": dresser, "bathtub": bathtub, "patio_lounger": patio_lounger,
+    "patio_table": patio_table, "cactus": cactus,
     "grill": grill, "picnic_table": picnic_table, "fountain": fountain,
     "treadmill": treadmill, "mirror": mirror, "guitar": guitar, "bar": bar, "pizza": pizza, "stereo": stereo, "car": car,
 }
