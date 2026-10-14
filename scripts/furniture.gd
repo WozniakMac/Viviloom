@@ -249,6 +249,9 @@ func available_interactions() -> Array[Interaction]:
 				_clean_interaction = Interaction.new("Clean", {"hygiene": -5.0, "fun": -4.0}, 20.0, "", "stand", true)
 				_clean_interaction.effect = "clean"
 			list.push_front(_clean_interaction)
+		if kind == "pool":
+			var no_l: bool = get_meta("no_ladders", false)
+			list = list.filter(func(i): return i.effect != ("ladders_off" if no_l else "ladders_on"))
 		var have := upgrades()
 		for x in extra_interactions():
 			if not x.effect.begins_with("upgrade:") or not have.has(x.effect.trim_prefix("upgrade:")):
@@ -385,6 +388,40 @@ func _update_flies() -> void:
 		stink.queue_free()
 
 
+func has_ladders() -> bool:
+	return not get_meta("no_ladders", false)
+
+
+## Chrome ladders at the pool's exits.
+func _update_ladders() -> void:
+	var old := get_node_or_null("Ladders")
+	if old != null:
+		old.free()
+	if kind != "pool" or not has_ladders():
+		return
+	var n := Node3D.new()
+	n.name = "Ladders"
+	add_child(n)
+	var chrome := StandardMaterial3D.new()
+	chrome.albedo_color = Color(0.85, 0.86, 0.9)
+	chrome.metallic = 0.8
+	chrome.roughness = 0.2
+	for sp in spots:
+		var inward: Vector3 = -(sp as Vector3).normalized()
+		var side := Vector3(-inward.z, 0, inward.x)
+		var base: Vector3 = sp + inward * 0.55
+		for k in [-0.22, 0.22]:
+			var rail := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.025
+			cm.bottom_radius = 0.025
+			cm.height = 1.1
+			rail.mesh = cm
+			rail.material_override = chrome
+			rail.position = base + side * k + Vector3(0, 0.1, 0)
+			n.add_child(rail)
+
+
 func upgrades() -> Array:
 	var item: Dictionary = get_meta("item", {})
 	var list: Array = item.get("upgrades", []).duplicate()
@@ -497,6 +534,10 @@ func apply_effect(e: String) -> void:
 	if e.begins_with("plant:"):
 		set_meta("item", {"crop": e.trim_prefix("plant:"), "growth": 0.0, "watered": Clock.day()})
 		refresh_garden()
+		return
+	if e in ["ladders_off", "ladders_on"]:
+		set_meta("no_ladders", e == "ladders_off")
+		_update_ladders()
 		return
 	if e == "clean":
 		set_dirt(0.0)

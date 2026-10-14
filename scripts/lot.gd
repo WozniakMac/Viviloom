@@ -1248,6 +1248,7 @@ func add_pool(rect: Rect2i) -> Furniture:
 	place_furniture(pool, rect.position, 0)
 	pools[rect] = pool
 	_rebuild_pools()
+	pool._update_ladders()
 	return pool
 
 

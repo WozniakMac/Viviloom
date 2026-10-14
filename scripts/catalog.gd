@@ -1163,6 +1163,12 @@ static func create(kind: String) -> Furniture:
 			f.interactions = [
 				Interaction.new("Swim", {"fun": 35.0, "hygiene": 20.0, "energy": -10.0}, 60.0, "", "swim").practices("fitness", 45.0).grants("swim", "happy", 1, "Refreshing Swim", "The water was perfect.", 180.0),
 			]
+			# Ladders are the way out; without them a swimmer can't get out (as in the reference).
+			var off := Interaction.new("Remove Ladders", {}, 2.0, "", "stand", true)
+			off.effect = "ladders_off"
+			var on := Interaction.new("Add Ladders", {}, 2.0, "", "stand", true)
+			on.effect = "ladders_on"
+			f.interactions.append_array([off, on])
 		"fire":
 			f.display_name = "Fire!"
 			f.blocks = false

@@ -1016,6 +1016,9 @@ func cancel(index: int) -> void:
 	if index < 0 or index >= queue.size():
 		return
 	var a := queue[index]
+	if a.performing and a.interaction != null and a.interaction.pose == "swim" and a.furniture != null and not a.furniture.has_ladders():
+		announced.emit("%s can't get out of the pool: there are no ladders!" % sim_name)
+		return
 	if a.stairs != null and a.performing:
 		# Never leave a Sim halfway up the stairs: finish the climb.
 		lot = a.climb_lot
@@ -1222,6 +1225,16 @@ func _drop_vanished() -> void:
 func _check_limits() -> void:
 	if lot == null or is_visitor:
 		return
+	# A swimmer with no ladder to climb out keeps swimming until exhausted, then drowns.
+	var swim := current_action()
+	if swim != null and swim.performing and swim.interaction != null and swim.interaction.pose == "swim" and swim.furniture != null and not swim.furniture.has_ladders():
+		if swim.elapsed > swim.interaction.max_minutes * 0.9:
+			swim.elapsed = 0.0
+		needs.add("energy", -Clock.game_delta * 0.5)
+		if needs.get_value("energy") <= 1.0:
+			announced.emit("%s couldn't get out of the pool!" % sim_name)
+			died.emit("drowning")
+			return
 	# Starving for a whole day, or standing in a fire too long, is fatal.
 	var was_starving := _starving > 0.0
 	_starving = _starving + Clock.game_delta if needs.get_value("hunger") <= 0.0 else 0.0

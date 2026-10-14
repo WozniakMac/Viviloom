@@ -75,6 +75,7 @@ func _ready() -> void:
 	_test_wider_family()
 	_test_electrocution()
 	_test_death_by_laughter()
+	_test_drowning()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1479,3 +1480,30 @@ func _test_death_by_laughter() -> void:
 	_check(deaths == ["laughter"], "hysterical Sims can die laughing")
 	a.queue_free()
 	b.queue_free()
+
+
+func _test_drowning() -> void:
+	var lot := _make_lot()
+	add_child(lot)
+	var pool := lot.add_pool(Rect2i(4, 4, 4, 3))
+	_check(pool.has_ladders() and pool.get_node_or_null("Ladders") != null, "pools come with ladders")
+	pool.apply_effect("ladders_off")
+	_check(not pool.has_ladders() and _names(pool.available_interactions()).has("Add Ladders"), "ladders can be removed and put back")
+	var s := Sim.new()
+	s.lot = lot
+	lot.add_child(s)
+	lot.sims.append(s)
+	var act := Sim.SimAction.new()
+	act.furniture = pool
+	act.interaction = pool.interactions[0]
+	act.started = true
+	act.performing = true
+	s.queue.append(act)
+	s.cancel(0)
+	_check(s.queue.size() == 1, "a swimmer can't leave a pool without ladders")
+	var deaths: Array = []
+	s.died.connect(func(c): deaths.append(c))
+	s.needs.set_value("energy", 0.5)
+	s._check_limits()
+	_check(deaths == ["drowning"], "and drowns when exhausted")
+	lot.queue_free()

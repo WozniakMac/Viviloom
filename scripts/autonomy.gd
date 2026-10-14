@@ -111,7 +111,7 @@ static func choose(sim: Sim, lot: Lot, rng: RandomNumberGenerator) -> Array:
 				continue
 			if not urgent.is_empty() and not restores_any(i, urgent):
 				continue
-			if i.effect in ["assign", "age_up"] or i.effect.begins_with("upgrade:"):
+			if i.effect in ["assign", "age_up", "ladders_off", "ladders_on"] or i.effect.begins_with("upgrade:"):
 				continue
 			var s := score(sim.needs, i) / (1.0 + dist / 20.0)
 			if urgent.is_empty():

@@ -1479,7 +1479,7 @@ func _lot_dict() -> Dictionary:
 		objects.append([f.kind, f.cell.x, f.cell.y, f.rot_steps, f.broken, f.variant, f.get_meta("item", {})])
 	var pool_rects: Array = []
 	for r in lot.pools:
-		pool_rects.append([r.position.x, r.position.y, r.size.x, r.size.y])
+		pool_rects.append([r.position.x, r.position.y, r.size.x, r.size.y, (lot.pools[r] as Furniture).has_ladders()])
 	var fences: Array = []
 	for e in lot.fences:
 		fences.append([e.x, e.y, e.z, lot.gates.has(e), lot.fence_styles.get(e, 0)])
@@ -1601,7 +1601,9 @@ func _apply_lot_dict(d: Dictionary) -> void:
 		if fe[3]:
 			lot.add_gate(fe_e)
 	for p in d.get("pools", []):
-		lot.add_pool(Rect2i(int(p[0]), int(p[1]), int(p[2]), int(p[3])))
+		var pl := lot.add_pool(Rect2i(int(p[0]), int(p[1]), int(p[2]), int(p[3])))
+		if pl != null and p.size() > 4 and not p[4]:
+			pl.apply_effect("ladders_off")
 	for o in d.get("objects", []):
 		if o[0] == "painting":
 			var art := Catalog.make_painting(o[6] if o.size() > 6 else {})
