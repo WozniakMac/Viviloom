@@ -687,14 +687,66 @@ func _queue_with_partner(f: Furniture, i: Interaction) -> void:
 
 ## Clicking the active Sim: things they can do on their own (Change Outfit...).
 func open_self_menu(screen_pos: Vector2) -> void:
-	var cats := [["Everyday", "everyday"], ["Sleepwear", "sleep"], ["Athletic", "athletic"], ["Swimwear", "swim"]]
-	_on_pie_choice(func(_i: int):
-		var names: Array[String] = []
-		for c in cats:
-			names.append(c[0])
-		_on_pie_choice(func(j: int): sim.change_outfit(cats[j][1]))
-		hud.pie_menu.open(screen_pos, "Change Outfit", names))
-	hud.pie_menu.open(screen_pos, sim.sim_name, ["Change Outfit..."] as Array[String])
+	# Checked against the reference: clicking your own Sim offers Outfits..., Sit on
+	# Ground, Jog, Ponder Problems, Stargaze, Moonbathe (after dark) and Travel...
+	var spot := _self_spot()
+	var night := Daylight.is_dark(fmod(Clock.total_minutes / 60.0, 24.0))
+	var acts: Array = []
+	for i in spot.interactions:
+		if i.name == "Moonbathe" and not night:
+			continue
+		if Ages.allows_for(sim, i):
+			acts.append(i)
+	var labels: Array[String] = ["Outfits..."]
+	var icons: Array[String] = [""]
+	for i in acts:
+		labels.append(i.name)
+		icons.append(i.icon)
+	labels.append("Travel...")
+	icons.append("walk")
+	_on_pie_choice(func(idx: int):
+		if idx == 0:
+			var cats := [["Everyday", "everyday"], ["Sleepwear", "sleep"], ["Athletic", "athletic"], ["Swimwear", "swim"]]
+			var names: Array[String] = []
+			for c in cats:
+				names.append(c[0])
+			_on_pie_choice(func(j: int): sim.change_outfit(cats[j][1]))
+			hud.pie_menu.open(screen_pos, "Outfits", names)
+		elif idx == labels.size() - 1:
+			hud._phone_tab = 1
+			hud._toggle_phone()
+		else:
+			spot.global_position = Vector3(sim.global_position.x, spot.global_position.y, sim.global_position.z)
+			sim.queue_interaction(spot, acts[idx - 1]))
+	hud.pie_menu.open(screen_pos, sim.sim_name, labels, icons)
+
+
+var _self_spot_node: Furniture
+
+## An invisible spot that follows the Sim, for things they do on their own (not
+## in the object list, so autonomy and saving ignore it).
+func _self_spot() -> Furniture:
+	if _self_spot_node != null and is_instance_valid(_self_spot_node):
+		if _self_spot_node.get_parent() != sim.lot:
+			_self_spot_node.reparent(sim.lot)
+		return _self_spot_node
+	var f := Furniture.new()
+	f.kind = "self"
+	f.display_name = sim.sim_name
+	f.blocks = false
+	f.spots = [Vector3.ZERO]
+	f.interactions = [
+		Interaction.new("Sit on Ground", {"energy": 3.0, "fun": 4.0}, 30.0, "", "sit"),
+		Interaction.new("Jog", {"fun": 12.0, "energy": -14.0, "hygiene": -18.0}, 60.0, "", "run").practices("fitness", 65.0).grants("pumped", "energized", 1, "Pumped", "Great workout!", 180.0),
+		Interaction.new("Ponder Problems", {"fun": 6.0}, 45.0, "", "stand").practices("logic", 40.0),
+		Interaction.new("Stargaze", {"fun": 20.0}, 45.0, "", "stand").grants("starry", "inspired", 1, "Starstruck", "So many stars.", 120.0),
+		Interaction.new("Moonbathe", {"fun": 15.0, "energy": 5.0}, 45.0, "", "lie").grants("moonlit", "happy", 1, "Moonlit", "Bathed in moonlight.", 180.0),
+	]
+	f.interactions[1].icon = "walk"
+	f.interactions[2].icon = "bulb"
+	sim.lot.add_child(f)
+	_self_spot_node = f
+	return f
 
 
 ## Social pie menu for another Sim: first a ring of categories, then the socials in
@@ -2292,6 +2344,17 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"selfmenu":
+			Clock.total_minutes = 22 * 60.0
+			rig.frame(sim.global_position, deg_to_rad(20.0), deg_to_rad(-45.0), 8.0)
+			await get_tree().create_timer(0.6).timeout
+			open_self_menu(rig.camera.unproject_position(sim.global_position + Vector3(0, 1.0, 0)))
+			await get_tree().create_timer(0.6).timeout
+			hud.pie_menu.chosen.emit(2)
+			await get_tree().create_timer(1.5).timeout
+			print("SELF queue=%s" % [sim.queue.map(func(q): return q.label)])
+			open_self_menu(rig.camera.unproject_position(sim.global_position + Vector3(0, 1.0, 0)))
+			await get_tree().create_timer(0.6).timeout
 		"simology":
 			hud.toggle_page(2)
 			await get_tree().create_timer(0.6).timeout
