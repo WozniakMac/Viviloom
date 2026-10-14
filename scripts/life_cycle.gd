@@ -121,6 +121,9 @@ func _give_birth(mother: Sim) -> void:
 	baby.hair_style = "short"
 	baby.age_stage = "toddler"
 	baby.lot = mother.lot
+	baby.parents = [mother.sim_name]
+	if is_instance_valid(other):
+		baby.parents.append(other.sim_name)
 	born.emit(baby, [mother, other])
 	for p in [mother, other]:
 		if is_instance_valid(p):

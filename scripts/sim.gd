@@ -660,6 +660,7 @@ func to_dict() -> Dictionary:
 		"inventory": inventory.duplicate(true),
 		"spouse": spouse.sim_name if spouse != null and is_instance_valid(spouse) else "",
 		"partner": partner.sim_name if partner != null and is_instance_valid(partner) else "",
+		"parents": parents,
 		"traits": traits,
 		"likes": likes,
 		"dislikes": dislikes,
@@ -730,6 +731,7 @@ func from_dict(d: Dictionary, others: Array) -> void:
 		if o != self and d.get("relationships", {}).has(o.sim_name):
 			var r: Array = d["relationships"][o.sim_name]
 			relationships[o] = Vector2(r[0], r[1])
+	parents = d.get("parents", []).duplicate()
 	relationships_changed.emit()
 
 
@@ -844,11 +846,31 @@ func romance_with(o: Sim) -> float:
 
 
 func relationship_label(o: Sim) -> String:
+	var fam := family_label(o)
+	if fam != "":
+		return fam
 	if spouse == o:
-		return "Spouse"
+		return "Husband" if o.body_frame == "masculine" else "Wife"
 	if partner == o:
-		return "Partner"
+		return "Boyfriend" if o.body_frame == "masculine" else "Girlfriend"
 	return Socials.friendship_label(friendship_with(o), romance_with(o))
+
+
+## Names of this Sim's parents (set at birth), for family ties like the reference's.
+var parents: Array = []
+
+
+## "Mother", "Son", "Sister"... what `o` is to this Sim, or "".
+func family_label(o: Sim) -> String:
+	var male := o.body_frame == "masculine"
+	if parents.has(o.sim_name):
+		return "Father" if male else "Mother"
+	if o.parents.has(sim_name):
+		return "Son" if male else "Daughter"
+	for p in parents:
+		if o.parents.has(p):
+			return "Brother" if male else "Sister"
+	return ""
 
 
 ## Changes the relationship on both sides.

@@ -71,6 +71,7 @@ func _ready() -> void:
 	_test_birthday_cake()
 	_test_trait_batch_three()
 	_test_jealousy()
+	_test_family_ties()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -700,7 +701,7 @@ func _test_romance() -> void:
 	act.outcome = true
 	act.elapsed = 999.0
 	a._social_result(act)
-	_check(a.partner == b and b.partner == a and a.relationship_label(b) == "Partner", "going steady sets partners on both sides")
+	_check(a.partner == b and b.partner == a and a.relationship_label(b) in ["Boyfriend", "Girlfriend"], "going steady sets partners on both sides")
 	_check(a.to_dict()["partner"] == "Ben", "partners are saved")
 	act.interaction = Socials.find("Break Up")
 	a._social_result(act)
@@ -1383,3 +1384,21 @@ func _test_jealousy() -> void:
 	a._social_result(act)
 	_check(c.emotions.mood() == "angry" or c.emotions.has("jealous"), "partners get jealous when their Sim flirts with someone else")
 	lot.queue_free()
+
+
+func _test_family_ties() -> void:
+	var mum := Sim.new()
+	mum.sim_name = "Ann"
+	mum.body_frame = "feminine"
+	var kid := Sim.new()
+	kid.sim_name = "Bo"
+	kid.body_frame = "masculine"
+	kid.parents = ["Ann"]
+	var sis := Sim.new()
+	sis.sim_name = "Cy"
+	sis.body_frame = "feminine"
+	sis.parents = ["Ann"]
+	_check(kid.relationship_label(mum) == "Mother" and mum.relationship_label(kid) == "Son" and kid.relationship_label(sis) == "Sister", "family ties are named")
+	_check(kid.to_dict()["parents"] == ["Ann"], "parents are saved")
+	for s in [mum, kid, sis]:
+		s.free()
