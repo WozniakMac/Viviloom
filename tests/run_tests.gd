@@ -70,6 +70,7 @@ func _ready() -> void:
 	_test_likes_dislikes()
 	_test_birthday_cake()
 	_test_trait_batch_three()
+	_test_jealousy()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1358,3 +1359,27 @@ func _test_trait_batch_three() -> void:
 	_check(Traits.liking(fam, "", Socials.find("Teach to Talk")) > 1.0, "family-oriented Sims love parenting")
 	for t in Traits.ORDER:
 		_check(TraitHex.TRAIT_COLORS.has(t), "trait %s has a hex colour" % t)
+
+
+func _test_jealousy() -> void:
+	var lot := _make_lot()
+	add_child(lot)
+	var a := Sim.new()
+	var b := Sim.new()
+	var c := Sim.new()
+	for s in [a, b, c]:
+		lot.add_child(s)
+		s.lot = lot
+		lot.sims.append(s)
+	c.partner = a
+	a.partner = c
+	c.set_traits(["jealous"] as Array[String])
+	a.change_relationship(b, 30.0, 30.0)
+	var act := Sim.SimAction.new()
+	act.target_sim = b
+	act.interaction = Socials.find("Flirt")
+	act.outcome = true
+	act.elapsed = 999.0
+	a._social_result(act)
+	_check(c.emotions.mood() == "angry" or c.emotions.has("jealous"), "partners get jealous when their Sim flirts with someone else")
+	lot.queue_free()

@@ -515,6 +515,8 @@ func _drop() -> void:
 		return
 	if _held_is_new and not _held.get_meta("free", false) and not _spend(_held.price):
 		return
+	if _held_is_new and not _held.has_meta("free"):
+		_held.set_meta("just_bought", true)
 	if _held.has_meta("free"):
 		_held.remove_meta("free")
 	lot.place_furniture(_held, _held_cell, _held_rot)

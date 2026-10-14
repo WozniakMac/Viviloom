@@ -1425,6 +1425,16 @@ func _social_result(a: SimAction) -> void:
 		if t.skills.level(s["target_skill"]) > before:
 			announced.emit("%s's %s skill went up thanks to %s!" % [t.sim_name, Skills.label(s["target_skill"]), sim_name])
 	if a.outcome:
+		# Flirting in front of someone's partner or spouse makes them jealous.
+		if s.get("category", "") == "Romance" and lot != null:
+			for o in lot.sims:
+				var other := o as Sim
+				if other == self or other == t or not is_instance_valid(other):
+					continue
+				if (other.spouse == self or other.partner == self) and other.global_position.distance_to(global_position) < 8.0:
+					var w := 2 if other.traits.has("jealous") else 1
+					other.emotions.add("jealous", "angry", w, "Jealous", "%s was flirting with %s!" % [sim_name, t.sim_name], 240.0)
+					other.change_relationship(self, -4.0 * w, -3.0 * w)
 		if s.get("cheer", false):
 			t.emotions.clear_emotion("sad")
 		change_relationship(t, s.get("friendship", 0.0), s.get("romance", 0.0))
@@ -1721,6 +1731,10 @@ func _follow_path(delta: float) -> bool:
 		_path_index += 1
 		if _path_index >= path.size():
 			stop()
+			# Clumsy Sims sometimes trip on arrival.
+			if traits.has("clumsy") and _rng.randf() < 0.08:
+				emotions.add("tripped", "embarrassed", 1, "Tripped!", "Whoops! Graceful as ever.", 90.0)
+				announced.emit("%s tripped over their own feet!" % sim_name)
 			return false
 		return true
 	var dir := to.normalized()

@@ -99,6 +99,12 @@ func _ready() -> void:
 	build.camera = rig.camera
 	add_child(build)
 	build.placed.connect(func(f: Furniture):
+		# Materialistic Sims love new stuff.
+		if f.price >= 100 and f.get_meta("just_bought", false):
+			f.remove_meta("just_bought")
+			for m in household:
+				if (m as Sim).traits.has("materialistic"):
+					(m as Sim).emotions.add("new_stuff", "happy", 1, "New Stuff!", "Ooh, a brand new %s!" % f.display_name, 240.0)
 		if f.kind == "stairs":
 			upper.clear_floor(f.footprint_rect()))
 	hud.set_build(build, lot)
