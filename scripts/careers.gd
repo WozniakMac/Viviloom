@@ -212,6 +212,77 @@ const CAREER_EVENTS := {
 }
 
 
+## Events for each career branch (from level 7), as in the reference.
+const BRANCH_EVENTS := {
+	"culinary:0": [
+		["Food Critic", "A famous food critic just sat down at table four.", [["Cook them a signature dish", 16.0, ["rave_review", "confident", 1, "Rave Review", "Five stars!", 180.0], {"cooking": 7}, -8.0, ["bad_review", "sad", 1, "Bad Review", "Ouch.", 150.0]], ["Stick to the menu", 0.0, []]]],
+	],
+	"culinary:1": [
+		["Cocktail Contest", "The bar is entering a cocktail competition tonight.", [["Invent a new cocktail", 16.0, ["cocktail_champ", "playful", 1, "Cocktail Champ", "They loved it!", 180.0], {"mixology": 7}, -8.0, ["sour_mix", "embarrassed", 1, "Sour Mix", "Too much lime...", 150.0]], ["Make the classics", 0.0, []]]],
+	],
+	"tech:0": [
+		["Investor Demo", "Investors want a live demo of the start-up's app.", [["Demo the unfinished feature", 16.0, ["funded", "confident", 1, "Funded!", "They're in!", 180.0], {"programming": 7}, -8.0, ["demo_crash", "embarrassed", 1, "Demo Crashed", "Live on stage.", 150.0]], ["Show the safe build", 0.0, []]]],
+	],
+	"tech:1": [
+		["Tournament Final", "Your team made the eSports final.", [["Go for the risky strategy", 16.0, ["champions", "confident", 1, "Champions", "GG!", 180.0], {"gaming": 7}, -8.0, ["lost_final", "sad", 1, "Lost the Final", "So close.", 150.0]], ["Play defensively", 0.0, []]]],
+	],
+	"painter:0": [
+		["Commission", "A wealthy collector wants a realistic portrait by Friday.", [["Accept and paint it", 16.0, ["masterpiece", "inspired", 1, "Masterpiece", "Lifelike!", 180.0], {"painting": 7}, -8.0, ["odd_portrait", "embarrassed", 1, "Odd Portrait", "Is that a nose?", 150.0]], ["Turn it down", 0.0, []]]],
+	],
+	"painter:1": [
+		["Charity Auction", "You're hosting an art auction for charity.", [["Work the room for bigger bids", 16.0, ["record_bids", "confident", 1, "Record Bids", "Every piece sold!", 180.0], {"charisma": 7}, -8.0, ["empty_room", "sad", 1, "Quiet Auction", "Hardly any bids.", 150.0]], ["Let the art speak", 0.0, []]]],
+	],
+	"business:0": [
+		["Restructure", "The board wants you to reorganise a struggling department.", [["Lead the restructure", 16.0, ["turned_around", "confident", 1, "Turned It Around", "Profits are up!", 180.0], {"charisma": 7}, -8.0, ["staff_revolt", "tense", 1, "Staff Revolt", "Everyone's upset.", 150.0]], ["Keep things as they are", 0.0, []]]],
+	],
+	"business:1": [
+		["Hot Tip", "A colleague whispers about a promising young company.", [["Invest big", 16.0, ["smart_money", "confident", 1, "Smart Money", "It took off!", 180.0], {"logic": 7}, -8.0, ["bad_bet", "sad", 1, "Bad Bet", "It tanked.", 150.0]], ["Do more research", 0.0, []]]],
+	],
+	"athlete:0": [
+		["Posing Contest", "There's a bodybuilding competition this afternoon.", [["Enter and flex", 16.0, ["champion_pose", "confident", 1, "Champion Pose", "Gold medal!", 180.0], {"fitness": 7}, -8.0, ["pulled_muscle", "uncomfortable", 1, "Pulled Muscle", "Ow.", 150.0]], ["Skip it this time", 0.0, []]]],
+	],
+	"athlete:1": [
+		["Contract Talks", "Your agent is renegotiating your contract.", [["Push for a bigger deal", 16.0, ["big_contract", "confident", 1, "Big Contract", "Worth every penny.", 180.0], {"fitness": 7}, -8.0, ["benched", "sad", 1, "Benched", "They called my bluff.", 150.0]], ["Take the offer", 0.0, []]]],
+	],
+	"entertainer:0": [
+		["Comedy Special", "A network wants you to film a comedy special.", [["Try all-new material", 16.0, ["special_hit", "playful", 1, "Hit Special", "The reviews are in!", 180.0], {"comedy": 7}, -8.0, ["special_flop", "embarrassed", 1, "Special Flopped", "Crickets.", 150.0]], ["Use your old routine", 0.0, []]]],
+	],
+	"entertainer:1": [
+		["Sold-Out Show", "Tonight's concert is sold out.", [["Play the new song", 16.0, ["encore", "inspired", 1, "Encore!", "They sang along!", 180.0], {"piano": 7}, -8.0, ["wrong_chord", "embarrassed", 1, "Wrong Chord", "Everyone heard it.", 150.0]], ["Stick to the hits", 0.0, []]]],
+	],
+	"writer:0": [
+		["Book Tour", "Your publisher wants you on a book tour.", [["Give live readings", 16.0, ["adoring_fans", "confident", 1, "Adoring Fans", "Signed a hundred copies!", 180.0], {"writing": 7}, -8.0, ["tough_crowd", "sad", 1, "Tough Crowd", "Half the seats were empty.", 150.0]], ["Only sign books", 0.0, []]]],
+	],
+	"writer:1": [
+		["Breaking Story", "A major story just broke and you're first on the scene.", [["Interview the witnesses", 16.0, ["scoop", "confident", 1, "Got the Scoop", "Front page!", 180.0], {"charisma": 7}, -8.0, ["misquote", "embarrassed", 1, "Misquoted", "A correction ran today.", 150.0]], ["Wait for the press release", 0.0, []]]],
+	],
+	"astronaut:0": [
+		["Spacewalk", "The mission needs someone outside the station.", [["Volunteer for the spacewalk", 16.0, ["spacewalker", "confident", 1, "Spacewalker", "The view!", 180.0], {"logic": 7}, -8.0, ["space_sick", "uncomfortable", 1, "Space Sick", "Never again.", 150.0]], ["Stay inside", 0.0, []]]],
+	],
+	"astronaut:1": [
+		["Cargo Inspection", "Space customs want to inspect your ship.", [["Bluff your way through", 16.0, ["slipped_through", "playful", 1, "Slipped Through", "Nothing to see here.", 180.0], {"fitness": 7}, -8.0, ["fined", "tense", 1, "Fined", "That was expensive.", 150.0]], ["Dump the cargo", 0.0, []]]],
+	],
+	"criminal:0": [
+		["Turf War", "A rival crew is moving in on your territory.", [["Stand your ground", 16.0, ["respect", "confident", 1, "Respect", "Nobody messes with us.", 180.0], {"mischief": 7}, -8.0, ["lost_turf", "angry", 1, "Lost Turf", "They got the better of us.", 150.0]], ["Negotiate a truce", 0.0, []]]],
+	],
+	"criminal:1": [
+		["Firewall", "Tonight's target has a brand-new firewall.", [["Hack straight through", 16.0, ["ghost_in_machine", "confident", 1, "Ghost in the Machine", "In and out.", 180.0], {"programming": 7}, -8.0, ["traced", "tense", 1, "Traced", "They almost found me.", 150.0]], ["Wait for another night", 0.0, []]]],
+	],
+	"secret_agent:0": [
+		["Gala Infiltration", "You need to get into a gala full of suspects.", [["Charm the host for an invite", 16.0, ["inside", "confident", 1, "On the Inside", "Like a true agent.", 180.0], {"charisma": 7}, -8.0, ["thrown_out", "embarrassed", 1, "Thrown Out", "Not on the list.", 150.0]], ["Watch from outside", 0.0, []]]],
+	],
+	"secret_agent:1": [
+		["Doomsday Device", "Your evil employer wants their doomsday device finished.", [["Sabotage a rival's plans first", 16.0, ["evil_laugh", "playful", 1, "Evil Laugh", "Mwahaha!", 180.0], {"mischief": 7}, -8.0, ["foiled", "angry", 1, "Foiled Again", "Curses!", 150.0]], ["Just keep building", 0.0, []]]],
+	],
+	"style_influencer:0": [
+		["Red Carpet", "A celebrity client needs a look for tonight's red carpet.", [["Go bold", 16.0, ["best_dressed", "confident", 1, "Best Dressed", "Everyone's talking about it.", 180.0], {"charisma": 7}, -8.0, ["fashion_faux_pas", "embarrassed", 1, "Fashion Faux Pas", "Worst-dressed list.", 150.0]], ["Play it safe", 0.0, []]]],
+	],
+	"style_influencer:1": [
+		["New Trend", "You could start a trend with your next post.", [["Post something daring", 16.0, ["trendsetter", "playful", 1, "Trendsetter", "Everyone's copying it!", 180.0], {"writing": 7}, -8.0, ["cringe", "embarrassed", 1, "Cringe", "That aged badly.", 150.0]], ["Post the usual", 0.0, []]]],
+	],
+}
+
+
 ## School counts as a "career" for children and teens: no pay, a grade instead.
 const SCHOOLS: Array[String] = ["school", "high_school"]
 const WORK_DAYS := 5

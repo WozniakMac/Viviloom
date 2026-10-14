@@ -231,6 +231,10 @@ func _raise_event() -> void:
 	for e in Careers.CAREER_EVENTS.get(career, []):
 		pool.append(e)
 		pool.append(e)
+	if branch >= 0 and level >= Careers.BRANCH_AT:
+		for e in Careers.BRANCH_EVENTS.get("%s:%d" % [career, branch], []):
+			pool.append(e)
+			pool.append(e)
 	_event = pool[_rng.randi() % pool.size()]
 	var choices: Array = []
 	for c in _event[2]:

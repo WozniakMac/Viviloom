@@ -83,6 +83,7 @@ func _ready() -> void:
 	_test_branch_skills()
 	_test_uniforms()
 	_test_career_events()
+	_test_branch_events()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1596,5 +1597,23 @@ func _test_career_events() -> void:
 	w.performance = 50.0
 	w.resolve_event(0)
 	_check(w.performance == 44.0, "risky choices backfire without the skill")
+	w.free()
+	s.free()
+
+
+func _test_branch_events() -> void:
+	_check(Careers.BRANCH_EVENTS.size() == 22, "every branch has its own event")
+	var s := Sim.new()
+	var w := Work.new()
+	w.sim = s
+	w.join("criminal", true)
+	w.level = Careers.BRANCH_AT
+	w.branch = 1
+	var titles := {}
+	w.work_event.connect(func(t, _x, _c): titles[t] = true)
+	w._rng.seed = 5
+	for k in 60:
+		w._raise_event()
+	_check(titles.has("Firewall") and not titles.has("Turf War"), "only your branch's events come up")
 	w.free()
 	s.free()
