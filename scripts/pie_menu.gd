@@ -19,7 +19,7 @@ func _ready() -> void:
 	visible = false
 
 
-func open(at: Vector2, title: String, options: Array[String], icons: Array[String] = []) -> void:
+func open(at: Vector2, title: String, options: Array[String], icons: Array[String] = [], colors: Array[Color] = []) -> void:
 	Sfx.play("menu_open", -6.0)
 	_clear()
 	var vp := get_viewport_rect().size
@@ -56,6 +56,8 @@ func open(at: Vector2, title: String, options: Array[String], icons: Array[Strin
 		pressed.bg_color = UiTheme.ACCENT
 		b.add_theme_stylebox_override("pressed", pressed)
 		b.pressed.connect(_on_pressed.bind(i))
+		if i < colors.size():
+			b.add_theme_color_override("font_color", colors[i])
 		if i < icons.size() and icons[i] != "":
 			# A small icon on the left of the pill, like the reference's wrench.
 			for st in ["normal", "hover", "pressed"]:

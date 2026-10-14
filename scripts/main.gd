@@ -629,9 +629,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 			var here: Lot = levels[active_level]
 			var hit: Variant = _ground_point(mb.position)
-			if hit != null and here.contains_point(hit):
-				if here.is_walkable(here.world_to_cell(hit)) and sim.queue_go(hit, here):
-					_show_marker(hit)
+			if hit != null and here.contains_point(hit) and here.is_walkable(here.world_to_cell(hit)):
+				# As in the reference: a one-option pie, "Go Here", in green.
+				var target: Vector3 = hit
+				_on_pie_choice(func(_i: int):
+					if sim.queue_go(target, here):
+						_show_marker(target))
+				hud.pie_menu.open(mb.position, "", ["Go Here"] as Array[String], [] as Array[String], [UiTheme.GREEN_DARK])
 
 
 ## Opens the interaction pie menu for `f` at a screen position.
@@ -2035,6 +2039,12 @@ func _input_check() -> void:
 	# Click the ground: a Go Here action.
 	sim.clear_queue()
 	await _click(rig.camera.unproject_position(lot.cell_to_world(Vector2i(10, 15))))
+	var go_btn: Button = null
+	for c in hud.pie_menu.get_children():
+		if c is Button and (c as Button).text == "Go Here":
+			go_btn = c
+	if go_btn != null:
+		await _click(go_btn.get_global_rect().get_center())
 	results["go_here"] = sim.queue.size() == 1 and sim.queue[0].label == "Go Here"
 	# F3 opens build mode; drag a wall; F1 leaves.
 	await _key(KEY_F3)
