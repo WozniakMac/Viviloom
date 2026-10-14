@@ -10,6 +10,7 @@ const CAUSES := {
 	"old_age": "passed away peacefully after a long and full life",
 	"hunger": "starved to death",
 	"fire": "perished in a fire",
+	"electrocution": "was electrocuted fixing something",
 }
 
 

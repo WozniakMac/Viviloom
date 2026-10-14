@@ -73,6 +73,7 @@ func _ready() -> void:
 	_test_jealousy()
 	_test_family_ties()
 	_test_wider_family()
+	_test_electrocution()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1424,3 +1425,31 @@ func _test_wider_family() -> void:
 	_check(sims["Kid"].relationship_label(sims["Cuz"]) == "Cousin", "and cousins")
 	for n in names:
 		sims[n].free()
+
+
+func _test_electrocution() -> void:
+	var s := Sim.new()
+	add_child(s)
+	var tv := Catalog.create("tv")
+	add_child(tv)
+	tv.set_broken(true)
+	var deaths: Array = []
+	s.died.connect(func(c): deaths.append(c))
+	s._rng.seed = 1
+	var shocks := 0
+	for k in 60:
+		tv.set_broken(true)
+		var act := Sim.SimAction.new()
+		act.furniture = tv
+		act.interaction = tv.available_interactions()[0]
+		act.performing = true
+		act.elapsed = 100.0
+		s._end_perform(act, true)
+		if s.emotions.has("shocked"):
+			shocks += 1
+		if not deaths.is_empty():
+			break
+	_check(shocks > 0, "clumsy repairs of electronics can shock")
+	_check(deaths == ["electrocution"], "a second shock while shocked is fatal")
+	tv.queue_free()
+	s.queue_free()

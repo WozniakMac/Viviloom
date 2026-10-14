@@ -1631,6 +1631,9 @@ func like_mult(skill: String) -> float:
 	return 1.0
 
 
+const ELECTRONICS := ["tv", "desk", "stereo", "stove", "fridge", "treadmill", "microwave", "coffee_maker"]
+
+
 ## Moodlet and pay for an activity done long enough. Skill makes both better.
 ## Pay only comes when the activity is finished, not cancelled.
 func _reward(i: Interaction, minutes_done: float, finished: bool) -> void:
@@ -1733,6 +1736,18 @@ func _end_perform(a: SimAction, finished := false) -> void:
 		a.furniture.apply_effect(a.interaction.effect)
 	if finished and a.interaction.clears_emotion != "":
 		emotions.clear_emotion(a.interaction.clears_emotion)
+	# As in the reference: fixing electronics with little Handiness can give a shock,
+	# and a second shock while still shocked is fatal.
+	if finished and a.interaction.fixes and a.furniture.kind in ELECTRONICS and _rng.randf() < maxf(0.0, 0.25 - skills.level("handiness") * 0.05):
+		if emotions.has("shocked"):
+			announced.emit("%s was electrocuted!" % sim_name)
+			died.emit("electrocution")
+			return
+		emotions.add("shocked", "uncomfortable", 2, "Shocked", "Zapped! Hair standing on end.", 240.0)
+		needs.add("energy", -15.0)
+		Sfx.play("fail", -4.0)
+		announced.emit("%s got an electric shock fixing the %s! Be careful..." % [sim_name, a.furniture.display_name])
+		return
 	if finished and a.interaction.fixes:
 		a.furniture.set_broken(false)
 		announced.emit("%s repaired the %s." % [sim_name, a.furniture.display_name])
