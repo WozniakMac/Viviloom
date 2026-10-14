@@ -2371,6 +2371,14 @@ func _run_scenario(scenario: String, path: String) -> void:
 			rig.frame(lot.cell_to_world(Vector2i(10, 17)), deg_to_rad(10.0), deg_to_rad(-50.0), 19.0)
 			await get_tree().create_timer(1.0).timeout
 			print("ROOMS undo=%d redo=%d" % [build._undo.size(), build._redo.size()])
+		"showroom3":
+			lot.add_floor(Rect2i(2, 15, 18, 4), 0)
+			_place("loveseat", Vector2i(3, 16))
+			_place("cactus", Vector2i(6, 16))
+			_place("patio_lounger", Vector2i(9, 15))
+			_place("patio_table", Vector2i(13, 16))
+			rig.frame(lot.cell_to_world(Vector2i(9, 16)), deg_to_rad(5.0), deg_to_rad(-38.0), 12.0)
+			await get_tree().create_timer(1.0).timeout
 		"uniform":
 			sim.wear_uniform("culinary")
 			rig.frame(sim.global_position, deg_to_rad(20.0), deg_to_rad(-25.0), 4.5)

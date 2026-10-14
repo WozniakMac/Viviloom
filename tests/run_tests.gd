@@ -84,6 +84,7 @@ func _ready() -> void:
 	_test_uniforms()
 	_test_career_events()
 	_test_branch_events()
+	_test_object_batch_four()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1617,3 +1618,14 @@ func _test_branch_events() -> void:
 	_check(titles.has("Firewall") and not titles.has("Turf War"), "only your branch's events come up")
 	w.free()
 	s.free()
+
+
+func _test_object_batch_four() -> void:
+	for kind in ["loveseat", "wall_mirror", "patio_lounger", "patio_table", "cactus"]:
+		_check(Catalog.KINDS.has(kind) and Catalog.CATEGORY_OF.has(kind), "%s is in the catalogue" % kind)
+		var f := Catalog.create(kind)
+		_check(f.display_name != "", "%s builds" % kind)
+		f.free()
+	var ls := Catalog.create("loveseat")
+	_check(ls.capacity() == 2, "two can share a loveseat")
+	ls.free()

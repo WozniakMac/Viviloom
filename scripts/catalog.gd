@@ -2,7 +2,7 @@ class_name Catalog
 extends RefCounted
 ## Builds the furniture the game knows about. All shapes are simple original placeholders.
 
-const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter", "dresser", "burglar_alarm", "table_lamp", "vase_flowers", "book_stack", "desk_clock", "candles", "fruit_bowl", "microwave", "coffee_maker", "bathroom_sink", "nightstand", "wardrobe", "wall_lamp", "basketball_hoop", "trash_can", "pine", "flower_shrub", "flower_bed"]
+const KINDS: Array[String] = ["fridge", "bed", "toilet", "shower", "tv", "desk", "bookshelf", "easel", "chess", "lamp", "sofa", "dining_table", "chair", "counter", "stove", "sink", "plant", "mailbox", "bench", "tree", "bush", "grill", "picnic_table", "fountain", "treadmill", "mirror", "guitar", "stairs", "bar", "stereo", "toybox", "piano", "telescope", "pond", "single_bed", "armchair", "coffee_table", "end_table", "bathtub", "dollhouse", "activity_table", "rug", "sculpture", "monkey_bars", "column", "planter", "dresser", "burglar_alarm", "loveseat", "wall_mirror", "patio_lounger", "patio_table", "cactus", "table_lamp", "vase_flowers", "book_stack", "desk_clock", "candles", "fruit_bowl", "microwave", "coffee_maker", "bathroom_sink", "nightstand", "wardrobe", "wall_lamp", "basketball_hoop", "trash_can", "pine", "flower_shrub", "flower_bed"]
 
 ## Messes made by Sims: not sold in the catalogue, cleaned up by Sims.
 const MESSES: Array[String] = ["dishes", "puddle", "fire"]
@@ -142,6 +142,11 @@ const INFO := {
 	"planter": ["Garden Planter", 150],
 	"dresser": ["Dresser", 300],
 	"burglar_alarm": ["Burglar Alarm", 375],
+	"loveseat": ["Loveseat", 420],
+	"wall_mirror": ["Wall Mirror", 130],
+	"patio_lounger": ["Patio Lounger", 260],
+	"patio_table": ["Patio Table with Umbrella", 340],
+	"cactus": ["Potted Cactus", 45],
 	"table_lamp": ["Table Lamp", 85],
 	"vase_flowers": ["Vase of Flowers", 60],
 	"book_stack": ["Stack of Books", 40],
@@ -178,7 +183,7 @@ const CATEGORY_OF := {
 	"sofa": "living", "dining_table": "living", "chair": "living", "counter": "kitchen", "stove": "kitchen",
 	"sink": "kitchen", "plant": "living", "mailbox": "outdoor",
 	"bench": "outdoor", "tree": "outdoor", "bush": "outdoor", "grill": "outdoor", "picnic_table": "outdoor", "fountain": "outdoor",
-	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "pine": "outdoor", "flower_shrub": "outdoor", "flower_bed": "outdoor", "planter": "outdoor", "dresser": "bedroom", "burglar_alarm": "living", "table_lamp": "living", "vase_flowers": "living", "book_stack": "hobby", "desk_clock": "living", "candles": "living", "fruit_bowl": "kitchen", "microwave": "kitchen", "coffee_maker": "kitchen", "bathroom_sink": "bathroom", "nightstand": "bedroom", "wardrobe": "bedroom", "wall_lamp": "living", "basketball_hoop": "outdoor", "trash_can": "outdoor",
+	"treadmill": "hobby", "mirror": "bedroom", "guitar": "hobby", "stairs": "living", "bar": "fun", "stereo": "fun", "toybox": "bedroom", "piano": "hobby", "telescope": "hobby", "pond": "outdoor", "single_bed": "bedroom", "armchair": "living", "coffee_table": "living", "end_table": "living", "bathtub": "bathroom", "dollhouse": "fun", "activity_table": "fun", "rug": "living", "sculpture": "living", "monkey_bars": "outdoor", "column": "living", "pine": "outdoor", "flower_shrub": "outdoor", "flower_bed": "outdoor", "planter": "outdoor", "dresser": "bedroom", "burglar_alarm": "living", "loveseat": "living", "wall_mirror": "bathroom", "patio_lounger": "outdoor", "patio_table": "outdoor", "cactus": "living", "table_lamp": "living", "vase_flowers": "living", "book_stack": "hobby", "desk_clock": "living", "candles": "living", "fruit_bowl": "kitchen", "microwave": "kitchen", "coffee_maker": "kitchen", "bathroom_sink": "bathroom", "nightstand": "bedroom", "wardrobe": "bedroom", "wall_lamp": "living", "basketball_hoop": "outdoor", "trash_can": "outdoor",
 }
 const DESCRIPTIONS := {
 	"bed": "A sturdy double bed. Restful nights, fewer grumpy mornings.",
@@ -233,6 +238,11 @@ const DESCRIPTIONS := {
 	"desk_clock": "Tick tock.",
 	"candles": "Three candles that glow warmly in the evening.",
 	"fruit_bowl": "Grab a piece of fruit on the go.",
+	"loveseat": "A cosy two-seater for curling up together.",
+	"wall_mirror": "Hangs on a wall. Check your look, practise a speech.",
+	"patio_lounger": "Stretch out in the sun and relax.",
+	"patio_table": "Shade for summer meals outdoors.",
+	"cactus": "Needs almost no care at all.",
 	"burglar_alarm": "Hangs on a wall. Calls the police the moment a burglar sets foot inside.",
 	"dresser": "Drawers full of clothes. Change into any outfit here.",
 	"planter": "Plant seeds, water them every day and harvest fresh produce to sell.",
@@ -907,6 +917,91 @@ static func create(kind: String) -> Furniture:
 			f.interactions = [
 				Interaction.new("Grab a Piece of Fruit", {"hunger": 45.0}, 8.0, "hunger", "stand", true),
 			]
+		"loveseat":
+			f.display_name = "Loveseat"
+			f.footprint = Vector2i(2, 1)
+			f.height = 0.9
+			f.decor = 1
+			var ls := Color(0.75, 0.45, 0.4)
+			f.add_box(Vector3(1.6, 0.42, 0.8), Vector3(0, 0.21, 0), ls)
+			f.add_box(Vector3(1.6, 0.5, 0.18), Vector3(0, 0.62, -0.32), ls)
+			for x in [-0.74, 0.74]:
+				f.add_box(Vector3(0.14, 0.22, 0.8), Vector3(x, 0.52, 0), ls.darkened(0.1))
+			for x in [-0.34, 0.34]:
+				f.add_box(Vector3(0.62, 0.1, 0.6), Vector3(x, 0.47, 0.05), ls.lightened(0.12))
+			f.spots = [Vector3(-0.35, 0, 1.0), Vector3(0.35, 0, 1.0)]
+			f.use_position = Vector3(-0.35, 0.05, 0.08)
+			f.extra_positions = [Vector3(0.35, 0.05, 0.08)]
+			f.use_facing = Vector3(0, 0, 1)
+			f.interactions = [
+				Interaction.new("Sit", {"fun": 6.0, "energy": 3.0}, 60.0, "", "sit"),
+				Interaction.new("Nap", {"energy": 8.0, "hunger": -3.0, "bladder": -4.0}, 90.0, "energy", "lie"),
+			]
+		"wall_mirror":
+			f.display_name = "Wall Mirror"
+			f.wall_mounted = true
+			f.blocks = false
+			f.height = 0.9
+			f.decor = 1
+			f.add_box(Vector3(0.6, 0.9, 0.04), Vector3(0, 0.0, -0.02), Color(0.75, 0.62, 0.3))
+			var glass := f.add_box(Vector3(0.52, 0.82, 0.01), Vector3(0, 0.0, 0.005), Color(0.82, 0.9, 0.95))
+			glass.material_override = StandardMaterial3D.new()
+			(glass.material_override as StandardMaterial3D).albedo_color = Color(0.82, 0.9, 0.95)
+			(glass.material_override as StandardMaterial3D).metallic = 0.9
+			(glass.material_override as StandardMaterial3D).roughness = 0.05
+			f.spots = [Vector3(0, 0, 0.8)]
+			f.interactions = [
+				Interaction.new("Admire Self", {"fun": 10.0}, 10.0, "", "stand").grants("looking_good", "confident", 1, "Looking Good", "Not bad at all.", 90.0),
+				Interaction.new("Practise Speech", {"fun": 8.0, "social": 6.0}, 45.0, "", "stand", true).practices("charisma", 60.0).grants("confident_talk", "confident", 1, "Feeling Charming", "Ready to win anyone over.", 180.0),
+			]
+		"patio_lounger":
+			f.display_name = "Patio Lounger"
+			f.footprint = Vector2i(1, 2)
+			f.height = 0.6
+			f.decor = 1
+			f.add_box(Vector3(0.7, 0.1, 1.8), Vector3(0, 0.3, 0.05), Color(0.95, 0.95, 0.92))
+			var back := f.add_box(Vector3(0.7, 0.08, 0.7), Vector3(0, 0.55, -0.7), Color(0.95, 0.95, 0.92))
+			back.rotation.x = -0.7
+			f.add_box(Vector3(0.66, 0.06, 1.7), Vector3(0, 0.38, 0.05), Color(0.3, 0.6, 0.75))
+			for z in [-0.75, 0.85]:
+				for x in [-0.3, 0.3]:
+					f.add_box(Vector3(0.05, 0.28, 0.05), Vector3(x, 0.14, z), Color(0.8, 0.8, 0.82))
+			f.spots = [Vector3(0.8, 0, 0)]
+			f.use_position = Vector3(0, 0.45, 0.1)
+			f.use_facing = Vector3(0, 0, 1)
+			f.interactions = [
+				Interaction.new("Lounge", {"fun": 18.0, "energy": 6.0}, 60.0, "", "lie").grants("lounging", "happy", 1, "Lounging Around", "This is the life.", 180.0),
+			]
+		"patio_table":
+			f.display_name = "Patio Table with Umbrella"
+			f.height = 2.3
+			f.decor = 1
+			f.add_box(Vector3(0.9, 0.05, 0.9), Vector3(0, 0.74, 0), Color(0.92, 0.92, 0.9))
+			f.add_box(Vector3(0.08, 0.72, 0.08), Vector3(0, 0.36, 0), Color(0.8, 0.8, 0.82))
+			f.add_box(Vector3(0.04, 1.6, 0.04), Vector3(0, 1.5, 0), Color(0.9, 0.9, 0.9))
+			var canopy := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.05
+			cm.bottom_radius = 1.1
+			cm.height = 0.35
+			canopy.mesh = cm
+			canopy.position = Vector3(0, 2.15, 0)
+			var cmat := StandardMaterial3D.new()
+			cmat.albedo_color = Color(0.85, 0.3, 0.3)
+			canopy.material_override = cmat
+			f.add_child(canopy)
+			f.spots = [Vector3(0, 0, 0.9), Vector3(0, 0, -0.9)]
+			f.interactions = [
+				_dishes(Interaction.new("Have a Proper Meal", {"hunger": 80.0, "social": 4.0}, 45.0, "hunger", "stand", true).grants("alfresco", "happy", 1, "Al Fresco", "Eating outside is lovely.", 180.0)),
+			]
+		"cactus":
+			f.display_name = "Potted Cactus"
+			f.height = 0.6
+			f.decor = 1
+			f.add_box(Vector3(0.22, 0.18, 0.22), Vector3(0, 0.09, 0), Color(0.75, 0.42, 0.3))
+			f.add_box(Vector3(0.1, 0.36, 0.1), Vector3(0, 0.36, 0), Color(0.25, 0.5, 0.25))
+			f.add_box(Vector3(0.06, 0.14, 0.06), Vector3(0.08, 0.38, 0), Color(0.25, 0.5, 0.25))
+			f.add_box(Vector3(0.06, 0.12, 0.06), Vector3(-0.07, 0.44, 0), Color(0.25, 0.5, 0.25))
 		"burglar_alarm":
 			f.display_name = "Burglar Alarm"
 			f.wall_mounted = true
