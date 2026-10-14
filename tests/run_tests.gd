@@ -82,6 +82,7 @@ func _ready() -> void:
 	_test_ten_levels()
 	_test_branch_skills()
 	_test_uniforms()
+	_test_career_events()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1576,4 +1577,24 @@ func _test_uniforms() -> void:
 	var s := Sim.new()
 	s.wear_uniform("culinary")
 	_check(s.outfit == "career" and s.shirt_color == Careers.UNIFORMS["culinary"][0], "Sims dress for work")
+	s.free()
+
+
+func _test_career_events() -> void:
+	_check(Careers.ORDER.all(func(c): return Careers.CAREER_EVENTS.has(c)), "every career has its own events")
+	var s := Sim.new()
+	var w := Work.new()
+	w.sim = s
+	w.join("criminal", true)
+	var titles := {}
+	w.work_event.connect(func(t, _x, _c): titles[t] = true)
+	w._rng.seed = 3
+	for k in 40:
+		w._raise_event()
+	_check(titles.has("Tough Lock"), "criminals face criminal events")
+	w._event = Careers.CAREER_EVENTS["criminal"][0]
+	w.performance = 50.0
+	w.resolve_event(0)
+	_check(w.performance == 44.0, "risky choices backfire without the skill")
+	w.free()
 	s.free()

@@ -141,6 +141,77 @@ const EVENTS := [
 ]
 
 
+## Events that only come up in a particular career, as in the reference.
+const CAREER_EVENTS := {
+	"culinary": [
+		["Dinner Rush", "The restaurant is packed and orders are piling up.", [
+			["Take charge of the line", 14.0, ["kitchen_hero", "confident", 1, "Kitchen Hero", "Not a single order late!", 180.0], {"cooking": 4}, -6.0, ["burnt_order", "embarrassed", 1, "Burnt the Orders", "The critics noticed.", 150.0]],
+			["Keep your head down", 0.0, []],
+		]],
+	],
+	"tech": [
+		["Server Outage", "The servers are down and everyone is panicking.", [
+			["Debug it yourself", 14.0, ["saved_the_day", "confident", 1, "Saved the Day", "Back online in minutes!", 180.0], {"programming": 4}, -6.0, ["crashed_more", "tense", 1, "Made It Worse", "Oops, wrong cable.", 150.0]],
+			["Wait for the senior devs", 0.0, []],
+		]],
+	],
+	"painter": [
+		["Gallery Opening", "A gallery owner wants to see some of your work tonight.", [
+			["Pitch your best piece", 14.0, ["gallery_deal", "inspired", 1, "Gallery Deal", "My art on a gallery wall!", 180.0], {"painting": 4}, -6.0, ["art_snub", "sad", 1, "Snubbed", "They didn't get it.", 150.0]],
+			["Politely decline", 0.0, []],
+		]],
+	],
+	"business": [
+		["Big Pitch", "A major client is in the building and the boss needs someone to present.", [
+			["Give the pitch", 14.0, ["closed_deal", "confident", 1, "Closed the Deal", "They signed on the spot!", 180.0], {"charisma": 4}, -6.0, ["pitch_flop", "embarrassed", 1, "Pitch Flopped", "Silence in the room...", 150.0]],
+			["Let a colleague present", 0.0, []],
+		]],
+	],
+	"athlete": [
+		["Big Game", "The coach puts you in for the final minutes of a close game.", [
+			["Go for the winning play", 14.0, ["game_winner", "confident", 1, "Game Winner", "The crowd went wild!", 180.0], {"fitness": 4}, -6.0, ["choked", "embarrassed", 1, "Choked", "Missed the easy one.", 150.0]],
+			["Play it safe", 0.0, []],
+		]],
+	],
+	"entertainer": [
+		["Heckler", "Someone in the crowd keeps heckling your act.", [
+			["Roast them back", 14.0, ["killed_it", "playful", 1, "Killed It", "The audience loved it.", 180.0], {"comedy": 4}, -6.0, ["bombed", "embarrassed", 1, "Bombed", "Nobody laughed.", 150.0]],
+			["Ignore it and carry on", 0.0, []],
+		]],
+	],
+	"writer": [
+		["Tight Deadline", "Your editor wants the whole piece by the end of the day.", [
+			["Write through lunch", 14.0, ["deadline_met", "focused", 1, "Deadline Met", "Every word in place.", 180.0], {"writing": 4}, -6.0, ["rushed_piece", "tense", 1, "Rushed Piece", "That was sloppy.", 150.0]],
+			["Ask for an extension", 0.0, []],
+		]],
+	],
+	"astronaut": [
+		["Simulator Malfunction", "The flight simulator glitches mid-mission.", [
+			["Fly it manually", 14.0, ["ace_pilot", "confident", 1, "Ace Pilot", "Smooth landing!", 180.0], {"logic": 4}, -6.0, ["sim_crash", "embarrassed", 1, "Crashed the Sim", "Thankfully it wasn't real.", 150.0]],
+			["Abort the run", 0.0, []],
+		]],
+	],
+	"criminal": [
+		["Tough Lock", "The safe on tonight's job has a new kind of lock.", [
+			["Crack it", 14.0, ["clean_job", "confident", 1, "Clean Job", "In and out without a trace.", 180.0], {"mischief": 4}, -6.0, ["alarm_tripped", "tense", 1, "Tripped the Alarm", "Run!", 150.0]],
+			["Walk away", 0.0, []],
+		]],
+	],
+	"secret_agent": [
+		["Cover Blown?", "A suspicious contact asks too many questions.", [
+			["Charm your way out", 14.0, ["smooth_operator", "confident", 1, "Smooth Operator", "They never suspected a thing.", 180.0], {"charisma": 4}, -6.0, ["cover_blown", "tense", 1, "Cover Almost Blown", "Too close.", 150.0]],
+			["Call for extraction", 0.0, []],
+		]],
+	],
+	"style_influencer": [
+		["Viral Moment", "A celebrity reposted your look and the comments are exploding.", [
+			["Post a follow-up right away", 14.0, ["went_viral", "playful", 1, "Went Viral", "So many new followers!", 180.0], {"writing": 4}, -6.0, ["ratioed", "embarrassed", 1, "Ratioed", "The comments turned on me.", 150.0]],
+			["Let it settle", 0.0, []],
+		]],
+	],
+}
+
+
 ## School counts as a "career" for children and teens: no pay, a grade instead.
 const SCHOOLS: Array[String] = ["school", "high_school"]
 const WORK_DAYS := 5

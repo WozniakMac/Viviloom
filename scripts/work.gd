@@ -226,7 +226,12 @@ func daily_task_done() -> bool:
 
 
 func _raise_event() -> void:
-	_event = Careers.EVENTS[_rng.randi() % Careers.EVENTS.size()]
+	var pool: Array = Careers.EVENTS.duplicate()
+	# Career-specific events come up twice as often as the general ones.
+	for e in Careers.CAREER_EVENTS.get(career, []):
+		pool.append(e)
+		pool.append(e)
+	_event = pool[_rng.randi() % pool.size()]
 	var choices: Array = []
 	for c in _event[2]:
 		var label: String = c[0]
