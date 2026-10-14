@@ -72,6 +72,7 @@ func _ready() -> void:
 	_test_trait_batch_three()
 	_test_jealousy()
 	_test_family_ties()
+	_test_wider_family()
 	_test_paintings()
 	_test_cooking()
 	_test_kids()
@@ -1402,3 +1403,24 @@ func _test_family_ties() -> void:
 	_check(kid.to_dict()["parents"] == ["Ann"], "parents are saved")
 	for s in [mum, kid, sis]:
 		s.free()
+
+
+func _test_wider_family() -> void:
+	var names := ["Gran", "Mum", "Aunty", "Kid", "Cuz"]
+	var sims := {}
+	for n in names:
+		var s := Sim.new()
+		s.sim_name = n
+		s.body_frame = "feminine"
+		sims[n] = s
+	sims["Mum"].parents = ["Gran"]
+	sims["Aunty"].parents = ["Gran"]
+	sims["Kid"].parents = ["Mum"]
+	sims["Cuz"].parents = ["Aunty"]
+	_check(sims["Kid"].relationship_label(sims["Gran"]) == "Grandmother", "grandparents are named")
+	_check(sims["Gran"].relationship_label(sims["Kid"]) == "Granddaughter", "and grandchildren")
+	_check(sims["Kid"].relationship_label(sims["Aunty"]) == "Aunt", "and aunts")
+	_check(sims["Aunty"].relationship_label(sims["Kid"]) == "Niece", "and nieces")
+	_check(sims["Kid"].relationship_label(sims["Cuz"]) == "Cousin", "and cousins")
+	for n in names:
+		sims[n].free()

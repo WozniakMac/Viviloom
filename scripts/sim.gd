@@ -857,7 +857,17 @@ func relationship_label(o: Sim) -> String:
 
 
 ## Names of this Sim's parents (set at birth), for family ties like the reference's.
-var parents: Array = []
+var parents: Array = []:
+	set(v):
+		parents = v
+		if sim_name != "":
+			FAMILY[sim_name] = v.duplicate()
+## Everyone's known parents (name -> [names]), so wider family can be traced.
+static var FAMILY := {}
+
+
+static func _parents_of(n: String) -> Array:
+	return FAMILY.get(n, [])
 
 
 ## "Mother", "Son", "Sister"... what `o` is to this Sim, or "".
@@ -870,6 +880,28 @@ func family_label(o: Sim) -> String:
 	for p in parents:
 		if o.parents.has(p):
 			return "Brother" if male else "Sister"
+	var grand: Array = []
+	for p in parents:
+		grand.append_array(_parents_of(p))
+	if grand.has(o.sim_name):
+		return "Grandfather" if male else "Grandmother"
+	var o_grand: Array = []
+	for p in o.parents:
+		o_grand.append_array(_parents_of(p))
+	if o_grand.has(sim_name):
+		return "Grandson" if male else "Granddaughter"
+	# Aunts/uncles share a parent with one of my parents; cousins share a grandparent.
+	for p in parents:
+		for gp in _parents_of(p):
+			if p != o.sim_name and _parents_of(o.sim_name).has(gp):
+				return "Uncle" if male else "Aunt"
+	for p in o.parents:
+		for gp in _parents_of(p):
+			if p != sim_name and parents.has(gp):
+				return "Nephew" if male else "Niece"
+	for g in grand:
+		if o_grand.has(g):
+			return "Cousin"
 	return ""
 
 
